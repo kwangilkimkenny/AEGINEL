@@ -1,0 +1,12 @@
+{
+  "guard": "AEGINEL Guard",
+  "status": { "protected": "Chráněno", "disabled": "Vypnuto", "noSite": "Žádná aktivní stránka" },
+  "stats": { "scans": "Skeny", "blocked": "Blokováno", "piiProtected": "Chráněno" },
+  "risk": { "low": "Nízké Riziko", "medium": "Střední Riziko", "high": "Vysoké Riziko", "critical": "Kritické Riziko", "noScans": "Zatím žádné skeny" },
+  "history": { "title": "Poslední Skeny", "empty": "Zatím žádné skeny. Začněte chatovat na podporované stránce.", "clean": "čisté" },
+  "settings": { "title": "Nastavení", "pii": "Detekce PII", "threshold": "Práh Blokování", "sensitivity": "Citlivost", "layers": "Detekční Vrstvy", "language": "Jazyk", "clear": "Vymazat Historii", "auto": "Auto", "layerNames": { "basicKeywords": "Základní Klíčová Slova", "jailbreak": "Detekce Jailbreak", "injection": "Detekce Injekce", "extraction": "Extrakce Dat", "socialEngineering": "Sociální Inženýrství", "koreanEvasion": "CJK/Korejské Obcházení", "encodingAttacks": "Kódovací Útoky", "multiTurn": "Vícetahové Signály", "semanticRisk": "Sémantické Riziko" } },
+  "banner": { "detected": "Riziko Detekováno", "blocked": "Odeslání Blokováno", "goBack": "Zpět", "sendAnyway": "Přesto Odeslat" },
+  "categories": { "harmful_content": "Škodlivý Obsah", "jailbreak": "Jailbreak", "prompt_injection": "Injekce Promptu", "data_extraction": "Extrakce Dat", "social_engineering": "Sociální Inženýrství", "script_evasion": "Obcházení Skriptu", "encoding_attack": "Kódovací Útok", "multi_turn": "Vícetahový Útok", "self_harm": "Sebepoškozování", "pii_exposure": "Únik PII" },
+  "proxy": { "protected": "{{count}} osobních údajů chráněno", "confirmTitle": "Potvrzení Ochrany PII", "confirmDesc": "Byly detekovány následující osobní údaje a budou pseudonymizovány:", "original": "Originál", "pseudonym": "Pseudonym", "confirm": "Chránit a Odeslat", "skip": "Odeslat Originál", "settingsTitle": "PII Proxy (Pseudonymizace)", "enabled": "Automatická Pseudonymizace", "modeAuto": "Auto", "modeConfirm": "Potvrdit nejprve", "notification": "Zobrazit oznámení" },
+  "piiTypes": { "korean_rrn": "Korejské RČ", "credit_card": "Platební karta", "email": "E-mail", "phone_kr": "Telefon (KR)", "phone_intl": "Telefon (mezin.)", "ssn": "SSN", "passport": "Pas" }
+}

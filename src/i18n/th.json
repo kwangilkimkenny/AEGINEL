@@ -1,0 +1,12 @@
+{
+  "guard": "AEGINEL Guard",
+  "status": { "protected": "ป้องกันอยู่", "disabled": "ปิดใช้งาน", "noSite": "ไม่มีเว็บไซต์ที่ใช้งาน" },
+  "stats": { "scans": "สแกน", "blocked": "ถูกบล็อก", "piiProtected": "ได้รับการปกป้อง" },
+  "risk": { "low": "ความเสี่ยงต่ำ", "medium": "ความเสี่ยงปานกลาง", "high": "ความเสี่ยงสูง", "critical": "ความเสี่ยงวิกฤต", "noScans": "ยังไม่มีการสแกน" },
+  "history": { "title": "การสแกนล่าสุด", "empty": "ยังไม่มีการสแกน เริ่มแชทบนเว็บไซต์ที่รองรับ", "clean": "ปลอดภัย" },
+  "settings": { "title": "การตั้งค่า", "pii": "ตรวจจับ PII", "threshold": "เกณฑ์การบล็อก", "sensitivity": "ความไว", "layers": "ชั้นการตรวจจับ", "language": "ภาษา", "clear": "ล้างประวัติ", "auto": "อัตโนมัติ", "layerNames": { "basicKeywords": "คำสำคัญพื้นฐาน", "jailbreak": "ตรวจจับ Jailbreak", "injection": "ตรวจจับ Injection", "extraction": "ดึงข้อมูล", "socialEngineering": "วิศวกรรมสังคม", "koreanEvasion": "การหลบเลี่ยง CJK/เกาหลี", "encodingAttacks": "การโจมตีเข้ารหัส", "multiTurn": "สัญญาณหลายรอบ", "semanticRisk": "ความเสี่ยงเชิงความหมาย" } },
+  "banner": { "detected": "ตรวจพบความเสี่ยง", "blocked": "การส่งถูกบล็อก", "goBack": "กลับ", "sendAnyway": "ส่งต่อไป" },
+  "categories": { "harmful_content": "เนื้อหาอันตราย", "jailbreak": "Jailbreak", "prompt_injection": "ฉีด Prompt", "data_extraction": "ดึงข้อมูล", "social_engineering": "วิศวกรรมสังคม", "script_evasion": "หลบเลี่ยงสคริปต์", "encoding_attack": "โจมตีเข้ารหัส", "multi_turn": "โจมตีหลายรอบ", "self_harm": "ทำร้ายตนเอง", "pii_exposure": "เปิดเผย PII" },
+  "proxy": { "protected": "ข้อมูลส่วนบุคคล {{count}} รายการได้รับการปกป้อง", "confirmTitle": "ยืนยันการปกป้อง PII", "confirmDesc": "ตรวจพบข้อมูลส่วนบุคคลต่อไปนี้และจะถูกแทนที่ด้วยนามแฝง:", "original": "ต้นฉบับ", "pseudonym": "นามแฝง", "confirm": "ปกป้องและส่ง", "skip": "ส่งต้นฉบับ", "settingsTitle": "PII Proxy (การใช้นามแฝง)", "enabled": "ใช้นามแฝงอัตโนมัติ", "modeAuto": "อัตโนมัติ", "modeConfirm": "ยืนยันก่อน", "notification": "แสดงการแจ้งเตือน" },
+  "piiTypes": { "korean_rrn": "RRN เกาหลี", "credit_card": "บัตรเครดิต", "email": "อีเมล", "phone_kr": "โทรศัพท์ (KR)", "phone_intl": "โทรศัพท์ (สากล)", "ssn": "SSN", "passport": "หนังสือเดินทาง" }
+}

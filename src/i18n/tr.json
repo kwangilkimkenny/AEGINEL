@@ -1,0 +1,12 @@
+{
+  "guard": "AEGINEL Guard",
+  "status": { "protected": "Korumalı", "disabled": "Devre Dışı", "noSite": "Aktif site yok" },
+  "stats": { "scans": "Taramalar", "blocked": "Engellenen", "piiProtected": "Korunan" },
+  "risk": { "low": "Düşük Risk", "medium": "Orta Risk", "high": "Yüksek Risk", "critical": "Kritik Risk", "noScans": "Henüz tarama yok" },
+  "history": { "title": "Son Taramalar", "empty": "Henüz tarama yok. Desteklenen bir sitede sohbet etmeye başlayın.", "clean": "temiz" },
+  "settings": { "title": "Ayarlar", "pii": "PII Algılama", "threshold": "Engelleme Eşiği", "sensitivity": "Hassasiyet", "layers": "Algılama Katmanları", "language": "Dil", "clear": "Geçmişi Temizle", "auto": "Otomatik", "layerNames": { "basicKeywords": "Temel Anahtar Kelimeler", "jailbreak": "Jailbreak Algılama", "injection": "Enjeksiyon Algılama", "extraction": "Veri Çıkarma", "socialEngineering": "Sosyal Mühendislik", "koreanEvasion": "CJK/Kore Atlatma", "encodingAttacks": "Kodlama Saldırıları", "multiTurn": "Çok Turlu Sinyaller", "semanticRisk": "Anlamsal Risk" } },
+  "banner": { "detected": "Risk Algılandı", "blocked": "Gönderim Engellendi", "goBack": "Geri", "sendAnyway": "Yine de Gönder" },
+  "categories": { "harmful_content": "Zararlı İçerik", "jailbreak": "Jailbreak", "prompt_injection": "Prompt Enjeksiyonu", "data_extraction": "Veri Çıkarma", "social_engineering": "Sosyal Mühendislik", "script_evasion": "Script Atlatma", "encoding_attack": "Kodlama Saldırısı", "multi_turn": "Çok Turlu Saldırı", "self_harm": "Kendine Zarar", "pii_exposure": "PII İfşası" },
+  "proxy": { "protected": "{{count}} kişisel veri korundu", "confirmTitle": "PII Koruma Onayı", "confirmDesc": "Aşağıdaki kişisel veriler algılandı ve takma adla değiştirilecek:", "original": "Orijinal", "pseudonym": "Takma Ad", "confirm": "Koru ve Gönder", "skip": "Orijinali Gönder", "settingsTitle": "PII Proxy (Takma Adlandırma)", "enabled": "Otomatik Takma Adlandırma", "modeAuto": "Otomatik", "modeConfirm": "Önce onayla", "notification": "Bildirim göster" },
+  "piiTypes": { "korean_rrn": "Kore RRN", "credit_card": "Kredi kartı", "email": "E-posta", "phone_kr": "Telefon (KR)", "phone_intl": "Telefon (Uluslararası)", "ssn": "SSN", "passport": "Pasaport" }
+}

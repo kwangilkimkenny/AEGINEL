@@ -1,0 +1,87 @@
+{
+  "guard": "AEGINEL 守卫",
+  "status": {
+    "protected": "已保护",
+    "disabled": "已禁用",
+    "noSite": "无活动站点"
+  },
+  "stats": {
+    "scans": "扫描",
+    "blocked": "已拦截",
+    "piiProtected": "已保护"
+  },
+  "risk": {
+    "low": "低风险",
+    "medium": "中风险",
+    "high": "高风险",
+    "critical": "严重风险",
+    "noScans": "暂无扫描记录"
+  },
+  "history": {
+    "title": "最近扫描",
+    "empty": "暂无扫描记录。请在支持的站点上开始聊天。",
+    "clean": "安全"
+  },
+  "settings": {
+    "title": "设置",
+    "pii": "PII检测",
+    "threshold": "拦截阈值",
+    "sensitivity": "灵敏度",
+    "layers": "检测层",
+    "language": "语言",
+    "clear": "清除历史",
+    "auto": "自动",
+    "layerNames": {
+      "basicKeywords": "基础关键词",
+      "jailbreak": "越狱检测",
+      "injection": "注入检测",
+      "extraction": "数据提取",
+      "socialEngineering": "社会工程",
+      "koreanEvasion": "CJK/韩文规避",
+      "encodingAttacks": "编码攻击",
+      "multiTurn": "多轮信号",
+      "semanticRisk": "语义风险"
+    }
+  },
+  "banner": {
+    "detected": "检测到风险",
+    "blocked": "发送已拦截",
+    "goBack": "返回",
+    "sendAnyway": "仍然发送"
+  },
+  "categories": {
+    "harmful_content": "有害内容",
+    "jailbreak": "越狱",
+    "prompt_injection": "提示注入",
+    "data_extraction": "数据提取",
+    "social_engineering": "社会工程",
+    "script_evasion": "脚本规避",
+    "encoding_attack": "编码攻击",
+    "multi_turn": "多轮攻击",
+    "self_harm": "自我伤害",
+    "pii_exposure": "个人信息泄露"
+  },
+  "proxy": {
+    "protected": "{{count}}项个人信息已保护",
+    "confirmTitle": "个人信息保护确认",
+    "confirmDesc": "检测到以下个人信息，将进行假名化处理：",
+    "original": "原始数据",
+    "pseudonym": "假名",
+    "confirm": "保护并发送",
+    "skip": "发送原始数据",
+    "settingsTitle": "PII Proxy（假名化）",
+    "enabled": "自动假名化",
+    "modeAuto": "自动",
+    "modeConfirm": "发送前确认",
+    "notification": "显示通知"
+  },
+  "piiTypes": {
+    "korean_rrn": "韩国居民号",
+    "credit_card": "信用卡",
+    "email": "邮箱",
+    "phone_kr": "电话 (韩国)",
+    "phone_intl": "电话 (国际)",
+    "ssn": "SSN",
+    "passport": "护照"
+  }
+}

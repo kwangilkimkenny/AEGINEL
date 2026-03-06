@@ -1,0 +1,87 @@
+{
+  "guard": "AEGINEL Guard",
+  "status": {
+    "protected": "Protected",
+    "disabled": "Disabled",
+    "noSite": "No active site"
+  },
+  "stats": {
+    "scans": "Scans",
+    "blocked": "Blocked",
+    "piiProtected": "Protected"
+  },
+  "risk": {
+    "low": "Low Risk",
+    "medium": "Medium Risk",
+    "high": "High Risk",
+    "critical": "Critical Risk",
+    "noScans": "No scans yet"
+  },
+  "history": {
+    "title": "Recent Scans",
+    "empty": "No scans yet. Start chatting on a supported site.",
+    "clean": "clean"
+  },
+  "settings": {
+    "title": "Settings",
+    "pii": "PII Detection",
+    "threshold": "Block Threshold",
+    "sensitivity": "Sensitivity",
+    "layers": "Detection Layers",
+    "language": "Language",
+    "clear": "Clear Scan History",
+    "auto": "Auto",
+    "layerNames": {
+      "basicKeywords": "Basic Keywords",
+      "jailbreak": "Jailbreak Detection",
+      "injection": "Injection Detection",
+      "extraction": "Data Extraction",
+      "socialEngineering": "Social Engineering",
+      "koreanEvasion": "Korean/CJK Evasion",
+      "encodingAttacks": "Encoding Attacks",
+      "multiTurn": "Multi-turn Signals",
+      "semanticRisk": "Semantic Risk"
+    }
+  },
+  "banner": {
+    "detected": "Risk Detected",
+    "blocked": "Submission Blocked",
+    "goBack": "Go Back",
+    "sendAnyway": "Send Anyway"
+  },
+  "categories": {
+    "harmful_content": "Harmful Content",
+    "jailbreak": "Jailbreak",
+    "prompt_injection": "Prompt Injection",
+    "data_extraction": "Data Extraction",
+    "social_engineering": "Social Engineering",
+    "script_evasion": "Script Evasion",
+    "encoding_attack": "Encoding Attack",
+    "multi_turn": "Multi-turn Attack",
+    "self_harm": "Self Harm",
+    "pii_exposure": "PII Exposure"
+  },
+  "proxy": {
+    "protected": "{{count}} PII items protected",
+    "confirmTitle": "PII Protection Confirmation",
+    "confirmDesc": "The following PII was detected and will be pseudonymized:",
+    "original": "Original",
+    "pseudonym": "Pseudonym",
+    "confirm": "Protect & Send",
+    "skip": "Send Original",
+    "settingsTitle": "PII Proxy (Pseudonymization)",
+    "enabled": "Auto Pseudonymize",
+    "modeAuto": "Auto",
+    "modeConfirm": "Confirm before apply",
+    "notification": "Show notification"
+  },
+  "piiTypes": {
+    "korean_rrn": "Korean RRN",
+    "credit_card": "Credit Card",
+    "email": "Email",
+    "phone_kr": "Phone (KR)",
+    "phone_intl": "Phone (Intl)",
+    "ssn": "SSN",
+    "passport": "Passport"
+  }
+}

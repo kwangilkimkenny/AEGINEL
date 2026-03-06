@@ -1,0 +1,87 @@
+{
+  "guard": "AEGINEL Guard",
+  "status": {
+    "protected": "Protegido",
+    "disabled": "Desativado",
+    "noSite": "Sem site ativo"
+  },
+  "stats": {
+    "scans": "Varreduras",
+    "blocked": "Bloqueados",
+    "piiProtected": "Protegidos"
+  },
+  "risk": {
+    "low": "Risco Baixo",
+    "medium": "Risco Médio",
+    "high": "Risco Alto",
+    "critical": "Risco Crítico",
+    "noScans": "Nenhuma varredura ainda"
+  },
+  "history": {
+    "title": "Varreduras Recentes",
+    "empty": "Nenhuma varredura ainda. Comece a conversar em um site compatível.",
+    "clean": "limpo"
+  },
+  "settings": {
+    "title": "Configurações",
+    "pii": "Detecção de PII",
+    "threshold": "Limite de Bloqueio",
+    "sensitivity": "Sensibilidade",
+    "layers": "Camadas de Detecção",
+    "language": "Idioma",
+    "clear": "Limpar Histórico",
+    "auto": "Automático",
+    "layerNames": {
+      "basicKeywords": "Palavras-chave Básicas",
+      "jailbreak": "Detecção de Jailbreak",
+      "injection": "Detecção de Injeção",
+      "extraction": "Extração de Dados",
+      "socialEngineering": "Engenharia Social",
+      "koreanEvasion": "Evasão CJK/Coreano",
+      "encodingAttacks": "Ataques de Codificação",
+      "multiTurn": "Sinais Multi-turno",
+      "semanticRisk": "Risco Semântico"
+    }
+  },
+  "banner": {
+    "detected": "Risco Detectado",
+    "blocked": "Envio Bloqueado",
+    "goBack": "Voltar",
+    "sendAnyway": "Enviar Mesmo Assim"
+  },
+  "categories": {
+    "harmful_content": "Conteúdo Prejudicial",
+    "jailbreak": "Jailbreak",
+    "prompt_injection": "Injeção de Prompt",
+    "data_extraction": "Extração de Dados",
+    "social_engineering": "Engenharia Social",
+    "script_evasion": "Evasão de Script",
+    "encoding_attack": "Ataque de Codificação",
+    "multi_turn": "Ataque Multi-turno",
+    "self_harm": "Autolesão",
+    "pii_exposure": "Exposição de PII"
+  },
+  "proxy": {
+    "protected": "{{count}} dados pessoais protegidos",
+    "confirmTitle": "Confirmação de Proteção PII",
+    "confirmDesc": "Os seguintes dados pessoais foram detectados e serão pseudonimizados:",
+    "original": "Original",
+    "pseudonym": "Pseudônimo",
+    "confirm": "Proteger e Enviar",
+    "skip": "Enviar Original",
+    "settingsTitle": "PII Proxy (Pseudonimização)",
+    "enabled": "Pseudonimização Automática",
+    "modeAuto": "Automático",
+    "modeConfirm": "Confirmar antes",
+    "notification": "Mostrar notificação"
+  },
+  "piiTypes": {
+    "korean_rrn": "RRN coreano",
+    "credit_card": "Cartão de crédito",
+    "email": "E-mail",
+    "phone_kr": "Telefone (KR)",
+    "phone_intl": "Telefone (Intl)",
+    "ssn": "SSN",
+    "passport": "Passaporte"
+  }
+}

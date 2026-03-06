@@ -1,0 +1,12 @@
+{
+  "guard": "AEGINEL Guard",
+  "status": { "protected": "Защищено", "disabled": "Отключено", "noSite": "Нет активного сайта" },
+  "stats": { "scans": "Сканы", "blocked": "Заблокировано", "piiProtected": "Защищено" },
+  "risk": { "low": "Низкий Риск", "medium": "Средний Риск", "high": "Высокий Риск", "critical": "Критический Риск", "noScans": "Пока нет сканов" },
+  "history": { "title": "Последние Сканы", "empty": "Пока нет сканов. Начните общение на поддерживаемом сайте.", "clean": "чисто" },
+  "settings": { "title": "Настройки", "pii": "Обнаружение PII", "threshold": "Порог Блокировки", "sensitivity": "Чувствительность", "layers": "Слои Обнаружения", "language": "Язык", "clear": "Очистить историю", "auto": "Авто", "layerNames": { "basicKeywords": "Базовые Ключевые Слова", "jailbreak": "Обнаружение Jailbreak", "injection": "Обнаружение Инъекций", "extraction": "Извлечение Данных", "socialEngineering": "Социальная Инженерия", "koreanEvasion": "CJK/Корейское Обход", "encodingAttacks": "Атаки Кодирования", "multiTurn": "Мульти-ходовые Сигналы", "semanticRisk": "Семантический Риск" } },
+  "banner": { "detected": "Риск Обнаружен", "blocked": "Отправка Заблокирована", "goBack": "Назад", "sendAnyway": "Отправить Всё Равно" },
+  "categories": { "harmful_content": "Вредоносный Контент", "jailbreak": "Jailbreak", "prompt_injection": "Инъекция Промпта", "data_extraction": "Извлечение Данных", "social_engineering": "Социальная Инженерия", "script_evasion": "Обход Скриптов", "encoding_attack": "Атака Кодирования", "multi_turn": "Мульти-ходовая Атака", "self_harm": "Самоповреждение", "pii_exposure": "Утечка PII" },
+  "proxy": { "protected": "{{count}} персональных данных защищено", "confirmTitle": "Подтверждение Защиты PII", "confirmDesc": "Обнаружены следующие персональные данные, которые будут псевдонимизированы:", "original": "Оригинал", "pseudonym": "Псевдоним", "confirm": "Защитить и Отправить", "skip": "Отправить Оригинал", "settingsTitle": "PII Proxy (Псевдонимизация)", "enabled": "Автоматическая Псевдонимизация", "modeAuto": "Авто", "modeConfirm": "Подтвердить перед", "notification": "Показать уведомление" },
+  "piiTypes": { "korean_rrn": "Корейский RRN", "credit_card": "Кредитная карта", "email": "Эл. почта", "phone_kr": "Телефон (KR)", "phone_intl": "Телефон (межд.)", "ssn": "SSN", "passport": "Паспорт" }
+}

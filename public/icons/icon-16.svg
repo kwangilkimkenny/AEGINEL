@@ -1,0 +1,7 @@
+<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <!-- Shield background -->
+  <path d="M 8 1 L 3 4 L 3 8 Q 3 12 8 15 Q 13 12 13 8 L 13 4 Z" fill="#0f172a" stroke="#0f172a" stroke-width="0.5"/>
+
+  <!-- Green checkmark -->
+  <path d="M 6 8 L 7.5 9.5 L 10.5 6" stroke="#22c55e" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

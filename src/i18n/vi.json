@@ -1,0 +1,12 @@
+{
+  "guard": "AEGINEL Guard",
+  "status": { "protected": "Đã bảo vệ", "disabled": "Đã tắt", "noSite": "Không có trang hoạt động" },
+  "stats": { "scans": "Quét", "blocked": "Đã chặn", "piiProtected": "Đã bảo vệ" },
+  "risk": { "low": "Rủi ro Thấp", "medium": "Rủi ro Trung bình", "high": "Rủi ro Cao", "critical": "Rủi ro Nghiêm trọng", "noScans": "Chưa có lần quét nào" },
+  "history": { "title": "Quét Gần đây", "empty": "Chưa có lần quét nào. Bắt đầu trò chuyện trên trang được hỗ trợ.", "clean": "sạch" },
+  "settings": { "title": "Cài đặt", "pii": "Phát hiện PII", "threshold": "Ngưỡng Chặn", "sensitivity": "Độ nhạy", "layers": "Lớp Phát hiện", "language": "Ngôn ngữ", "clear": "Xóa Lịch sử", "auto": "Tự động", "layerNames": { "basicKeywords": "Từ khóa Cơ bản", "jailbreak": "Phát hiện Jailbreak", "injection": "Phát hiện Injection", "extraction": "Trích xuất Dữ liệu", "socialEngineering": "Kỹ thuật Xã hội", "koreanEvasion": "Lách CJK/Hàn Quốc", "encodingAttacks": "Tấn công Mã hóa", "multiTurn": "Tín hiệu Đa lượt", "semanticRisk": "Rủi ro Ngữ nghĩa" } },
+  "banner": { "detected": "Phát hiện Rủi ro", "blocked": "Đã Chặn Gửi", "goBack": "Quay lại", "sendAnyway": "Vẫn Gửi" },
+  "categories": { "harmful_content": "Nội dung Có hại", "jailbreak": "Jailbreak", "prompt_injection": "Chèn Prompt", "data_extraction": "Trích xuất Dữ liệu", "social_engineering": "Kỹ thuật Xã hội", "script_evasion": "Lách Script", "encoding_attack": "Tấn công Mã hóa", "multi_turn": "Tấn công Đa lượt", "self_harm": "Tự gây hại", "pii_exposure": "Lộ PII" },
+  "proxy": { "protected": "{{count}} thông tin cá nhân đã được bảo vệ", "confirmTitle": "Xác nhận Bảo vệ PII", "confirmDesc": "Các thông tin cá nhân sau đã được phát hiện và sẽ được thay thế bằng bí danh:", "original": "Gốc", "pseudonym": "Bí danh", "confirm": "Bảo vệ & Gửi", "skip": "Gửi Bản gốc", "settingsTitle": "PII Proxy (Bí danh hóa)", "enabled": "Tự động Bí danh hóa", "modeAuto": "Tự động", "modeConfirm": "Xác nhận trước", "notification": "Hiển thị thông báo" },
+  "piiTypes": { "korean_rrn": "RRN Hàn Quốc", "credit_card": "Thẻ tín dụng", "email": "Email", "phone_kr": "Điện thoại (KR)", "phone_intl": "Điện thoại (Quốc tế)", "ssn": "SSN", "passport": "Hộ chiếu" }
+}

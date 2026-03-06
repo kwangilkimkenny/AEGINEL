@@ -1,0 +1,87 @@
+{
+  "guard": "AEGINEL ガード",
+  "status": {
+    "protected": "保護中",
+    "disabled": "無効",
+    "noSite": "アクティブなサイトなし"
+  },
+  "stats": {
+    "scans": "スキャン",
+    "blocked": "ブロック",
+    "piiProtected": "保護済み"
+  },
+  "risk": {
+    "low": "低リスク",
+    "medium": "中リスク",
+    "high": "高リスク",
+    "critical": "重大リスク",
+    "noScans": "スキャン履歴なし"
+  },
+  "history": {
+    "title": "最近のスキャン",
+    "empty": "スキャン履歴がありません。対応サイトでチャットを開始してください。",
+    "clean": "安全"
+  },
+  "settings": {
+    "title": "設定",
+    "pii": "PII検出",
+    "threshold": "ブロック閾値",
+    "sensitivity": "感度",
+    "layers": "検出レイヤー",
+    "language": "言語",
+    "clear": "履歴を削除",
+    "auto": "自動",
+    "layerNames": {
+      "basicKeywords": "基本キーワード",
+      "jailbreak": "ジェイルブレイク検出",
+      "injection": "インジェクション検出",
+      "extraction": "データ抽出",
+      "socialEngineering": "ソーシャルエンジニアリング",
+      "koreanEvasion": "CJK/韓国語回避",
+      "encodingAttacks": "エンコーディング攻撃",
+      "multiTurn": "マルチターン信号",
+      "semanticRisk": "セマンティックリスク"
+    }
+  },
+  "banner": {
+    "detected": "リスク検出",
+    "blocked": "送信ブロック",
+    "goBack": "戻る",
+    "sendAnyway": "送信する"
+  },
+  "categories": {
+    "harmful_content": "有害コンテンツ",
+    "jailbreak": "ジェイルブレイク",
+    "prompt_injection": "プロンプトインジェクション",
+    "data_extraction": "データ抽出",
+    "social_engineering": "ソーシャルエンジニアリング",
+    "script_evasion": "スクリプト回避",
+    "encoding_attack": "エンコーディング攻撃",
+    "multi_turn": "マルチターン攻撃",
+    "self_harm": "自傷行為",
+    "pii_exposure": "個人情報漏洩"
+  },
+  "proxy": {
+    "protected": "{{count}}件の個人情報が保護されました",
+    "confirmTitle": "個人情報保護の確認",
+    "confirmDesc": "以下の個人情報が検出され、仮名化されます：",
+    "original": "元データ",
+    "pseudonym": "仮名",
+    "confirm": "保護して送信",
+    "skip": "元データで送信",
+    "settingsTitle": "PII Proxy（仮名化）",
+    "enabled": "自動仮名化",
+    "modeAuto": "自動",
+    "modeConfirm": "確認後に適用",
+    "notification": "通知を表示"
+  },
+  "piiTypes": {
+    "korean_rrn": "韓国住民番号",
+    "credit_card": "クレジットカード",
+    "email": "メール",
+    "phone_kr": "電話 (韓国)",
+    "phone_intl": "電話 (国際)",
+    "ssn": "SSN",
+    "passport": "パスポート"
+  }
+}

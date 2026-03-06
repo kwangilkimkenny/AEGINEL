@@ -1,0 +1,12 @@
+{
+  "guard": "AEGINEL Guard",
+  "status": { "protected": "सुरक्षित", "disabled": "अक्षम", "noSite": "कोई सक्रिय साइट नहीं" },
+  "stats": { "scans": "स्कैन", "blocked": "अवरुद्ध", "piiProtected": "सुरक्षित" },
+  "risk": { "low": "कम जोखिम", "medium": "मध्यम जोखिम", "high": "उच्च जोखिम", "critical": "गंभीर जोखिम", "noScans": "अभी तक कोई स्कैन नहीं" },
+  "history": { "title": "हालिया स्कैन", "empty": "अभी तक कोई स्कैन नहीं। किसी समर्थित साइट पर चैट शुरू करें।", "clean": "सुरक्षित" },
+  "settings": { "title": "सेटिंग्स", "pii": "PII पहचान", "threshold": "अवरोध सीमा", "sensitivity": "संवेदनशीलता", "layers": "पहचान परतें", "language": "भाषा", "clear": "इतिहास मिटाएं", "auto": "स्वचालित", "layerNames": { "basicKeywords": "बुनियादी कीवर्ड", "jailbreak": "जेलब्रेक पहचान", "injection": "इंजेक्शन पहचान", "extraction": "डेटा निकासी", "socialEngineering": "सोशल इंजीनियरिंग", "koreanEvasion": "CJK/कोरियाई बचाव", "encodingAttacks": "एन्कोडिंग हमले", "multiTurn": "मल्टी-टर्न सिग्नल", "semanticRisk": "शब्दार्थ जोखिम" } },
+  "banner": { "detected": "जोखिम पहचाना गया", "blocked": "भेजना अवरुद्ध", "goBack": "वापस", "sendAnyway": "फिर भी भेजें" },
+  "categories": { "harmful_content": "हानिकारक सामग्री", "jailbreak": "जेलब्रेक", "prompt_injection": "प्रॉम्प्ट इंजेक्शन", "data_extraction": "डेटा निकासी", "social_engineering": "सोशल इंजीनियरिंग", "script_evasion": "स्क्रिप्ट बचाव", "encoding_attack": "एन्कोडिंग हमला", "multi_turn": "मल्टी-टर्न हमला", "self_harm": "आत्म-हानि", "pii_exposure": "PII उजागर" },
+  "proxy": { "protected": "{{count}} व्यक्तिगत डेटा सुरक्षित", "confirmTitle": "PII सुरक्षा पुष्टि", "confirmDesc": "निम्नलिखित व्यक्तिगत डेटा पहचाना गया और छद्म नाम से बदला जाएगा:", "original": "मूल", "pseudonym": "छद्म नाम", "confirm": "सुरक्षित करें और भेजें", "skip": "मूल भेजें", "settingsTitle": "PII Proxy (छद्म नामकरण)", "enabled": "स्वचालित छद्म नामकरण", "modeAuto": "स्वचालित", "modeConfirm": "पहले पुष्टि करें", "notification": "सूचना दिखाएं" },
+  "piiTypes": { "korean_rrn": "कोरियाई RRN", "credit_card": "क्रेडिट कार्ड", "email": "ईमेल", "phone_kr": "फ़ोन (KR)", "phone_intl": "फ़ोन (अंतर्राष्ट्रीय)", "ssn": "SSN", "passport": "पासपोर्ट" }
+}

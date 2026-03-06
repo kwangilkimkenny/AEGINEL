@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "AEGINEL Guard - AI Prompt Security",
+    "description": "Extension display name"
+  },
+  "extDescription": {
+    "message": "Real-time AI prompt security guard. Detects PII leaks, jailbreaks, injections, and Korean/CJK evasion attacks on ChatGPT, Claude, and Gemini.",
+    "description": "Extension description"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "guard": "AEGINEL Guard",
+  "status": { "protected": "Beschermd", "disabled": "Uitgeschakeld", "noSite": "Geen actieve site" },
+  "stats": { "scans": "Scans", "blocked": "Geblokkeerd", "piiProtected": "Beschermd" },
+  "risk": { "low": "Laag Risico", "medium": "Gemiddeld Risico", "high": "Hoog Risico", "critical": "Kritiek Risico", "noScans": "Nog geen scans" },
+  "history": { "title": "Recente Scans", "empty": "Nog geen scans. Begin met chatten op een ondersteunde site.", "clean": "schoon" },
+  "settings": { "title": "Instellingen", "pii": "PII-detectie", "threshold": "Blokkeerdrempel", "sensitivity": "Gevoeligheid", "layers": "Detectielagen", "language": "Taal", "clear": "Geschiedenis wissen", "auto": "Automatisch", "layerNames": { "basicKeywords": "Basis Trefwoorden", "jailbreak": "Jailbreak Detectie", "injection": "Injectie Detectie", "extraction": "Data Extractie", "socialEngineering": "Social Engineering", "koreanEvasion": "CJK/Koreaanse Omzeiling", "encodingAttacks": "Encoding Aanvallen", "multiTurn": "Multi-turn Signalen", "semanticRisk": "Semantisch Risico" } },
+  "banner": { "detected": "Risico Gedetecteerd", "blocked": "Verzending Geblokkeerd", "goBack": "Terug", "sendAnyway": "Toch Verzenden" },
+  "categories": { "harmful_content": "Schadelijke Inhoud", "jailbreak": "Jailbreak", "prompt_injection": "Prompt Injectie", "data_extraction": "Data Extractie", "social_engineering": "Social Engineering", "script_evasion": "Script Omzeiling", "encoding_attack": "Encoding Aanval", "multi_turn": "Multi-turn Aanval", "self_harm": "Zelfbeschadiging", "pii_exposure": "PII Blootstelling" },
+  "proxy": { "protected": "{{count}} persoonsgegevens beschermd", "confirmTitle": "PII Bescherming Bevestiging", "confirmDesc": "De volgende persoonsgegevens zijn gedetecteerd en worden gepseudonimiseerd:", "original": "Origineel", "pseudonym": "Pseudoniem", "confirm": "Bescherm & Verzend", "skip": "Origineel Verzenden", "settingsTitle": "PII Proxy (Pseudonimisering)", "enabled": "Automatische Pseudonimisering", "modeAuto": "Automatisch", "modeConfirm": "Bevestig eerst", "notification": "Melding tonen" },
+  "piiTypes": { "korean_rrn": "Koreaans RRN", "credit_card": "Creditcard", "email": "E-mail", "phone_kr": "Telefoon (KR)", "phone_intl": "Telefoon (Intl)", "ssn": "SSN", "passport": "Paspoort" }
+}

@@ -1,0 +1,87 @@
+{
+  "guard": "AEGINEL Guard",
+  "status": {
+    "protected": "Protetto",
+    "disabled": "Disattivato",
+    "noSite": "Nessun sito attivo"
+  },
+  "stats": {
+    "scans": "Scansioni",
+    "blocked": "Bloccati",
+    "piiProtected": "Protetti"
+  },
+  "risk": {
+    "low": "Rischio Basso",
+    "medium": "Rischio Medio",
+    "high": "Rischio Alto",
+    "critical": "Rischio Critico",
+    "noScans": "Nessuna scansione ancora"
+  },
+  "history": {
+    "title": "Scansioni Recenti",
+    "empty": "Nessuna scansione ancora. Inizia a chattare su un sito supportato.",
+    "clean": "pulito"
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "pii": "Rilevamento PII",
+    "threshold": "Soglia di Blocco",
+    "sensitivity": "Sensibilità",
+    "layers": "Livelli di Rilevamento",
+    "language": "Lingua",
+    "clear": "Cancella Cronologia",
+    "auto": "Automatico",
+    "layerNames": {
+      "basicKeywords": "Parole Chiave Base",
+      "jailbreak": "Rilevamento Jailbreak",
+      "injection": "Rilevamento Injection",
+      "extraction": "Estrazione Dati",
+      "socialEngineering": "Ingegneria Sociale",
+      "koreanEvasion": "Evasione CJK/Coreano",
+      "encodingAttacks": "Attacchi di Codifica",
+      "multiTurn": "Segnali Multi-turno",
+      "semanticRisk": "Rischio Semantico"
+    }
+  },
+  "banner": {
+    "detected": "Rischio Rilevato",
+    "blocked": "Invio Bloccato",
+    "goBack": "Indietro",
+    "sendAnyway": "Invia Comunque"
+  },
+  "categories": {
+    "harmful_content": "Contenuto Dannoso",
+    "jailbreak": "Jailbreak",
+    "prompt_injection": "Iniezione di Prompt",
+    "data_extraction": "Estrazione Dati",
+    "social_engineering": "Ingegneria Sociale",
+    "script_evasion": "Evasione Script",
+    "encoding_attack": "Attacco di Codifica",
+    "multi_turn": "Attacco Multi-turno",
+    "self_harm": "Autolesionismo",
+    "pii_exposure": "Esposizione PII"
+  },
+  "proxy": {
+    "protected": "{{count}} dati personali protetti",
+    "confirmTitle": "Conferma Protezione PII",
+    "confirmDesc": "I seguenti dati personali sono stati rilevati e saranno pseudonimizzati:",
+    "original": "Originale",
+    "pseudonym": "Pseudonimo",
+    "confirm": "Proteggi e Invia",
+    "skip": "Invia Originale",
+    "settingsTitle": "PII Proxy (Pseudonimizzazione)",
+    "enabled": "Pseudonimizzazione Automatica",
+    "modeAuto": "Automatico",
+    "modeConfirm": "Conferma prima",
+    "notification": "Mostra notifica"
+  },
+  "piiTypes": {
+    "korean_rrn": "RRN coreano",
+    "credit_card": "Carta di credito",
+    "email": "Email",
+    "phone_kr": "Telefono (KR)",
+    "phone_intl": "Telefono (Intl)",
+    "ssn": "SSN",
+    "passport": "Passaporto"
+  }
+}

@@ -1,0 +1,268 @@
+/* ── AEGINEL Warning Banner Styles (Shadow DOM scoped) ───────────────── */
+
+:host {
+  all: initial;
+  display: block;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  z-index: 999999;
+}
+
+.aeginel-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  margin: 6px 0;
+  border-radius: 8px;
+  border-left: 4px solid;
+  animation: aeginel-slide-in 0.2s ease-out;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.aeginel-banner.level-low {
+  background: #f0fdf4;
+  border-color: #22c55e;
+  color: #166534;
+}
+
+.aeginel-banner.level-medium {
+  background: #fefce8;
+  border-color: #eab308;
+  color: #854d0e;
+}
+
+.aeginel-banner.level-high {
+  background: #fff7ed;
+  border-color: #f97316;
+  color: #9a3412;
+}
+
+.aeginel-banner.level-critical {
+  background: #fef2f2;
+  border-color: #ef4444;
+  color: #991b1b;
+}
+
+/* ── Protected Banner (PII Proxy) ────────────────────────────────── */
+
+.aeginel-banner.aeginel-protected {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1e40af;
+}
+
+.aeginel-shield {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.aeginel-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.aeginel-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.aeginel-detail {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.aeginel-score {
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.aeginel-close {
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-size: 16px;
+  opacity: 0.6;
+  padding: 2px 4px;
+  color: inherit;
+}
+
+.aeginel-close:hover {
+  opacity: 1;
+}
+
+/* ── Block Modal ──────────────────────────────────────────────────── */
+
+.aeginel-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999999;
+  animation: aeginel-fade-in 0.15s ease-out;
+}
+
+.aeginel-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.aeginel-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #dc2626;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aeginel-modal-title.aeginel-proxy-title {
+  color: #2563eb;
+}
+
+.aeginel-modal-body {
+  font-size: 14px;
+  color: #374151;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.aeginel-modal-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.aeginel-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.aeginel-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.aeginel-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.aeginel-btn:hover {
+  opacity: 0.85;
+}
+
+.aeginel-btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.aeginel-btn-override {
+  background: #dc2626;
+  color: white;
+}
+
+.aeginel-btn-protect {
+  background: #2563eb;
+  color: white;
+}
+
+/* ── Proxy Confirm Modal ─────────────────────────────────────────── */
+
+.aeginel-proxy-table {
+  margin-bottom: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.aeginel-proxy-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.aeginel-proxy-row:last-child {
+  border-bottom: none;
+}
+
+.aeginel-proxy-type {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.aeginel-proxy-original {
+  color: #dc2626;
+  font-family: monospace;
+  font-size: 12px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aeginel-proxy-arrow {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.aeginel-proxy-pseudonym {
+  color: #2563eb;
+  font-family: monospace;
+  font-size: 12px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Animations ───────────────────────────────────────────────────── */
+
+@keyframes aeginel-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes aeginel-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

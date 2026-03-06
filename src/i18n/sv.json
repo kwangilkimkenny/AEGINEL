@@ -1,0 +1,12 @@
+{
+  "guard": "AEGINEL Guard",
+  "status": { "protected": "Skyddad", "disabled": "Inaktiverad", "noSite": "Ingen aktiv sida" },
+  "stats": { "scans": "Skanningar", "blocked": "Blockerade", "piiProtected": "Skyddade" },
+  "risk": { "low": "Låg Risk", "medium": "Medel Risk", "high": "Hög Risk", "critical": "Kritisk Risk", "noScans": "Inga skanningar än" },
+  "history": { "title": "Senaste Skanningar", "empty": "Inga skanningar än. Börja chatta på en stödd sida.", "clean": "rent" },
+  "settings": { "title": "Inställningar", "pii": "PII-detektering", "threshold": "Blockeringströskel", "sensitivity": "Känslighet", "layers": "Detekteringslager", "language": "Språk", "clear": "Rensa Historik", "auto": "Auto", "layerNames": { "basicKeywords": "Grundläggande Nyckelord", "jailbreak": "Jailbreak-detektering", "injection": "Injektionsdetektering", "extraction": "Dataextraktion", "socialEngineering": "Social Ingenjörskonst", "koreanEvasion": "CJK/Koreansk Undanflykt", "encodingAttacks": "Kodningsattacker", "multiTurn": "Flerturssignaler", "semanticRisk": "Semantisk Risk" } },
+  "banner": { "detected": "Risk Upptäckt", "blocked": "Sändning Blockerad", "goBack": "Tillbaka", "sendAnyway": "Skicka Ändå" },
+  "categories": { "harmful_content": "Skadligt Innehåll", "jailbreak": "Jailbreak", "prompt_injection": "Promptinjektion", "data_extraction": "Dataextraktion", "social_engineering": "Social Ingenjörskonst", "script_evasion": "Skriptundanflykt", "encoding_attack": "Kodningsattack", "multi_turn": "Flerturnsattack", "self_harm": "Självskada", "pii_exposure": "PII-exponering" },
+  "proxy": { "protected": "{{count}} personuppgifter skyddade", "confirmTitle": "PII-skydd Bekräftelse", "confirmDesc": "Följande personuppgifter har upptäckts och kommer att pseudonymiseras:", "original": "Original", "pseudonym": "Pseudonym", "confirm": "Skydda & Skicka", "skip": "Skicka Original", "settingsTitle": "PII Proxy (Pseudonymisering)", "enabled": "Automatisk Pseudonymisering", "modeAuto": "Auto", "modeConfirm": "Bekräfta först", "notification": "Visa notifikation" },
+  "piiTypes": { "korean_rrn": "Koreanskt RRN", "credit_card": "Kreditkort", "email": "E-post", "phone_kr": "Telefon (KR)", "phone_intl": "Telefon (Intl)", "ssn": "SSN", "passport": "Pass" }
+}
