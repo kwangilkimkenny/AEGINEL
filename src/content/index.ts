@@ -5,6 +5,8 @@ import type { SiteAdapter } from './sites/base';
 import { chatgptAdapter } from './sites/chatgpt';
 import { claudeAdapter } from './sites/claude';
 import { geminiAdapter } from './sites/gemini';
+import { createGenericAdapter } from './sites/generic';
+import { siteRegistry } from './sites/registry';
 import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal } from './overlay/warning-banner';
 import type { ScanResult, AeginelConfig, ProxyResult } from '../engine/types';
 import { DEFAULT_CONFIG } from '../engine/types';
@@ -12,8 +14,14 @@ import { DEBOUNCE_MS, INPUT_MIN_LENGTH } from '../shared/constants';
 import { setLocale } from '../i18n';
 
 // ── Site Detection ───────────────────────────────────────────────────────
+// Priority: hand-tuned adapters first, then generic registry-based adapters
 
-const adapters: SiteAdapter[] = [chatgptAdapter, claudeAdapter, geminiAdapter];
+const adapters: SiteAdapter[] = [
+  chatgptAdapter,
+  claudeAdapter,
+  geminiAdapter,
+  ...siteRegistry.map(createGenericAdapter),
+];
 
 function detectSite(): SiteAdapter | null {
   const hostname = window.location.hostname;
