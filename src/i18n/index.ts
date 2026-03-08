@@ -134,5 +134,5 @@ function resolve(obj: TranslationMap | undefined, key: string): unknown {
   return current;
 }
 
-// Initialize with auto-detect
-setLocale('auto');
+// Initialize with English as default
+setLocale('en');

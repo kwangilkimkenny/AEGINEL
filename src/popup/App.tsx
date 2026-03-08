@@ -5,7 +5,7 @@ import RecentScans from './components/RecentScans';
 import SettingsPanel from './components/SettingsPanel';
 import type { AeginelConfig, ScanResult } from '../engine/types';
 import { DEFAULT_CONFIG } from '../engine/types';
-import { t, setLocale } from '../i18n';
+import { setLocale } from '../i18n';
 import type { StatusResponseMessage, ConfigResponseMessage, HistoryResponseMessage } from '../shared/messages';
 
 export default function App() {
@@ -18,9 +18,10 @@ export default function App() {
   const [siteName, setSiteName] = useState('');
   const [, forceRender] = useState(0);
 
-  // Load initial data
   useEffect(() => {
-    // Get active tab info
+    // Force English
+    setLocale('en');
+
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]?.url) {
         try {
@@ -35,7 +36,6 @@ export default function App() {
       }
     });
 
-    // Get status
     chrome.runtime.sendMessage({ type: 'GET_STATUS' }).then((res: StatusResponseMessage) => {
       if (res?.payload) {
         setTotalScans(res.payload.totalScans);
@@ -44,21 +44,19 @@ export default function App() {
       }
     });
 
-    // Get config
     chrome.runtime.sendMessage({ type: 'GET_CONFIG' }).then((res: ConfigResponseMessage) => {
       if (res?.payload) {
         setConfig(res.payload);
-        setLocale(res.payload.language);
+        // Always use English regardless of saved config
+        setLocale('en');
         forceRender(n => n + 1);
       }
     });
 
-    // Get history
     chrome.runtime.sendMessage({ type: 'GET_HISTORY' }).then((res: HistoryResponseMessage) => {
       if (res?.payload) setHistory(res.payload);
     });
 
-    // Get proxy stats
     chrome.runtime.sendMessage({ type: 'GET_PROXY_STATS' }).then((res) => {
       if (res?.totalProtected != null) setPiiProtected(res.totalProtected);
     });
@@ -77,10 +75,8 @@ export default function App() {
     if (partial.piiProxy) newConfig.piiProxy = { ...config.piiProxy, ...partial.piiProxy };
     setConfig(newConfig);
     chrome.runtime.sendMessage({ type: 'UPDATE_CONFIG', payload: newConfig });
-
-    // If language changed, update locale and re-render
     if (partial.language) {
-      setLocale(partial.language);
+      setLocale('en'); // Always English
       forceRender(n => n + 1);
     }
   };
@@ -94,18 +90,18 @@ export default function App() {
   };
 
   return (
-    <div className="px-4 py-3 space-y-2.5">
+    <div className="px-3 py-2 space-y-1.5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pb-0.5">
         <div className="flex items-center gap-1.5">
-          <div className="w-5 h-5 rounded bg-aeginel-green flex items-center justify-center">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <div className="w-4 h-4 rounded bg-aeginel-green flex items-center justify-center">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
           </div>
-          <h1 className="text-sm font-bold text-aeginel-text">AEGINEL</h1>
+          <h1 className="text-xs font-bold text-aeginel-text tracking-tight">AEGINEL</h1>
         </div>
-        <span className="text-[10px] text-aeginel-muted">v1.0.0</span>
+        <span className="text-[9px] text-aeginel-muted">v1.0.0</span>
       </div>
 
       <StatusCard
