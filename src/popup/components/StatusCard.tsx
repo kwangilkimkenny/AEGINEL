@@ -6,10 +6,12 @@ interface Props {
   totalScans: number;
   threatsBlocked: number;
   piiProtected: number;
+  todayScans: number;
+  weekScans: number;
   onToggle: () => void;
 }
 
-export default function StatusCard({ enabled, siteName, totalScans, threatsBlocked, piiProtected, onToggle }: Props) {
+export default function StatusCard({ enabled, siteName, totalScans, threatsBlocked, piiProtected, todayScans, weekScans, onToggle }: Props) {
   return (
     <div className={`rounded-md p-2 border ${enabled ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
       <div className="flex items-center justify-between mb-1.5">
@@ -28,7 +30,7 @@ export default function StatusCard({ enabled, siteName, totalScans, threatsBlock
         </button>
       </div>
       <div className="grid grid-cols-3 gap-1.5">
-        <StatBox label="SCANS" value={totalScans} color="text-aeginel-text" />
+        <StatBox label="SCANS" value={totalScans} color="text-aeginel-text" sub={todayScans > 0 || weekScans > 0 ? `${todayScans}d / ${weekScans}w` : undefined} />
         <StatBox label="BLOCKED" value={threatsBlocked} color="text-aeginel-red" />
         <StatBox label="PII" value={piiProtected} color="text-blue-600" />
       </div>
@@ -36,11 +38,12 @@ export default function StatusCard({ enabled, siteName, totalScans, threatsBlock
   );
 }
 
-function StatBox({ label, value, color }: { label: string; value: number; color: string }) {
+function StatBox({ label, value, color, sub }: { label: string; value: number; color: string; sub?: string }) {
   return (
     <div className="bg-white rounded px-1.5 py-1 text-center border border-aeginel-border">
       <div className={`text-sm font-bold leading-tight ${color}`}>{value}</div>
       <div className="text-[8px] text-aeginel-muted uppercase tracking-wider leading-tight">{label}</div>
+      {sub && <div className="text-[7px] text-aeginel-muted leading-tight mt-px">{sub}</div>}
     </div>
   );
 }

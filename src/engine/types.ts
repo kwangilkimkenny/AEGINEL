@@ -84,6 +84,7 @@ export interface AeginelConfig {
   sensitivity: number;  // 0.5 - 2.0 multiplier
   blockThreshold: number; // 0-100, default 60
   language: string; // 'auto' | SupportedLocale code
+  allowlist: string[]; // domains to skip scanning
 }
 
 export const DEFAULT_CONFIG: AeginelConfig = {
@@ -119,4 +120,5 @@ export const DEFAULT_CONFIG: AeginelConfig = {
   sensitivity: 1.0,
   blockThreshold: 60,
   language: 'auto',
+  allowlist: [],
 };

@@ -62,6 +62,12 @@ export default function App() {
     });
   }, []);
 
+  const now = Date.now();
+  const startOfToday = new Date().setHours(0, 0, 0, 0);
+  const startOfWeek = now - 7 * 24 * 60 * 60 * 1000;
+  const todayScans = history.filter((s) => s.timestamp >= startOfToday).length;
+  const weekScans = history.filter((s) => s.timestamp >= startOfWeek).length;
+
   const handleToggle = () => {
     const newConfig = { ...config, enabled: !config.enabled };
     setConfig(newConfig);
@@ -110,6 +116,8 @@ export default function App() {
         totalScans={totalScans}
         threatsBlocked={threatsBlocked}
         piiProtected={piiProtected}
+        todayScans={todayScans}
+        weekScans={weekScans}
         onToggle={handleToggle}
       />
 

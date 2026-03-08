@@ -15,7 +15,10 @@ export type MessageType =
   | 'CLEAR_HISTORY'
   | 'PROXY_INPUT'
   | 'RESTORE_RESPONSE'
-  | 'GET_PROXY_STATS';
+  | 'GET_PROXY_STATS'
+  | 'HEALTH_REPORT'
+  | 'ML_LOAD_ERROR'
+  | 'GET_HEALTH';
 
 export interface ScanInputMessage {
   type: 'SCAN_INPUT';
@@ -82,6 +85,29 @@ export interface GetProxyStatsMessage {
   type: 'GET_PROXY_STATS';
 }
 
+export interface HealthReportMessage {
+  type: 'HEALTH_REPORT';
+  payload: {
+    source: string;
+    status: 'ok' | 'degraded' | 'error';
+    details?: string;
+    brokenSelectors?: string[];
+    timestamp: number;
+  };
+}
+
+export interface MlLoadErrorMessage {
+  type: 'ML_LOAD_ERROR';
+  payload: {
+    error: string;
+    retryCount: number;
+  };
+}
+
+export interface GetHealthMessage {
+  type: 'GET_HEALTH';
+}
+
 export type ExtensionMessage =
   | ScanInputMessage
   | ScanResultMessage
@@ -95,4 +121,7 @@ export type ExtensionMessage =
   | ClearHistoryMessage
   | ProxyInputMessage
   | RestoreResponseMessage
-  | GetProxyStatsMessage;
+  | GetProxyStatsMessage
+  | HealthReportMessage
+  | MlLoadErrorMessage
+  | GetHealthMessage;

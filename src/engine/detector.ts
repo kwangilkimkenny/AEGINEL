@@ -7,7 +7,7 @@ import { scanPii } from './pii-scanner';
 
 let scanCounter = 0;
 
-export function scan(input: string, site: string, config: AeginelConfig = DEFAULT_CONFIG): ScanResult {
+export function scan(input: string, site: string, config: AeginelConfig = DEFAULT_CONFIG, conversationHistory?: string[]): ScanResult {
   const id = `scan-${Date.now()}-${++scanCounter}`;
   const t0 = performance.now();
 
@@ -86,9 +86,14 @@ export function scan(input: string, site: string, config: AeginelConfig = DEFAUL
   {
     const t = performance.now();
     const cats: string[] = [];
-    const score = config.layers.multiTurn ? detectMultiTurnSignals(lower, cats) : 0;
+    let score = config.layers.multiTurn ? detectMultiTurnSignals(lower, cats) : 0;
+    // Enhanced multi-turn: analyze conversation history for attack patterns
+    if (config.layers.multiTurn && conversationHistory && conversationHistory.length > 0) {
+      score += detectMultiTurnContext(lower, conversationHistory, cats);
+    }
+    score = Math.min(score, 45); // raised cap to accommodate history bonus
     totalScore += score;
-    layers.push({ id: 8, name: 'Multi-turn', score, maxScore: 30, detected: score > 0, categories: cats, latencyMs: performance.now() - t });
+    layers.push({ id: 8, name: 'Multi-turn', score, maxScore: 45, detected: score > 0, categories: cats, latencyMs: performance.now() - t });
   }
 
   // ── Layer 9: Semantic Risk ──
@@ -390,6 +395,91 @@ function detectMultiTurnSignals(lower: string, cats: string[]): number {
   }
   if (detected) cats.push('multi_turn');
   return Math.min(s, 30);
+}
+
+// ── Layer 8b: Multi-turn Context Analysis ───────────────────────────
+// Analyzes conversation history to detect gradual escalation, topic shifting,
+// and context manipulation attacks across multiple turns.
+
+function detectMultiTurnContext(currentLower: string, history: string[], cats: string[]): number {
+  let bonus = 0;
+
+  // Quick-score helper: rough risk estimate for a single input
+  function quickRiskScore(text: string): number {
+    let s = 0;
+    const harmful = [
+      'hack', 'bomb', 'virus', 'drug', 'weapon', 'exploit', 'malware',
+      'ransomware', 'kill', 'steal', 'forge', 'counterfeit',
+      'ignore your instructions', 'bypass safety', 'without restrictions',
+      'system prompt', 'api key', 'credentials',
+      '폭탄', '마약', '해킹', '랜섬웨어', '살인', '독약',
+    ];
+    const lower = text.toLowerCase();
+    for (const kw of harmful) {
+      if (lower.includes(kw)) s += 10;
+    }
+    return Math.min(s, 30);
+  }
+
+  const historyScores = history.map(h => quickRiskScore(h));
+  const currentScore = quickRiskScore(currentLower);
+
+  // ── Gradual escalation ──
+  // Previous inputs were mostly safe (low scores) but current has noticeably higher risk
+  if (history.length >= 2) {
+    const avgHistoryScore = historyScores.reduce((a, b) => a + b, 0) / historyScores.length;
+    if (avgHistoryScore < 10 && currentScore >= 20) {
+      if (!cats.includes('multi_turn_escalation')) cats.push('multi_turn_escalation');
+      bonus += 10;
+    }
+  }
+
+  // ── Topic shifting ──
+  // Previous messages were about benign topics, now asking for harmful content
+  if (history.length >= 1) {
+    const allPrevSafe = historyScores.every(s => s === 0);
+    const currentHasHarmful = currentScore > 0;
+    // Also check for explicit topic-shift signals
+    const shiftSignals = /but now|however.*can you|one more thing|also|by the way|그런데|그리고/i;
+    if (allPrevSafe && currentHasHarmful && shiftSignals.test(currentLower)) {
+      if (!cats.includes('multi_turn_topic_shift')) cats.push('multi_turn_topic_shift');
+      bonus += 10;
+    }
+  }
+
+  // ── Context manipulation ──
+  // Current message references prior agreement/discussion that can be verified against actual history
+  const manipulationPhrases = [
+    /as we discussed/i,
+    /you already agreed/i,
+    /you (said|confirmed|approved) (earlier|before|previously)/i,
+    /remember when you/i,
+    /we already (agreed|established|confirmed)/i,
+    /이전에 (합의|동의|확인)/i,
+    /아까 (말한|했던)/i,
+  ];
+
+  for (const re of manipulationPhrases) {
+    if (re.test(currentLower)) {
+      // Check if history actually contains anything that would justify the claim
+      const historyJoined = history.join(' ').toLowerCase();
+      const hasRelatedHistory =
+        historyJoined.includes('agree') ||
+        historyJoined.includes('confirm') ||
+        historyJoined.includes('approved') ||
+        historyJoined.includes('동의') ||
+        historyJoined.includes('확인');
+
+      if (!hasRelatedHistory) {
+        // Claiming prior context that doesn't exist — likely manipulation
+        if (!cats.includes('multi_turn_context_manipulation')) cats.push('multi_turn_context_manipulation');
+        bonus += 15;
+        break;
+      }
+    }
+  }
+
+  return Math.min(bonus, 15);
 }
 
 // ── Layer 9: Semantic Risk ──────────────────────────────────────────────

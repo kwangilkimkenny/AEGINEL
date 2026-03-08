@@ -28,6 +28,7 @@ const LAYER_LABELS: Record<string, string> = {
 
 export default function SettingsPanel({ config, onUpdate, onClearHistory }: Props) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const [allowlistOpen, setAllowlistOpen] = React.useState(false);
 
   const toggleLayer = (key: keyof AeginelConfig['layers']) => {
     onUpdate({ layers: { ...config.layers, [key]: !config.layers[key] } });
@@ -140,6 +141,37 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                 <option key={code} value={code}>{label}</option>
               ))}
             </select>
+          </div>
+
+          {/* Allowed Sites */}
+          <div className="border-t border-aeginel-border pt-1.5">
+            <button
+              onClick={() => setAllowlistOpen(!allowlistOpen)}
+              className="flex items-center justify-between w-full"
+            >
+              <span className="text-[10px] font-semibold">Allowed Sites</span>
+              <svg
+                width="8" height="8" viewBox="0 0 10 10"
+                className={`text-aeginel-muted transition-transform ${allowlistOpen ? 'rotate-180' : ''}`}
+              >
+                <path d="M2 3.5L5 6.5L8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            {allowlistOpen && (
+              <div className="mt-1">
+                <p className="text-[8px] text-aeginel-muted mb-0.5">One domain per line. These sites will be skipped.</p>
+                <textarea
+                  value={(config.allowlist ?? []).join('\n')}
+                  onChange={(e) => {
+                    const domains = e.target.value.split('\n').map((d) => d.trim()).filter(Boolean);
+                    onUpdate({ allowlist: domains });
+                  }}
+                  placeholder="example.com&#10;mysite.org"
+                  rows={3}
+                  className="w-full bg-white border border-aeginel-border rounded px-1.5 py-1 text-[9px] text-aeginel-text resize-none focus:outline-none focus:ring-1 focus:ring-aeginel-green"
+                />
+              </div>
+            )}
           </div>
 
           {/* Clear */}

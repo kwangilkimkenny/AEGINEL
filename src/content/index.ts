@@ -50,6 +50,56 @@ function initContentScript(adapter: SiteAdapter) {
   // Guard against recursive submit during re-fire
   let isResubmitting = false;
 
+  // ── Health Check: validate adapter selectors ────────────────────────
+  function checkAdapterHealth() {
+    const selectors: Record<string, string> = {
+      input: adapter.getInputSelector(),
+      submit: adapter.getSubmitSelector(),
+      response: adapter.getResponseSelector(),
+    };
+
+    const brokenSelectors: string[] = [];
+    for (const [name, selector] of Object.entries(selectors)) {
+      try {
+        const el = document.querySelector(selector);
+        if (!el) {
+          brokenSelectors.push(name);
+        }
+      } catch {
+        // Invalid selector syntax
+        brokenSelectors.push(name);
+      }
+    }
+
+    const status = brokenSelectors.length === 0 ? 'ok'
+      : brokenSelectors.includes('input') ? 'error'
+      : 'degraded';
+
+    reportHealth(status, brokenSelectors);
+  }
+
+  function reportHealth(
+    status: 'ok' | 'degraded' | 'error',
+    brokenSelectors: string[],
+  ) {
+    try {
+      chrome.runtime.sendMessage({
+        type: 'HEALTH_REPORT',
+        payload: {
+          source: `content-${adapter.id}`,
+          status,
+          details: brokenSelectors.length > 0
+            ? `Broken selectors: ${brokenSelectors.join(', ')}`
+            : undefined,
+          brokenSelectors: brokenSelectors.length > 0 ? brokenSelectors : undefined,
+          timestamp: Date.now(),
+        },
+      }).catch(() => {});
+    } catch {
+      // Extension context invalidated
+    }
+  }
+
   // Load config
   chrome.runtime.sendMessage({ type: 'GET_CONFIG' }).then((res) => {
     if (res?.payload) {
@@ -388,9 +438,16 @@ function initContentScript(adapter: SiteAdapter) {
     document.addEventListener('DOMContentLoaded', () => {
       scanExistingElements();
       watchResponses();
+      // Run initial health check after a short delay to let the page render
+      setTimeout(checkAdapterHealth, 2000);
     });
   } else {
     scanExistingElements();
     watchResponses();
+    // Run initial health check after a short delay to let the page render
+    setTimeout(checkAdapterHealth, 2000);
   }
+
+  // Periodic health check every 5 minutes to detect site layout changes
+  setInterval(checkAdapterHealth, 5 * 60 * 1000);
 }
