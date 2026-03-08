@@ -94,12 +94,18 @@ export default function App() {
   };
 
   return (
-    <div className="p-3 space-y-3">
+    <div className="px-4 py-3 space-y-2.5">
       {/* Header */}
-      <div className="flex items-center gap-2 pb-1">
-        <span className="text-lg">{'\u{1F6E1}\uFE0F'}</span>
-        <h1 className="text-base font-bold tracking-tight">{t('guard')}</h1>
-        <span className="text-[10px] text-aeginel-muted ml-auto">v1.0.0</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <div className="w-5 h-5 rounded bg-aeginel-green flex items-center justify-center">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <h1 className="text-sm font-bold text-aeginel-text">AEGINEL</h1>
+        </div>
+        <span className="text-[10px] text-aeginel-muted">v1.0.0</span>
       </div>
 
       <StatusCard

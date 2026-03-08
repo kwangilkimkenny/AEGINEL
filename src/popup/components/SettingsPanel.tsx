@@ -22,20 +22,25 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
   };
 
   return (
-    <div className="bg-aeginel-card rounded-xl border border-aeginel-border">
+    <div className="rounded-lg border border-aeginel-border bg-aeginel-card">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 text-sm font-semibold"
+        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold"
       >
         <span>{t('settings.title')}</span>
-        <span className="text-aeginel-muted">{isOpen ? '\u25B2' : '\u25BC'}</span>
+        <svg
+          width="10" height="10" viewBox="0 0 10 10"
+          className={`text-aeginel-muted transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        >
+          <path d="M2 3.5L5 6.5L8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
       </button>
 
       {isOpen && (
-        <div className="px-4 pb-4 space-y-4">
+        <div className="px-3 pb-3 space-y-3 border-t border-aeginel-border">
           {/* PII Detection */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs">{t('settings.pii')}</span>
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-[11px]">{t('settings.pii')}</span>
             <Toggle
               checked={config.pii.enabled}
               onChange={() => onUpdate({ pii: { ...config.pii, enabled: !config.pii.enabled } })}
@@ -43,10 +48,10 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
           </div>
 
           {/* PII Proxy */}
-          <div className="space-y-2 border-t border-aeginel-border pt-3">
-            <span className="text-xs font-semibold block">{t('proxy.settingsTitle')}</span>
+          <div className="space-y-1.5 border-t border-aeginel-border pt-2">
+            <span className="text-[11px] font-semibold block">{t('proxy.settingsTitle')}</span>
             <div className="flex items-center justify-between">
-              <span className="text-[11px] text-aeginel-muted">{t('proxy.enabled')}</span>
+              <span className="text-[10px] text-aeginel-muted">{t('proxy.enabled')}</span>
               <Toggle
                 checked={config.piiProxy.enabled}
                 onChange={() => onUpdate({ piiProxy: { ...config.piiProxy, enabled: !config.piiProxy.enabled } })}
@@ -55,18 +60,18 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
             {config.piiProxy.enabled && (
               <>
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-aeginel-muted">Mode</span>
+                  <span className="text-[10px] text-aeginel-muted">Mode</span>
                   <select
                     value={config.piiProxy.mode}
                     onChange={(e) => onUpdate({ piiProxy: { ...config.piiProxy, mode: e.target.value as 'auto' | 'confirm' } })}
-                    className="bg-aeginel-bg border border-aeginel-border rounded px-2 py-1 text-xs text-aeginel-text"
+                    className="bg-white border border-aeginel-border rounded px-1.5 py-0.5 text-[10px] text-aeginel-text"
                   >
                     <option value="auto">{t('proxy.modeAuto')}</option>
                     <option value="confirm">{t('proxy.modeConfirm')}</option>
                   </select>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-aeginel-muted">{t('proxy.notification')}</span>
+                  <span className="text-[10px] text-aeginel-muted">{t('proxy.notification')}</span>
                   <Toggle
                     checked={config.piiProxy.showNotification}
                     onChange={() => onUpdate({ piiProxy: { ...config.piiProxy, showNotification: !config.piiProxy.showNotification } })}
@@ -78,9 +83,9 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
 
           {/* Block Threshold */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs">{t('settings.threshold')}</span>
-              <span className="text-xs text-aeginel-muted">{config.blockThreshold}</span>
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[11px]">{t('settings.threshold')}</span>
+              <span className="text-[10px] text-aeginel-muted font-medium">{config.blockThreshold}</span>
             </div>
             <input
               type="range"
@@ -89,15 +94,15 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
               step="5"
               value={config.blockThreshold}
               onChange={(e) => onUpdate({ blockThreshold: Number(e.target.value) })}
-              className="w-full h-1.5 bg-aeginel-border rounded-lg appearance-none cursor-pointer accent-aeginel-green"
+              className="w-full h-1 bg-aeginel-border rounded-lg appearance-none cursor-pointer"
             />
           </div>
 
           {/* Sensitivity */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs">{t('settings.sensitivity')}</span>
-              <span className="text-xs text-aeginel-muted">{config.sensitivity.toFixed(1)}x</span>
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[11px]">{t('settings.sensitivity')}</span>
+              <span className="text-[10px] text-aeginel-muted font-medium">{config.sensitivity.toFixed(1)}x</span>
             </div>
             <input
               type="range"
@@ -106,17 +111,17 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
               step="0.1"
               value={config.sensitivity}
               onChange={(e) => onUpdate({ sensitivity: Number(e.target.value) })}
-              className="w-full h-1.5 bg-aeginel-border rounded-lg appearance-none cursor-pointer accent-aeginel-green"
+              className="w-full h-1 bg-aeginel-border rounded-lg appearance-none cursor-pointer"
             />
           </div>
 
           {/* Layer Toggles */}
           <div>
-            <span className="text-xs font-semibold block mb-2">{t('settings.layers')}</span>
-            <div className="space-y-1.5">
+            <span className="text-[11px] font-semibold block mb-1">{t('settings.layers')}</span>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1">
               {LAYER_KEYS.map((key) => (
                 <div key={key} className="flex items-center justify-between">
-                  <span className="text-[11px] text-aeginel-muted">{t(`settings.layerNames.${key}`)}</span>
+                  <span className="text-[10px] text-aeginel-muted truncate mr-1">{t(`settings.layerNames.${key}`)}</span>
                   <Toggle
                     checked={config.layers[key]}
                     onChange={() => toggleLayer(key)}
@@ -128,11 +133,11 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
 
           {/* Language */}
           <div className="flex items-center justify-between">
-            <span className="text-xs">{t('settings.language')}</span>
+            <span className="text-[11px]">{t('settings.language')}</span>
             <select
               value={config.language}
               onChange={(e) => onUpdate({ language: e.target.value })}
-              className="bg-aeginel-bg border border-aeginel-border rounded px-2 py-1 text-xs text-aeginel-text"
+              className="bg-white border border-aeginel-border rounded px-1.5 py-0.5 text-[10px] text-aeginel-text"
             >
               <option value="auto">{t('settings.auto')}</option>
               {LANGUAGE_OPTIONS.map(({ code, label }) => (
@@ -144,7 +149,7 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
           {/* Clear History */}
           <button
             onClick={onClearHistory}
-            className="w-full text-xs py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+            className="w-full text-[11px] py-1.5 rounded-md bg-red-50 text-aeginel-red border border-red-200 hover:bg-red-100 transition-colors"
           >
             {t('settings.clear')}
           </button>
@@ -158,9 +163,9 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
   return (
     <button
       onClick={onChange}
-      className={`relative w-8 h-4 rounded-full transition-colors ${checked ? 'bg-aeginel-green' : 'bg-gray-600'}`}
+      className={`relative w-7 h-3.5 rounded-full transition-colors flex-shrink-0 ${checked ? 'bg-aeginel-green' : 'bg-gray-300'}`}
     >
-      <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${checked ? 'left-[18px]' : 'left-0.5'}`} />
+      <span className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white shadow-sm transition-transform ${checked ? 'left-[14px]' : 'left-0.5'}`} />
     </button>
   );
 }
