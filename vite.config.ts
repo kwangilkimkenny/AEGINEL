@@ -12,7 +12,11 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: 'src/popup/index.html',
+        offscreen: 'src/offscreen/offscreen.html',
       },
     },
+  },
+  optimizeDeps: {
+    exclude: ['onnxruntime-web'],
   },
 });

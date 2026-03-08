@@ -4,3 +4,17 @@ dist
 dist.zip
 .DS_Store
 *.log
+
+# Large model/training files (use Git LFS or external hosting)
+data/
+public/models/
+*.onnx
+*.safetensors
+*.pt
+
+# macOS resource forks
+._*
+
+# Test artifacts
+playwright-report/
+test-results/

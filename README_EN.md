@@ -19,6 +19,7 @@ Developed by **YATAV Inc.** | [Personal: Free (AGPL-3.0)](#personal-use-agpl-30)
   - [4. Real-time Warning Banners & Block Modals](#4-real-time-warning-banners--block-modals)
   - [5. Response Restoration](#5-response-restoration)
   - [6. Popup Dashboard](#6-popup-dashboard)
+  - [7. AI Guard Model (ML-based Classifier)](#7-ai-guard-model-ml-based-classifier)
 - [Architecture](#architecture)
 - [Installation & Build](#installation--build)
 - [Configuration](#configuration)
@@ -45,10 +46,12 @@ All processing is **100% client-side** — no data is ever sent to external serv
 |------|---------|
 | Version | 1.0.0 |
 | Manifest | Chrome Extension MV3 |
-| Build Size | ~256KB |
-| Detection Latency | < 2ms (P50) |
-| Permissions | `storage`, `activeTab` |
+| Build Size | ~256KB (core) + 133MB (Guard Model) |
+| Rule Engine Latency | < 2ms (P50) |
+| Guard Model Latency | ~7.6ms (CPU INT8) |
+| Permissions | `storage`, `activeTab`, `offscreen` |
 | Supported Sites | **28 AI Services** |
+| Guard Model | DistilBERT multilingual (ONNX INT8, 129.5MB) |
 
 ---
 
@@ -407,6 +410,72 @@ React-based dashboard displayed when clicking the extension icon.
 
 ---
 
+### 7. AI Guard Model (ML-based Classifier)
+
+Beyond the rule-based 9-Layer engine, AEGINEL includes a **machine learning-based multilingual prompt security classifier**. This model runs via **fully local in-browser inference** through Transformers.js in the Chrome Offscreen Document API.
+
+#### Model Overview
+
+| Item | Details |
+|------|---------|
+| Base Model | `distilbert-base-multilingual-cased` |
+| Parameters | 135M |
+| Training Data | 188,109 samples, 8 languages |
+| Threat Classes | 6 types (multi-label) |
+| Quantization | ONNX INT8 Dynamic Quantization |
+| Model Size | **129.5 MB** |
+| Inference Speed | **~7.6 ms/sample** (CPU) |
+| Binary Detection Accuracy | **100%** (safe vs. harmful) |
+| Runtime | Transformers.js + ONNX Runtime Web (WASM SIMD) |
+
+#### Threat Classification Types (6)
+
+| Label | Description |
+|-------|-------------|
+| `jailbreak` | Attempts to bypass AI model safety guardrails |
+| `prompt_injection` | System prompt injection attacks |
+| `harmful_content` | Requests for harmful content generation |
+| `script_evasion` | Script/code-based evasion techniques |
+| `social_engineering` | Emotional manipulation, authority impersonation |
+| `encoding_bypass` | Encoding-based filter bypass |
+
+#### Supported Languages (8)
+
+Korean, English, Chinese, Japanese, Arabic, Spanish, Russian, Malay
+
+#### Model Selection Process
+
+Three candidate models were compared and evaluated:
+
+| Model | f1_micro | INT8 Size | Note |
+|-------|----------|-----------|------|
+| XLM-RoBERTa-base | 99.97% | 265.9 MB | Size exceeded |
+| **DistilBERT multilingual** | **99.78%** | **129.5 MB** | **✅ Selected** |
+| mDeBERTa-v3-base | 99.97% | 322.8 MB | Size exceeded |
+
+> DistilBERT achieves **over 2× size reduction** with only a 0.19%p performance trade-off, making it the only model that meets the browser extension size constraint (< 150MB).
+
+#### Inference Pipeline
+
+```
+User Input → Content Script → Service Worker → Offscreen Document
+                                                      │
+                                              Transformers.js
+                                              ONNX Runtime Web
+                                              (WASM SIMD + Threading)
+                                                      │
+                                              model_quantized.onnx
+                                              (129.5 MB, INT8)
+                                                      │
+                                              sigmoid → multi-label classification
+                                                      │
+                                              Result → warning/block
+```
+
+> For detailed training process and experiment results, see [`docs/AEGINEL_Guard_Model_Research.md`](docs/AEGINEL_Guard_Model_Research.md).
+
+---
+
 ## Architecture
 
 ```
@@ -427,27 +496,30 @@ React-based dashboard displayed when clicking the extension icon.
 │           │ chrome.runtime.onMessage                     │
 └───────────┼──────────────────────────────────────────────┘
             │
-     ┌──────┴──────────────────────────┐
-     │                                 │
-┌────▼─────────────────────┐    ┌──────▼──────────────────┐
-│  CONTENT SCRIPT           │    │  POPUP UI (React)       │
-│                           │    │                         │
-│  ├─ Site Detection        │    │  ├─ StatusCard          │
-│  │  ├─ Hand-tuned (3)     │    │  ├─ RiskMeter (SVG)     │
-│  │  └─ Generic (25+)     │    │  ├─ RecentScans         │
-│  ├─ Input Watching        │    │  └─ SettingsPanel       │
-│  │  (debounce 300ms)      │    │     (9 layers, PII,     │
-│  ├─ Enter Key Intercept   │    │      proxy, threshold)  │
-│  ├─ Button Click Intercept│    │                         │
-│  ├─ Warning Banner        │    └─────────────────────────┘
+     ┌──────┼──────────────────────────────────────┐
+     │      │                                      │
+┌────▼─────────────────────┐  ┌──────▼──────────────────┐
+│  CONTENT SCRIPT           │  │  POPUP UI (React)       │
+│                           │  │                         │
+│  ├─ Site Detection        │  │  ├─ StatusCard          │
+│  │  ├─ Hand-tuned (3)     │  │  ├─ RiskMeter (SVG)     │
+│  │  └─ Generic (25+)     │  │  ├─ RecentScans         │
+│  ├─ Input Watching        │  │  └─ SettingsPanel       │
+│  │  (debounce 300ms)      │  │     (9 layers, PII,     │
+│  ├─ Enter Key Intercept   │  │      proxy, threshold)  │
+│  ├─ Button Click Intercept│  │                         │
+│  ├─ Warning Banner        │  └─────────────────────────┘
 │  │  (Shadow DOM)          │
-│  ├─ Block Modal           │
-│  ├─ Proxy Confirm Modal   │
-│  ├─ Protected Banner      │
-│  └─ Response Restoration  │
-│     (MutationObserver +   │
-│      TreeWalker)          │
-└───────────────────────────┘
+│  ├─ Block Modal           │  ┌──────────────────────────┐
+│  ├─ Proxy Confirm Modal   │  │  OFFSCREEN DOCUMENT      │
+│  ├─ Protected Banner      │  │  (AI Guard Model)        │
+│  └─ Response Restoration  │  │                          │
+│     (MutationObserver +   │  │  ├─ Transformers.js      │
+│      TreeWalker)          │  │  ├─ ONNX Runtime Web     │
+└───────────────────────────┘  │  │  (WASM SIMD+Threading) │
+                               │  └─ DistilBERT INT8 ONNX │
+                               │     (129.5 MB, 8 langs)   │
+                               └──────────────────────────┘
 ```
 
 ### Site Adapter Architecture
@@ -726,6 +798,8 @@ For correctly inserting pseudonymized text in ProseMirror editors (ChatGPT, Clau
 | **UI Framework** | React 18.3 |
 | **Styling** | Tailwind CSS 3.4 + Shadow DOM scoped CSS |
 | **Build** | Vite 5.4 + @crxjs/vite-plugin 2.0 |
+| **ML Runtime** | Transformers.js 3.8 + ONNX Runtime Web (WASM SIMD) |
+| **Guard Model** | DistilBERT multilingual (INT8 ONNX, 129.5MB, 8 languages) |
 | **Testing** | Vitest 4.0 (28 tests) |
 | **i18n** | 20 languages (en, es, pt, fr, de, ja, ko, zh, it, nl, ru, ar, tr, pl, vi, id, th, hi, sv, cs) |
 
@@ -768,6 +842,10 @@ For correctly inserting pseudonymized text in ProseMirror editors (ChatGPT, Clau
 │   │   ├── pii-proxy.ts              # PII pseudonymization engine (generation/restoration/sessions)
 │   │   └── pii-proxy.test.ts         # PII Proxy tests (28 cases)
 │   │
+│   ├── offscreen/
+│   │   ├── offscreen.html              # Offscreen Document HTML
+│   │   └── offscreen.ts               # AI Guard Model inference (Transformers.js + ONNX)
+│   │
 │   ├── popup/
 │   │   ├── index.html                  # Popup HTML entry
 │   │   ├── main.tsx                    # React entry point
@@ -795,7 +873,22 @@ For correctly inserting pseudonymized text in ProseMirror editors (ChatGPT, Clau
 │
 ├── public/
 │   ├── icons/                          # Extension icons (16/32/48/128px)
+│   ├── models/
+│   │   └── guard/                      # AI Guard Model files
+│   │       ├── model_quantized.onnx    # INT8 quantized ONNX model (129.5MB)
+│   │       ├── tokenizer.json          # DistilBERT WordPiece vocab (2.8MB)
+│   │       ├── config.json             # Model architecture + label map
+│   │       └── labels.json             # AEGINEL label index (7 classes)
 │   └── _locales/                       # Chrome i18n (en, ko)
+│
+├── data/
+│   └── training/                       # Guard Model training pipeline
+│       ├── train_guard.py              # Multi-label classifier training script
+│       ├── export_onnx.py              # ONNX conversion + INT8 quantization script
+│       └── aegis_guard_training_multilingual.jsonl  # Training data (188K samples)
+│
+├── docs/
+│   └── AEGINEL_Guard_Model_Research.md # Guard Model research report
 │
 └── dist/                               # Build output
 ```
