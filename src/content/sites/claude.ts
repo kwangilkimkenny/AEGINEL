@@ -1,27 +1,42 @@
 import type { SiteAdapter } from './base';
 import { getInputText as extractText, setInputText as setText } from './base';
+import { FALLBACK_INPUT_SELECTORS, FALLBACK_SUBMIT_SELECTORS } from './registry';
+
+/** Try selectors in order, return first that matches an element in the DOM. */
+function pickSelector(primary: string[], fallback: string[]): string {
+  for (const sel of primary) {
+    try { if (document.querySelector(sel)) return sel; } catch { /* skip */ }
+  }
+  for (const sel of fallback) {
+    try { if (document.querySelector(sel)) return sel; } catch { /* skip */ }
+  }
+  return primary.join(', ');
+}
+
+const INPUT_SELECTORS = [
+  'div.ProseMirror[contenteditable="true"]',
+  'div[contenteditable="true"].is-editor-empty',
+  'div[contenteditable="true"][data-placeholder]',
+  'fieldset div[contenteditable="true"]',
+];
+
+const SUBMIT_SELECTORS = [
+  'button[aria-label="Send Message"]',
+  'button[aria-label="Send message"]',
+  'button[aria-label="Send"]',
+  'fieldset button[type="button"]:last-of-type',
+];
 
 export const claudeAdapter: SiteAdapter = {
   id: 'claude',
   name: 'Claude',
 
   getInputSelector() {
-    // Claude uses ProseMirror contenteditable div
-    return [
-      'div.ProseMirror[contenteditable="true"]',
-      'div[contenteditable="true"].is-editor-empty',
-      'div[contenteditable="true"][data-placeholder]',
-      'fieldset div[contenteditable="true"]',
-    ].join(', ');
+    return pickSelector(INPUT_SELECTORS, FALLBACK_INPUT_SELECTORS);
   },
 
   getSubmitSelector() {
-    return [
-      'button[aria-label="Send Message"]',
-      'button[aria-label="Send message"]',
-      'button[aria-label="Send"]',
-      'fieldset button[type="button"]:last-of-type',
-    ].join(', ');
+    return pickSelector(SUBMIT_SELECTORS, FALLBACK_SUBMIT_SELECTORS);
   },
 
   getInputText(el: Element) {

@@ -255,6 +255,36 @@
   white-space: nowrap;
 }
 
+/* ── Health Status Banners ────────────────────────────────────────── */
+
+.aeginel-banner.aeginel-health-error {
+  background: #fef2f2;
+  border-color: #f87171;
+  color: #991b1b;
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 520px;
+  width: calc(100% - 32px);
+  z-index: 999999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.aeginel-banner.aeginel-health-degraded {
+  background: #fffbeb;
+  border-color: #fbbf24;
+  color: #92400e;
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 520px;
+  width: calc(100% - 32px);
+  z-index: 999999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 /* ── Animations ───────────────────────────────────────────────────── */
 
 @keyframes aeginel-slide-in {

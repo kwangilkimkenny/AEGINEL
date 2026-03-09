@@ -83,5 +83,11 @@
     "phone_intl": "Phone (Intl)",
     "ssn": "SSN",
     "passport": "Passport"
+  },
+  "health": {
+    "degraded": "AEGINEL: Some features unavailable",
+    "error": "AEGINEL: Unable to detect input on this page",
+    "brokenDetail": "Broken: {{selectors}}. The site may have updated its layout.",
+    "dismiss": "Dismiss"
   }
 }

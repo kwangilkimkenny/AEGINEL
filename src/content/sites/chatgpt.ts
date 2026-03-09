@@ -1,24 +1,41 @@
 import type { SiteAdapter } from './base';
 import { getInputText as extractText, setInputText as setText } from './base';
+import { FALLBACK_INPUT_SELECTORS, FALLBACK_SUBMIT_SELECTORS } from './registry';
+
+/** Try selectors in order, return first that matches an element in the DOM. */
+function pickSelector(primary: string[], fallback: string[]): string {
+  for (const sel of primary) {
+    try { if (document.querySelector(sel)) return sel; } catch { /* skip */ }
+  }
+  for (const sel of fallback) {
+    try { if (document.querySelector(sel)) return sel; } catch { /* skip */ }
+  }
+  return primary.join(', ');
+}
+
+const INPUT_SELECTORS = [
+  '#prompt-textarea',
+  'div.ProseMirror[contenteditable="true"]',
+  'textarea[data-id="root"]',
+];
+
+const SUBMIT_SELECTORS = [
+  '[data-testid="send-button"]',
+  'button[aria-label="Send prompt"]',
+  'button[aria-label="Send"]',
+  'form button[type="submit"]',
+];
 
 export const chatgptAdapter: SiteAdapter = {
   id: 'chatgpt',
   name: 'ChatGPT',
 
   getInputSelector() {
-    // ChatGPT uses ProseMirror contenteditable div with id #prompt-textarea
-    // Fallback selectors for older versions using textarea
-    return '#prompt-textarea, div.ProseMirror[contenteditable="true"], textarea[data-id="root"]';
+    return pickSelector(INPUT_SELECTORS, FALLBACK_INPUT_SELECTORS);
   },
 
   getSubmitSelector() {
-    // Multiple fallback selectors for send button
-    return [
-      '[data-testid="send-button"]',
-      'button[aria-label="Send prompt"]',
-      'button[aria-label="Send"]',
-      'form button[type="submit"]',
-    ].join(', ');
+    return pickSelector(SUBMIT_SELECTORS, FALLBACK_SUBMIT_SELECTORS);
   },
 
   getInputText(el: Element) {

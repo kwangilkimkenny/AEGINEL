@@ -8,6 +8,7 @@ const BANNER_HOST_ID = 'aeginel-warning-host';
 const MODAL_HOST_ID = 'aeginel-modal-host';
 const PROTECTED_HOST_ID = 'aeginel-protected-host';
 const PROXY_CONFIRM_HOST_ID = 'aeginel-proxy-confirm-host';
+const HEALTH_HOST_ID = 'aeginel-health-host';
 
 // ── Show Warning Banner ──────────────────────────────────────────────────
 
@@ -315,6 +316,62 @@ export function showProxyConfirmModal(
 
 function hideProxyConfirmModal(): void {
   document.getElementById(PROXY_CONFIRM_HOST_ID)?.remove();
+}
+
+// ── Show Health Status Banner ────────────────────────────────────────────
+
+export function showHealthBanner(
+  status: 'degraded' | 'error',
+  brokenSelectors: string[],
+): void {
+  hideHealthBanner();
+
+  const host = document.createElement('div');
+  host.id = HEALTH_HOST_ID;
+  const shadow = host.attachShadow({ mode: 'closed' });
+
+  const style = document.createElement('style');
+  style.textContent = styles;
+  shadow.appendChild(style);
+
+  const banner = document.createElement('div');
+  banner.className = `aeginel-banner ${status === 'error' ? 'aeginel-health-error' : 'aeginel-health-degraded'}`;
+
+  const icon = document.createElement('span');
+  icon.className = 'aeginel-shield';
+  icon.textContent = status === 'error' ? '\u26A0\uFE0F' : '\u2139\uFE0F';
+
+  const content = document.createElement('div');
+  content.className = 'aeginel-content';
+
+  const title = document.createElement('div');
+  title.className = 'aeginel-title';
+  title.textContent = t(`health.${status}`);
+
+  const detail = document.createElement('div');
+  detail.className = 'aeginel-detail';
+  detail.textContent = t('health.brokenDetail', { selectors: brokenSelectors.join(', ') });
+
+  content.appendChild(title);
+  content.appendChild(detail);
+
+  const close = document.createElement('button');
+  close.className = 'aeginel-close';
+  close.textContent = '\u2715';
+  close.title = t('health.dismiss');
+  close.onclick = () => hideHealthBanner();
+
+  banner.appendChild(icon);
+  banner.appendChild(content);
+  banner.appendChild(close);
+  shadow.appendChild(banner);
+
+  // Insert at top of body so it's always visible
+  document.body.prepend(host);
+}
+
+export function hideHealthBanner(): void {
+  document.getElementById(HEALTH_HOST_ID)?.remove();
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────

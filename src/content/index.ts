@@ -7,11 +7,12 @@ import { claudeAdapter } from './sites/claude';
 import { geminiAdapter } from './sites/gemini';
 import { createGenericAdapter } from './sites/generic';
 import { siteRegistry } from './sites/registry';
-import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal } from './overlay/warning-banner';
+import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner } from './overlay/warning-banner';
 import type { ScanResult, AeginelConfig, ProxyResult } from '../engine/types';
 import { DEFAULT_CONFIG } from '../engine/types';
 import { DEBOUNCE_MS, INPUT_MIN_LENGTH } from '../shared/constants';
 import { setLocale } from '../i18n';
+import { sendMessage } from './messaging';
 
 // ── Site Detection ───────────────────────────────────────────────────────
 // Priority: hand-tuned adapters first, then generic registry-based adapters
@@ -50,6 +51,10 @@ function initContentScript(adapter: SiteAdapter) {
   // Guard against recursive submit during re-fire
   let isResubmitting = false;
 
+  // Track consecutive health-check failures to avoid spamming banners
+  let consecutiveHealthFailures = 0;
+  let healthBannerShown = false;
+
   // ── Health Check: validate adapter selectors ────────────────────────
   function checkAdapterHealth() {
     const selectors: Record<string, string> = {
@@ -75,6 +80,22 @@ function initContentScript(adapter: SiteAdapter) {
       : brokenSelectors.includes('input') ? 'error'
       : 'degraded';
 
+    // Visual notification logic
+    if (status === 'ok') {
+      consecutiveHealthFailures = 0;
+      if (healthBannerShown) {
+        hideHealthBanner();
+        healthBannerShown = false;
+      }
+    } else {
+      consecutiveHealthFailures++;
+      // Show banner only after 2 consecutive failures (avoids transient SPA issues)
+      if (consecutiveHealthFailures >= 2 && !healthBannerShown) {
+        showHealthBanner(status as 'degraded' | 'error', brokenSelectors);
+        healthBannerShown = true;
+      }
+    }
+
     reportHealth(status, brokenSelectors);
   }
 
@@ -82,31 +103,27 @@ function initContentScript(adapter: SiteAdapter) {
     status: 'ok' | 'degraded' | 'error',
     brokenSelectors: string[],
   ) {
-    try {
-      chrome.runtime.sendMessage({
-        type: 'HEALTH_REPORT',
-        payload: {
-          source: `content-${adapter.id}`,
-          status,
-          details: brokenSelectors.length > 0
-            ? `Broken selectors: ${brokenSelectors.join(', ')}`
-            : undefined,
-          brokenSelectors: brokenSelectors.length > 0 ? brokenSelectors : undefined,
-          timestamp: Date.now(),
-        },
-      }).catch(() => {});
-    } catch {
-      // Extension context invalidated
-    }
+    sendMessage({
+      type: 'HEALTH_REPORT',
+      payload: {
+        source: `content-${adapter.id}`,
+        status,
+        details: brokenSelectors.length > 0
+          ? `Broken selectors: ${brokenSelectors.join(', ')}`
+          : undefined,
+        brokenSelectors: brokenSelectors.length > 0 ? brokenSelectors : undefined,
+        timestamp: Date.now(),
+      },
+    });
   }
 
-  // Load config
-  chrome.runtime.sendMessage({ type: 'GET_CONFIG' }).then((res) => {
+  // Load config (with retry)
+  sendMessage<{ payload?: AeginelConfig }>({ type: 'GET_CONFIG' }).then((res) => {
     if (res?.payload) {
       currentConfig = res.payload;
       setLocale(res.payload.language);
     }
-  }).catch(() => {});
+  });
 
   // Watch for input changes
   function onInputChange(el: Element) {
@@ -120,20 +137,16 @@ function initContentScript(adapter: SiteAdapter) {
     }, DEBOUNCE_MS);
   }
 
-  // Send to service worker for scanning
+  // Send to service worker for scanning (with retry)
   async function scanInput(input: string) {
-    try {
-      const response = await chrome.runtime.sendMessage({
-        type: 'SCAN_INPUT',
-        payload: { input, site: adapter.name },
-      });
+    const response = await sendMessage<{ type?: string; payload?: ScanResult }>({
+      type: 'SCAN_INPUT',
+      payload: { input, site: adapter.name },
+    });
 
-      if (response?.type === 'SCAN_RESULT') {
-        currentResult = response.payload;
-        handleScanResult(response.payload);
-      }
-    } catch {
-      // Extension context invalidated (e.g., reload)
+    if (response?.type === 'SCAN_RESULT' && response.payload) {
+      currentResult = response.payload;
+      handleScanResult(response.payload);
     }
   }
 
@@ -170,49 +183,45 @@ function initContentScript(adapter: SiteAdapter) {
   // ── PII Proxy: Pseudonymize before submit ─────────────────────────────
 
   async function proxyAndSubmit(inputEl: Element, originalText: string): Promise<boolean> {
-    try {
-      const response = await chrome.runtime.sendMessage({
-        type: 'PROXY_INPUT',
-        payload: { text: originalText, site: adapter.id, sessionId },
-      });
+    const response = await sendMessage<ProxyResult>({
+      type: 'PROXY_INPUT',
+      payload: { text: originalText, site: adapter.id, sessionId },
+    });
 
-      if (!response || response.piiCount === 0) {
-        // No PII found, proceed normally
-        return false;
-      }
-
-      const proxyResult: ProxyResult = response;
-      const anchor = adapter.getWarningAnchor();
-
-      if (currentConfig.piiProxy.mode === 'confirm' && anchor) {
-        // Show confirmation modal
-        return new Promise<boolean>((resolve) => {
-          showProxyConfirmModal(proxyResult, anchor,
-            () => {
-              // User confirmed — replace text and submit
-              adapter.setInputText(inputEl, proxyResult.proxiedText);
-              if (currentConfig.piiProxy.showNotification && anchor) {
-                showProtectedBanner(proxyResult.piiCount, anchor);
-              }
-              resolve(true);
-            },
-            () => {
-              // User skipped — send original
-              resolve(false);
-            },
-          );
-        });
-      }
-
-      // Auto mode — silently replace
-      adapter.setInputText(inputEl, proxyResult.proxiedText);
-      if (currentConfig.piiProxy.showNotification && anchor) {
-        showProtectedBanner(proxyResult.piiCount, anchor);
-      }
-      return true;
-    } catch {
+    if (!response || response.piiCount === 0) {
+      // No PII found, proceed normally
       return false;
     }
+
+    const proxyResult: ProxyResult = response;
+    const anchor = adapter.getWarningAnchor();
+
+    if (currentConfig.piiProxy.mode === 'confirm' && anchor) {
+      // Show confirmation modal
+      return new Promise<boolean>((resolve) => {
+        showProxyConfirmModal(proxyResult, anchor,
+          () => {
+            // User confirmed — replace text and submit
+            adapter.setInputText(inputEl, proxyResult.proxiedText);
+            if (currentConfig.piiProxy.showNotification && anchor) {
+              showProtectedBanner(proxyResult.piiCount, anchor);
+            }
+            resolve(true);
+          },
+          () => {
+            // User skipped — send original
+            resolve(false);
+          },
+        );
+      });
+    }
+
+    // Auto mode — silently replace
+    adapter.setInputText(inputEl, proxyResult.proxiedText);
+    if (currentConfig.piiProxy.showNotification && anchor) {
+      showProtectedBanner(proxyResult.piiCount, anchor);
+    }
+    return true;
   }
 
   // ── Core submit handler (shared between click and Enter key) ────────
@@ -363,22 +372,18 @@ function initContentScript(adapter: SiteAdapter) {
   }
 
   async function restoreInDom(container: Element) {
-    try {
-      // Walk text nodes and replace pseudonyms with originals
-      const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
-      let node: Text | null;
-      while ((node = walker.nextNode() as Text | null)) {
-        if (!node.textContent) continue;
-        const restored = await chrome.runtime.sendMessage({
-          type: 'RESTORE_RESPONSE',
-          payload: { text: node.textContent, sessionId },
-        });
-        if (restored?.restoredText && restored.restoredText !== node.textContent) {
-          node.textContent = restored.restoredText;
-        }
+    // Walk text nodes and replace pseudonyms with originals
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let node: Text | null;
+    while ((node = walker.nextNode() as Text | null)) {
+      if (!node.textContent) continue;
+      const restored = await sendMessage<{ restoredText?: string }>({
+        type: 'RESTORE_RESPONSE',
+        payload: { text: node.textContent, sessionId },
+      });
+      if (restored?.restoredText && restored.restoredText !== node.textContent) {
+        node.textContent = restored.restoredText;
       }
-    } catch {
-      // Extension context invalidated
     }
   }
 

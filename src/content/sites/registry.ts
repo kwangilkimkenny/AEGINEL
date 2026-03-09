@@ -17,6 +17,32 @@ export interface SiteConfig {
   useInnerText?: boolean;
 }
 
+/**
+ * Universal fallback selectors used when all site-specific selectors fail.
+ * These target stable ARIA/role attributes rather than brittle class names.
+ */
+export const FALLBACK_INPUT_SELECTORS = [
+  '[role="textbox"][contenteditable="true"]',
+  'textarea[rows]',
+  'textarea',
+  'div[contenteditable="true"]',
+];
+
+export const FALLBACK_SUBMIT_SELECTORS = [
+  'button[type="submit"]',
+  'button[aria-label*="Send" i]',
+  'button[aria-label*="Submit" i]',
+  'button[data-testid*="send" i]',
+];
+
+export const FALLBACK_RESPONSE_SELECTORS = [
+  '[class*="markdown"]',
+  '[class*="prose"]',
+  '[class*="response"]',
+  '[class*="assistant"]',
+  '[class*="message"]',
+];
+
 export const siteRegistry: SiteConfig[] = [
   // ── Microsoft Copilot ──
   {
@@ -30,12 +56,15 @@ export const siteRegistry: SiteConfig[] = [
       'cib-serp cib-action-bar textarea',
       'textarea[id*="input"]',
       'div[contenteditable="true"][role="textbox"]',
+      '[role="textbox"]',
+      'textarea',
     ],
     submitSelectors: [
       'button[aria-label="Submit"]',
       'button[aria-label="Send"]',
       'button[title="Submit"]',
       'cib-action-bar button[type="submit"]',
+      'button[type="submit"]',
     ],
     responseSelectors: [
       'cib-message-group[source="bot"] .content',
@@ -56,6 +85,8 @@ export const siteRegistry: SiteConfig[] = [
       'textarea[placeholder*="ask"]',
       'textarea[autofocus]',
       'div[contenteditable="true"][role="textbox"]',
+      '[role="textbox"]',
+      'textarea',
     ],
     submitSelectors: [
       'button[aria-label="Submit"]',
