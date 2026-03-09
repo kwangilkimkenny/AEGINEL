@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — AEGINEL</title>
+  <meta name="description" content="AEGINEL Privacy Policy. AEGINEL processes all data locally in your browser and does not collect, store, or transmit any personal information." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2316a34a'><path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/></svg>" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --green: #16a34a;
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --border: #262626;
+      --text: #e5e5e5;
+      --text-muted: #a3a3a3;
+      --text-dim: #737373;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+
+    /* Nav */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(10,10,10,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 0;
+    }
+    .nav-inner {
+      max-width: 720px; margin: 0 auto; padding: 0 24px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .nav a { color: var(--text); text-decoration: none; }
+    .nav-logo {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 700; font-size: 1.1rem;
+    }
+    .logo-icon {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--green);
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Content */
+    .content { padding: 120px 0 80px; }
+    h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { color: var(--text-muted); margin-bottom: 48px; font-size: 0.95rem; }
+    h2 {
+      font-size: 1.25rem; font-weight: 600; margin-top: 40px; margin-bottom: 16px;
+      padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    }
+    p { margin-bottom: 16px; color: var(--text-muted); }
+    ul { margin: 0 0 16px 20px; color: var(--text-muted); }
+    li { margin-bottom: 6px; }
+    strong { color: var(--text); font-weight: 600; }
+    a { color: var(--green); }
+    .highlight-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px 24px; margin: 24px 0;
+    }
+    .highlight-box p { margin-bottom: 0; }
+
+    /* Lang toggle */
+    .lang-toggle {
+      display: flex; gap: 8px; margin-bottom: 32px;
+    }
+    .lang-btn {
+      padding: 6px 16px; border-radius: 6px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-muted); cursor: pointer;
+      font-size: 0.85rem; transition: all 0.2s;
+    }
+    .lang-btn.active {
+      background: var(--green); color: #fff; border-color: var(--green);
+    }
+    .lang-section { display: none; }
+    .lang-section.active { display: block; }
+
+    /* Footer */
+    .footer {
+      border-top: 1px solid var(--border); padding: 24px 0;
+      text-align: center; color: var(--text-dim); font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo">
+        <div class="logo-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <span>AEGINEL</span>
+      </a>
+    </div>
+  </nav>
+
+  <main class="content">
+    <div class="container">
+      <h1>Privacy Policy</h1>
+      <p class="subtitle">Last updated: March 9, 2026</p>
+
+      <div class="lang-toggle">
+        <button class="lang-btn active" onclick="switchLang('en')">English</button>
+        <button class="lang-btn" onclick="switchLang('ko')">한국어</button>
+      </div>
+
+      <!-- ── English ──────────────────────────────────────────── -->
+      <div id="lang-en" class="lang-section active">
+        <div class="highlight-box">
+          <p><strong>TL;DR — AEGINEL does not collect, store, or transmit any of your data. Everything runs locally in your browser.</strong></p>
+        </div>
+
+        <h2>1. Overview</h2>
+        <p>AEGINEL ("AI Safety Guard") is a Chrome extension developed by <strong>YATAV Inc.</strong> (Seoul, Korea). This privacy policy explains how AEGINEL handles user data.</p>
+
+        <h2>2. Data We Do NOT Collect</h2>
+        <p>AEGINEL is designed with a <strong>zero data collection</strong> architecture. We do not collect, store, or transmit:</p>
+        <ul>
+          <li>Your prompts or messages typed into AI services</li>
+          <li>Personal information (PII) detected by the extension</li>
+          <li>Browsing history or website content</li>
+          <li>Usage analytics or telemetry</li>
+          <li>IP addresses or device identifiers</li>
+          <li>Cookies or tracking data</li>
+        </ul>
+
+        <h2>3. How AEGINEL Works</h2>
+        <p>All processing happens <strong>entirely within your browser</strong>:</p>
+        <ul>
+          <li><strong>Threat detection</strong> — Rule-based and ML-based analysis runs locally using JavaScript and WebAssembly (ONNX Runtime)</li>
+          <li><strong>PII detection &amp; masking</strong> — Personal data is detected and pseudonymized in-browser before being sent to any AI service</li>
+          <li><strong>Settings storage</strong> — Your preferences are saved using Chrome's local storage API (<code>chrome.storage.local</code>), which stays on your device</li>
+          <li><strong>ML model</strong> — The AI Guard model runs in a Chrome Offscreen Document using Transformers.js. No data is sent to any external API for classification</li>
+        </ul>
+
+        <h2>4. Permissions Explained</h2>
+        <p>AEGINEL requests the following Chrome permissions:</p>
+        <ul>
+          <li><strong>activeTab</strong> — To detect and protect input fields on the currently active AI service tab</li>
+          <li><strong>storage</strong> — To save your settings locally on your device</li>
+          <li><strong>offscreen</strong> — To run the ML classification model in a background document (required for WebAssembly execution in Manifest V3)</li>
+          <li><strong>Host permissions</strong> — To inject content scripts into supported AI service websites (ChatGPT, Claude, Gemini, etc.) for real-time protection</li>
+        </ul>
+
+        <h2>5. Third-Party Services</h2>
+        <p>AEGINEL does <strong>not</strong> integrate with any third-party analytics, advertising, or data processing services. No data is shared with third parties.</p>
+
+        <h2>6. Data Retention</h2>
+        <p>Since no data is collected, there is no data to retain. Scan statistics shown in the popup dashboard are stored locally via <code>chrome.storage.local</code> and can be cleared at any time from the settings panel.</p>
+
+        <h2>7. Children's Privacy</h2>
+        <p>AEGINEL does not knowingly collect any personal information from anyone, including children under 13.</p>
+
+        <h2>8. Changes to This Policy</h2>
+        <p>We may update this privacy policy from time to time. Changes will be posted on this page with an updated revision date. Continued use of AEGINEL after changes constitutes acceptance of the updated policy.</p>
+
+        <h2>9. Contact</h2>
+        <p>If you have questions about this privacy policy, please contact us:</p>
+        <ul>
+          <li><strong>Company</strong>: YATAV Inc. (주식회사 야타브)</li>
+          <li><strong>Email</strong>: <a href="mailto:aegis@yatavent.com">aegis@yatavent.com</a></li>
+          <li><strong>Phone</strong>: +82-2-2039-0633</li>
+          <li><strong>Address</strong>: Seongdong-gu, Seoul, Republic of Korea</li>
+        </ul>
+      </div>
+
+      <!-- ── Korean ───────────────────────────────────────────── -->
+      <div id="lang-ko" class="lang-section">
+        <div class="highlight-box">
+          <p><strong>요약 — AEGINEL은 사용자 데이터를 수집, 저장, 전송하지 않습니다. 모든 처리는 브라우저 내에서 로컬로 이루어집니다.</strong></p>
+        </div>
+
+        <h2>1. 개요</h2>
+        <p>AEGINEL("AI Safety Guard")은 <strong>주식회사 야타브</strong>(서울, 대한민국)가 개발한 Chrome 확장 프로그램입니다. 본 개인정보 처리방침은 AEGINEL이 사용자 데이터를 어떻게 처리하는지 설명합니다.</p>
+
+        <h2>2. 수집하지 않는 정보</h2>
+        <p>AEGINEL은 <strong>데이터 무수집(Zero Data Collection)</strong> 아키텍처로 설계되었습니다. 다음 정보를 수집, 저장, 전송하지 않습니다:</p>
+        <ul>
+          <li>AI 서비스에 입력하는 프롬프트 또는 메시지</li>
+          <li>확장 프로그램이 탐지한 개인정보(PII)</li>
+          <li>브라우징 기록 또는 웹사이트 콘텐츠</li>
+          <li>사용 분석 또는 텔레메트리 데이터</li>
+          <li>IP 주소 또는 기기 식별자</li>
+          <li>쿠키 또는 추적 데이터</li>
+        </ul>
+
+        <h2>3. AEGINEL의 작동 방식</h2>
+        <p>모든 처리는 <strong>사용자의 브라우저 내에서</strong> 이루어집니다:</p>
+        <ul>
+          <li><strong>위협 탐지</strong> — 규칙 기반 및 ML 기반 분석이 JavaScript와 WebAssembly(ONNX Runtime)를 통해 로컬에서 실행됩니다</li>
+          <li><strong>PII 탐지 및 가명화</strong> — 개인정보가 브라우저 내에서 탐지되고 AI 서비스로 전송되기 전에 가명화됩니다</li>
+          <li><strong>설정 저장</strong> — 사용자 설정은 Chrome 로컬 스토리지 API(<code>chrome.storage.local</code>)를 통해 기기에만 저장됩니다</li>
+          <li><strong>ML 모델</strong> — AI Guard 모델은 Chrome Offscreen Document에서 Transformers.js를 통해 실행됩니다. 분류를 위해 외부 API로 데이터를 전송하지 않습니다</li>
+        </ul>
+
+        <h2>4. 권한 설명</h2>
+        <p>AEGINEL은 다음 Chrome 권한을 요청합니다:</p>
+        <ul>
+          <li><strong>activeTab</strong> — 현재 활성 AI 서비스 탭의 입력 필드를 감지하고 보호하기 위함</li>
+          <li><strong>storage</strong> — 사용자 설정을 기기에 로컬로 저장하기 위함</li>
+          <li><strong>offscreen</strong> — 백그라운드 문서에서 ML 분류 모델을 실행하기 위함 (Manifest V3에서 WebAssembly 실행에 필요)</li>
+          <li><strong>호스트 권한</strong> — 지원되는 AI 서비스 웹사이트(ChatGPT, Claude, Gemini 등)에 콘텐츠 스크립트를 주입하여 실시간 보호를 제공하기 위함</li>
+        </ul>
+
+        <h2>5. 제3자 서비스</h2>
+        <p>AEGINEL은 제3자 분석, 광고 또는 데이터 처리 서비스와 <strong>연동하지 않습니다</strong>. 제3자와 데이터를 공유하지 않습니다.</p>
+
+        <h2>6. 데이터 보존</h2>
+        <p>데이터를 수집하지 않으므로 보존할 데이터가 없습니다. 팝업 대시보드에 표시되는 스캔 통계는 <code>chrome.storage.local</code>을 통해 로컬에 저장되며, 설정 패널에서 언제든지 삭제할 수 있습니다.</p>
+
+        <h2>7. 아동 개인정보</h2>
+        <p>AEGINEL은 13세 미만 아동을 포함한 누구의 개인정보도 의도적으로 수집하지 않습니다.</p>
+
+        <h2>8. 방침 변경</h2>
+        <p>본 개인정보 처리방침은 수시로 업데이트될 수 있습니다. 변경 사항은 수정된 날짜와 함께 이 페이지에 게시됩니다. 변경 후 AEGINEL을 계속 사용하면 업데이트된 방침에 동의하는 것으로 간주됩니다.</p>
+
+        <h2>9. 연락처</h2>
+        <p>본 개인정보 처리방침에 대한 문의사항이 있으시면 아래로 연락해 주세요:</p>
+        <ul>
+          <li><strong>회사명</strong>: 주식회사 야타브 (YATAV Inc.)</li>
+          <li><strong>이메일</strong>: <a href="mailto:aegis@yatavent.com">aegis@yatavent.com</a></li>
+          <li><strong>전화</strong>: +82-2-2039-0633</li>
+          <li><strong>주소</strong>: 서울특별시 성동구</li>
+        </ul>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      &copy; 2026 AEGINEL by YATAV Inc. All rights reserved.
+    </div>
+  </footer>
+
+  <script>
+    function switchLang(lang) {
+      document.querySelectorAll('.lang-section').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.lang-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById('lang-' + lang).classList.add('active');
+      document.querySelector('[onclick="switchLang(\'' + lang + '\')"]').classList.add('active');
+    }
+  </script>
+</body>
+</html>
