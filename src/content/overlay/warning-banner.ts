@@ -9,6 +9,7 @@ const MODAL_HOST_ID = 'aeginel-modal-host';
 const PROTECTED_HOST_ID = 'aeginel-protected-host';
 const PROXY_CONFIRM_HOST_ID = 'aeginel-proxy-confirm-host';
 const HEALTH_HOST_ID = 'aeginel-health-host';
+const SHIELD_HOST_ID = 'aeginel-shield-host';
 
 // ── Show Warning Banner ──────────────────────────────────────────────────
 
@@ -316,6 +317,62 @@ export function showProxyConfirmModal(
 
 function hideProxyConfirmModal(): void {
   document.getElementById(PROXY_CONFIRM_HOST_ID)?.remove();
+}
+
+// ── Shield Status Indicator ──────────────────────────────────────────────
+// Non-intrusive icon near the input area. Always visible when active.
+
+export type ShieldStatus = 'safe' | 'pii' | 'warning' | 'danger' | 'idle';
+
+const SHIELD_ICONS: Record<ShieldStatus, string> = {
+  idle: '\u{1F6E1}\uFE0F',
+  safe: '\u2705',
+  pii: '\u{1F512}',
+  warning: '\u26A0\uFE0F',
+  danger: '\u{1F6A8}',
+};
+
+const SHIELD_COLORS: Record<ShieldStatus, { bg: string; border: string }> = {
+  idle: { bg: '#f3f4f6', border: '#d1d5db' },
+  safe: { bg: '#f0fdf4', border: '#86efac' },
+  pii: { bg: '#eff6ff', border: '#93c5fd' },
+  warning: { bg: '#fffbeb', border: '#fcd34d' },
+  danger: { bg: '#fef2f2', border: '#fca5a5' },
+};
+
+const SHIELD_TOOLTIPS: Record<ShieldStatus, string> = {
+  idle: 'AEGINEL: Monitoring',
+  safe: 'AEGINEL: Safe',
+  pii: 'AEGINEL: PII detected — protected',
+  warning: 'AEGINEL: Risk detected',
+  danger: 'AEGINEL: High risk detected',
+};
+
+export function showShieldIndicator(status: ShieldStatus, anchor: Element): void {
+  hideShieldIndicator();
+
+  const host = document.createElement('div');
+  host.id = SHIELD_HOST_ID;
+  const shadow = host.attachShadow({ mode: 'closed' });
+
+  const style = document.createElement('style');
+  style.textContent = styles;
+  shadow.appendChild(style);
+
+  const colors = SHIELD_COLORS[status];
+  const shield = document.createElement('div');
+  shield.className = 'aeginel-shield-indicator';
+  shield.style.background = colors.bg;
+  shield.style.borderColor = colors.border;
+  shield.title = SHIELD_TOOLTIPS[status];
+  shield.textContent = SHIELD_ICONS[status];
+
+  shadow.appendChild(shield);
+  anchor.parentElement?.insertBefore(host, anchor);
+}
+
+export function hideShieldIndicator(): void {
+  document.getElementById(SHIELD_HOST_ID)?.remove();
 }
 
 // ── Show Health Status Banner ────────────────────────────────────────────

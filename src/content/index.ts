@@ -7,7 +7,8 @@ import { claudeAdapter } from './sites/claude';
 import { geminiAdapter } from './sites/gemini';
 import { createGenericAdapter } from './sites/generic';
 import { siteRegistry } from './sites/registry';
-import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner } from './overlay/warning-banner';
+import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner, showShieldIndicator, hideShieldIndicator } from './overlay/warning-banner';
+import type { ShieldStatus } from './overlay/warning-banner';
 import type { ScanResult, AeginelConfig, ProxyResult } from '../engine/types';
 import { DEFAULT_CONFIG } from '../engine/types';
 import { DEBOUNCE_MS, INPUT_MIN_LENGTH } from '../shared/constants';
@@ -150,17 +151,36 @@ function initContentScript(adapter: SiteAdapter) {
     }
   }
 
-  // Handle scan result — show/hide warning
+  // Handle scan result — silent-by-default
+  // Only show full warning banner for high/critical risk.
+  // For low/medium, show a non-intrusive shield icon.
   function handleScanResult(result: ScanResult) {
+    const anchor = adapter.getWarningAnchor();
+
     if (result.score === 0 && result.piiDetected.length === 0) {
       hideWarningBanner();
+      if (anchor) showShieldIndicator('safe', anchor);
       return;
     }
 
-    const anchor = adapter.getWarningAnchor();
-    if (anchor) {
-      showWarningBanner(result, anchor);
+    // Determine shield status
+    let shieldStatus: ShieldStatus = 'safe';
+    if (result.piiDetected.length > 0) shieldStatus = 'pii';
+    if (result.level === 'medium') shieldStatus = 'warning';
+    if (result.level === 'high' || result.level === 'critical') shieldStatus = 'danger';
+
+    if (!anchor) return;
+
+    // Silent mode: low/medium risk → shield icon only (no banner)
+    if (result.level === 'low' || result.level === 'medium') {
+      hideWarningBanner();
+      showShieldIndicator(shieldStatus, anchor);
+      return;
     }
+
+    // High/critical → full warning banner + shield
+    showWarningBanner(result, anchor);
+    showShieldIndicator(shieldStatus, anchor);
   }
 
   // ── PII Proxy: Quick check if text likely has PII ───────────────────
@@ -438,18 +458,24 @@ function initContentScript(adapter: SiteAdapter) {
     subtree: true,
   });
 
+  // Show initial idle shield
+  function showIdleShield() {
+    const anchor = adapter.getWarningAnchor();
+    if (anchor) showShieldIndicator('idle', anchor);
+  }
+
   // Initial attach
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       scanExistingElements();
       watchResponses();
-      // Run initial health check after a short delay to let the page render
+      showIdleShield();
       setTimeout(checkAdapterHealth, 2000);
     });
   } else {
     scanExistingElements();
     watchResponses();
-    // Run initial health check after a short delay to let the page render
+    showIdleShield();
     setTimeout(checkAdapterHealth, 2000);
   }
 

@@ -10,10 +10,12 @@ import { pipeline, env } from '@huggingface/transformers';
 // ── Config ──────────────────────────────────────────────────────────────────
 
 // Point to the bundled model inside the extension's public/models/ directory.
-// Transformers.js constructs: localModelPath + MODEL_KEY → models/guard/config.json
 env.localModelPath = chrome.runtime.getURL('models/');
 env.allowRemoteModels = false;
 env.useBrowserCache = true;
+
+// Use IndexedDB + Cache API for faster subsequent loads
+env.cacheDir = 'aeginel-model-cache';
 
 const MODEL_KEY = 'guard';
 const THRESHOLD = 0.5;
@@ -30,6 +32,8 @@ let classifierLoading = false;
 let classifier: ClassifierFn | null = null;
 let loadRetryCount = 0;
 let lastLoadError: string | null = null;
+let loadStartTime = 0;
+let loadDurationMs = 0;
 
 // ── Model Loading ────────────────────────────────────────────────────────────
 
@@ -38,6 +42,7 @@ async function loadModel(): Promise<void> {
   classifierLoading = true;
 
   try {
+    loadStartTime = Date.now();
     console.log(`[AEGINEL Offscreen] Loading guard model (attempt ${loadRetryCount + 1})...`);
     // Cast to ClassifierFn to bypass complex union type from generics
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -46,7 +51,8 @@ async function loadModel(): Promise<void> {
     classifierReady = true;
     lastLoadError = null;
     loadRetryCount = 0;
-    console.log('[AEGINEL Offscreen] Model ready.');
+    loadDurationMs = Date.now() - loadStartTime;
+    console.log(`[AEGINEL Offscreen] Model ready in ${loadDurationMs}ms.`);
 
     // Report success to service worker
     reportStatus('ok');
@@ -120,6 +126,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         loading: classifierLoading,
         retryCount: loadRetryCount,
         lastError: lastLoadError,
+        loadDurationMs,
       });
       return false;
     }

@@ -18,7 +18,9 @@ export type MessageType =
   | 'GET_PROXY_STATS'
   | 'HEALTH_REPORT'
   | 'ML_LOAD_ERROR'
-  | 'GET_HEALTH';
+  | 'GET_HEALTH'
+  | 'GET_ML_STATUS'
+  | 'GET_WEEKLY_REPORT';
 
 export interface ScanInputMessage {
   type: 'SCAN_INPUT';
@@ -108,6 +110,14 @@ export interface GetHealthMessage {
   type: 'GET_HEALTH';
 }
 
+export interface GetMlStatusMessage {
+  type: 'GET_ML_STATUS';
+}
+
+export interface GetWeeklyReportMessage {
+  type: 'GET_WEEKLY_REPORT';
+}
+
 export type ExtensionMessage =
   | ScanInputMessage
   | ScanResultMessage
@@ -124,4 +134,6 @@ export type ExtensionMessage =
   | GetProxyStatsMessage
   | HealthReportMessage
   | MlLoadErrorMessage
-  | GetHealthMessage;
+  | GetHealthMessage
+  | GetMlStatusMessage
+  | GetWeeklyReportMessage;

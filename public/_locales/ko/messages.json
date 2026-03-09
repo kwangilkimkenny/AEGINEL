@@ -1,10 +1,10 @@
 {
   "extName": {
-    "message": "AEGINEL Guard - AI 프롬프트 보안",
-    "description": "확장 프로그램 표시 이름"
+    "message": "AEGINEL - AI 안전 가드",
+    "description": "크롬 웹스토어 및 툴바에 표시되는 확장 프로그램 이름"
   },
   "extDescription": {
-    "message": "실시간 AI 프롬프트 보안 가드. ChatGPT, Claude, Gemini에서 PII 유출, 탈옥, 인젝션, 한국어/CJK 우회 공격을 탐지합니다.",
-    "description": "확장 프로그램 설명"
+    "message": "AI 챗봇 사용 시 개인정보를 보호합니다. ChatGPT, Claude, Gemini 등 25개 이상의 AI 서비스에서 개인정보 자동 마스킹, 프롬프트 인젝션·탈옥·데이터 추출 탐지. 평소에는 조용히, 위험할 때만 알려줍니다.",
+    "description": "크롬 웹스토어 설명"
   }
 }

@@ -14,6 +14,7 @@ export const STORAGE_KEYS = {
   CONFIG: 'aeginel_config',
   SCAN_HISTORY: 'aeginel_scan_history',
   STATS: 'aeginel_stats',
+  WEEKLY_STATS: 'aeginel_weekly_stats',
 } as const;
 
 // ── Limits ───────────────────────────────────────────────────────────────

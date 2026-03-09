@@ -255,6 +255,29 @@
   white-space: nowrap;
 }
 
+/* ── Shield Status Indicator ──────────────────────────────────────── */
+
+.aeginel-shield-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid;
+  font-size: 14px;
+  cursor: default;
+  user-select: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  margin: 4px 0;
+}
+
+.aeginel-shield-indicator:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
 /* ── Health Status Banners ────────────────────────────────────────── */
 
 .aeginel-banner.aeginel-health-error {

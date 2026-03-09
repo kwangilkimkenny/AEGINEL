@@ -8,8 +8,8 @@ import type { AeginelConfig, ScanResult } from '../engine/types';
 import { PiiProxyEngine } from '../engine/pii-proxy';
 import type { ExtensionMessage } from '../shared/messages';
 import { MAX_HISTORY_ITEMS } from '../shared/constants';
-import { getConfig, setConfig, getScanHistory, setScanHistory, getStats, setStats } from '../shared/storage';
-import { mlClassify } from '../engine/ml-classifier';
+import { getConfig, setConfig, getScanHistory, setScanHistory, getStats, setStats, getWeeklyStats, updateWeeklyStats } from '../shared/storage';
+import { mlClassify, mlStatus } from '../engine/ml-classifier';
 
 // ── State ────────────────────────────────────────────────────────────────
 
@@ -181,6 +181,14 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
         };
         lastScan = result;
 
+        // Update weekly stats
+        await updateWeeklyStats({
+          scans: 1,
+          blocked: result.blocked ? 1 : 0,
+          categories: result.categories.length > 0 ? result.categories : undefined,
+          site,
+        });
+
         // Save to history
         const scanHistory = await getScanHistory();
         scanHistory.unshift(result);
@@ -204,6 +212,9 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
           const { text, site, sessionId } = message.payload;
           const result = proxyEngine.pseudonymize(text, currentConfig, sessionId);
           totalPiiProtected += result.piiCount;
+          if (result.piiCount > 0) {
+            await updateWeeklyStats({ pii: result.piiCount });
+          }
           return {
             originalText: result.originalText,
             proxiedText: result.proxiedText,
@@ -303,6 +314,14 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
         return { type: 'HEALTH_RESPONSE', payload: healthStatus };
       }
 
+      case 'GET_ML_STATUS': {
+        return mlStatus();
+      }
+
+      case 'GET_WEEKLY_REPORT': {
+        return generateWeeklyReport();
+      }
+
       default:
         return null;
     }
@@ -310,6 +329,47 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
     console.error('[AEGINEL] Unhandled error in message handler:', err);
     return { error: String(err) };
   }
+}
+
+// ── Weekly Report Generator ──────────────────────────────────────────────
+
+async function generateWeeklyReport() {
+  const weekly = await getWeeklyStats();
+  const stats = await getStats();
+
+  // Sort categories by count
+  const sortedCategories = Object.entries(weekly.topCategories)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5);
+
+  // Sort sites by scan count
+  const sortedSites = Object.entries(weekly.siteBreakdown)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5);
+
+  const weekStart = new Date(weekly.weekStart);
+  const weekEnd = new Date(weekly.weekStart + 7 * 24 * 60 * 60 * 1000 - 1);
+
+  return {
+    type: 'WEEKLY_REPORT_RESPONSE',
+    payload: {
+      period: {
+        start: weekStart.toISOString().slice(0, 10),
+        end: weekEnd.toISOString().slice(0, 10),
+      },
+      thisWeek: {
+        totalScans: weekly.totalScans,
+        threatsBlocked: weekly.threatsBlocked,
+        piiProtected: weekly.piiProtected,
+        topCategories: sortedCategories,
+        siteBreakdown: sortedSites,
+      },
+      allTime: {
+        totalScans: stats.totalScans,
+        threatsBlocked: stats.threatsBlocked,
+      },
+    },
+  };
 }
 
 // ── Badge ────────────────────────────────────────────────────────────────

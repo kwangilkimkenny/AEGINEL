@@ -1,10 +1,10 @@
 {
   "extName": {
-    "message": "AEGINEL Guard - AI Prompt Security",
-    "description": "Extension display name"
+    "message": "AEGINEL - AI Safety Guard",
+    "description": "Extension display name shown in Chrome Web Store and toolbar"
   },
   "extDescription": {
-    "message": "Real-time AI prompt security guard. Detects PII leaks, jailbreaks, injections, and Korean/CJK evasion attacks on ChatGPT, Claude, and Gemini.",
-    "description": "Extension description"
+    "message": "Protect your privacy on AI chatbots. Auto-masks personal data (PII) and detects prompt injection, jailbreak, and data extraction on ChatGPT, Claude, Gemini, and 25+ AI services. Silent by default — only alerts when it matters.",
+    "description": "Extension description for Chrome Web Store listing (max 132 chars for short desc)"
   }
 }

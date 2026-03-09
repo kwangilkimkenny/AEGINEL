@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import StatusCard from './components/StatusCard';
 import RiskMeter from './components/RiskMeter';
 import RecentScans from './components/RecentScans';
+import WeeklyReport from './components/WeeklyReport';
+import MlStatus from './components/MlStatus';
 import SettingsPanel from './components/SettingsPanel';
 import type { AeginelConfig, ScanResult } from '../engine/types';
 import { DEFAULT_CONFIG } from '../engine/types';
@@ -107,7 +109,7 @@ export default function App() {
           </div>
           <h1 className="text-xs font-bold text-aeginel-text tracking-tight">AEGINEL</h1>
         </div>
-        <span className="text-[9px] text-aeginel-muted">v1.0.0</span>
+        <span className="text-[9px] text-aeginel-muted">v1.1.0</span>
       </div>
 
       <StatusCard
@@ -121,9 +123,13 @@ export default function App() {
         onToggle={handleToggle}
       />
 
+      <MlStatus />
+
       <RiskMeter lastScan={lastScan} />
 
       <RecentScans scans={history} />
+
+      <WeeklyReport />
 
       <SettingsPanel
         config={config}
