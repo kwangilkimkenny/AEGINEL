@@ -2,8 +2,12 @@
 node_modules
 dist
 dist.zip
+dist*.zip
 .DS_Store
 *.log
+
+# Internal business docs (not for public)
+docs/businessPlan.md
 
 # Large model/training files (use Git LFS or external hosting)
 data/
