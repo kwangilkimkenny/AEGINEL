@@ -4,7 +4,7 @@
     "description": "크롬 웹스토어 및 툴바에 표시되는 확장 프로그램 이름"
   },
   "extDescription": {
-    "message": "AI 챗봇 사용 시 개인정보를 보호합니다. ChatGPT, Claude, Gemini 등 25개 이상의 AI 서비스에서 개인정보 자동 마스킹, 프롬프트 인젝션·탈옥·데이터 추출 탐지. 평소에는 조용히, 위험할 때만 알려줍니다.",
+    "message": "AI 챗봇에서 개인정보를 보호합니다. ChatGPT, Claude, Gemini 등 25+ AI 서비스에서 PII 자동 마스킹 및 프롬프트 공격 탐지.",
     "description": "크롬 웹스토어 설명"
   }
 }
