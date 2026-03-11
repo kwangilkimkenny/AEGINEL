@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@portone/browser-sdk':
+        specifier: ^0.1.3
+        version: 0.1.3
       next:
         specifier: 16.1.6
         version: 16.1.6(@babel/core@7.29.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -404,6 +407,9 @@ packages:
   '@nolyfill/is-core-module@1.0.39':
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
+
+  '@portone/browser-sdk@0.1.3':
+    resolution: {integrity: sha512-GRmXb8gBLs/23CES1YRvzMggbL8+tFeH5WS9YSA6WUPu5/9kgRKKZLeC25N2raq3zVJd9OfDTeSf0tUr27vF1Q==}
 
   '@rtsao/scc@1.1.0':
     resolution: {integrity: sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==}
@@ -2262,6 +2268,8 @@ snapshots:
       fastq: 1.20.1
 
   '@nolyfill/is-core-module@1.0.39': {}
+
+  '@portone/browser-sdk@0.1.3': {}
 
   '@rtsao/scc@1.1.0': {}
 
