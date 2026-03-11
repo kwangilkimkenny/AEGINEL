@@ -138,7 +138,21 @@ function initContentScript(adapter: SiteAdapter) {
   // Watch for input changes
   function onInputChange(el: Element) {
     const text = adapter.getInputText(el);
-    if (text === lastScannedText || text.length < INPUT_MIN_LENGTH) return;
+
+    if (text.length < INPUT_MIN_LENGTH) {
+      if (lastScannedText !== '') {
+        lastScannedText = '';
+        currentResult = null;
+        if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
+        hideWarningBanner();
+        lastShieldStatus = 'idle';
+        const anchor = adapter.getWarningAnchor();
+        if (anchor) showShieldIndicator('idle', anchor);
+      }
+      return;
+    }
+
+    if (text === lastScannedText) return;
 
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
