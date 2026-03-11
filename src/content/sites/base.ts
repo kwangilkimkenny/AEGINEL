@@ -23,6 +23,8 @@ export interface SiteAdapter {
   setInputText(el: Element, text: string): void;
   /** Check if the LLM is currently streaming a response */
   isStreaming(): boolean;
+  /** Optional: CSS selector for user message containers (for restoration) */
+  getUserMessageSelector?(): string;
 }
 
 export function getInputText(el: Element): string {

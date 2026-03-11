@@ -142,6 +142,43 @@ const MAX_MAPPINGS_PER_SESSION = 500;
 export class PiiProxyEngine {
   /** sessionId → PiiMapping[] */
   private sessionMappings = new Map<string, PiiMapping[]>();
+  private persistCallback?: (data: Record<string, PiiMapping[]>) => void;
+
+  /**
+   * Register a callback that fires whenever mappings change,
+   * so the caller (service worker) can persist them externally.
+   */
+  onMappingsChanged(cb: (data: Record<string, PiiMapping[]>) => void): void {
+    this.persistCallback = cb;
+  }
+
+  /**
+   * Serialize all session mappings for external storage.
+   */
+  exportMappings(): Record<string, PiiMapping[]> {
+    const obj: Record<string, PiiMapping[]> = {};
+    for (const [key, value] of this.sessionMappings.entries()) {
+      obj[key] = value;
+    }
+    return obj;
+  }
+
+  /**
+   * Import previously persisted mappings (merge, not overwrite).
+   */
+  importMappings(data: Record<string, PiiMapping[]>): void {
+    for (const [key, value] of Object.entries(data)) {
+      if (!this.sessionMappings.has(key)) {
+        this.sessionMappings.set(key, value);
+      }
+    }
+  }
+
+  private notifyPersist(): void {
+    if (this.persistCallback) {
+      this.persistCallback(this.exportMappings());
+    }
+  }
 
   /**
    * Detect PII in text and replace with format-preserving pseudonyms.
@@ -191,6 +228,8 @@ export class PiiProxyEngine {
       if (oldest) this.sessionMappings.delete(oldest);
     }
 
+    this.notifyPersist();
+
     return {
       originalText: text,
       proxiedText: proxied,
@@ -201,17 +240,66 @@ export class PiiProxyEngine {
 
   /**
    * Restore pseudonyms back to originals in a response text.
+   * First tries the exact session, then falls back to searching related sessions.
    */
   restore(text: string, sessionId: string): string {
-    const mappings = this.sessionMappings.get(sessionId);
-    if (!mappings || mappings.length === 0) return text;
-
-    let restored = text;
-    // Replace all pseudonyms with originals
-    for (const mapping of mappings) {
-      // Use split+join for global replacement (no regex special char issues)
-      restored = restored.split(mapping.pseudonym).join(mapping.original);
+    // First try exact session match (most common case)
+    const sessionMappings = this.sessionMappings.get(sessionId);
+    if (sessionMappings && sessionMappings.length > 0) {
+      let restored = text;
+      for (const mapping of sessionMappings) {
+        restored = restored.split(mapping.pseudonym).join(mapping.original);
+      }
+      if (restored !== text) return restored;
     }
+
+    // Fallback: search related sessions for matching pseudonyms
+    // This handles cases where content script reloaded (SPA navigation on Gemini)
+    // Only applies if:
+    // 1. Session ID follows the expected format: siteId_timestamp
+    // 2. Related sessions are from same site AND within 1 hour window
+    const sessionParts = sessionId.split('_');
+    if (sessionParts.length !== 2) {
+      return text; // Not standard format, skip cross-session
+    }
+
+    const [sitePrefix, timestampStr] = sessionParts;
+    const sessionTimestamp = parseInt(timestampStr, 10);
+    if (isNaN(sessionTimestamp)) {
+      return text; // Invalid timestamp, skip cross-session
+    }
+
+    const ONE_HOUR_MS = 60 * 60 * 1000;
+    let restored = text;
+    let foundAny = false;
+
+    for (const [sid, mappings] of this.sessionMappings.entries()) {
+      if (sid === sessionId) continue;
+
+      const otherParts = sid.split('_');
+      if (otherParts.length !== 2) continue;
+
+      const [otherPrefix, otherTimestampStr] = otherParts;
+      if (otherPrefix !== sitePrefix) continue;
+
+      const otherTimestamp = parseInt(otherTimestampStr, 10);
+      if (isNaN(otherTimestamp)) continue;
+
+      // Only cross-restore within 1 hour window
+      if (Math.abs(sessionTimestamp - otherTimestamp) > ONE_HOUR_MS) continue;
+
+      for (const mapping of mappings) {
+        if (restored.includes(mapping.pseudonym)) {
+          restored = restored.split(mapping.pseudonym).join(mapping.original);
+          foundAny = true;
+        }
+      }
+    }
+
+    if (foundAny) {
+      console.debug('[AEGINEL] Cross-session PII restoration applied (SPA fallback)');
+    }
+
     return restored;
   }
 
@@ -220,6 +308,7 @@ export class PiiProxyEngine {
    */
   clearSession(sessionId: string): void {
     this.sessionMappings.delete(sessionId);
+    this.notifyPersist();
   }
 
   /**

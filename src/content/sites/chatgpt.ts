@@ -70,4 +70,12 @@ export const chatgptAdapter: SiteAdapter = {
     return document.querySelector('.result-streaming') !== null
       || document.querySelector('[data-testid="stop-button"]') !== null;
   },
+
+  getUserMessageSelector() {
+    return [
+      '[data-message-author-role="user"]',
+      '.user-turn',
+      '[data-testid="conversation-turn-user"]',
+    ].join(', ');
+  },
 };

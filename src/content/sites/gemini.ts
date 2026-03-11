@@ -59,9 +59,19 @@ export const geminiAdapter: SiteAdapter = {
   // ── PII Proxy ───────────────────────────────────────────────────────
   getResponseSelector() {
     return [
+      // Current Gemini selectors (2024-2026)
+      'model-response .model-response-text',
+      'model-response message-content',
+      'model-response .markdown-main-panel',
+      'model-response .response-content',
+      '.conversation-container model-response',
+      // Fallback legacy selectors
       '.model-response-text',
       'message-content .markdown',
       '.response-container .markdown',
+      // Generic response patterns
+      '[data-message-author-role="model"]',
+      '.response-message-content',
     ].join(', ');
   },
 
@@ -70,7 +80,32 @@ export const geminiAdapter: SiteAdapter = {
   },
 
   isStreaming() {
+    // Gemini streaming indicators (check multiple patterns)
     return document.querySelector('.streaming') !== null
-      || document.querySelector('[data-is-streaming]') !== null;
+      || document.querySelector('[data-is-streaming]') !== null
+      || document.querySelector('[data-is-streaming="true"]') !== null
+      || document.querySelector('.loading-indicator') !== null
+      || document.querySelector('model-response.streaming') !== null
+      || document.querySelector('.message-loading') !== null
+      // Check for animation/loading spinners
+      || document.querySelector('model-response mat-spinner') !== null
+      || document.querySelector('.response-loading') !== null;
+  },
+
+  // User message selectors for restoration after submit
+  getUserMessageSelector() {
+    return [
+      // Gemini user message patterns
+      'user-query',
+      'user-query .query-text',
+      'user-query message-content',
+      '.user-message',
+      '.query-content',
+      '[data-message-author-role="user"]',
+      '.conversation-container .user-query',
+      // Generic patterns
+      '.human-message',
+      '.user-turn',
+    ].join(', ');
   },
 };

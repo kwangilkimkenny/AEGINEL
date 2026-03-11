@@ -63,6 +63,31 @@ function recordHealth(entry: HealthEntry) {
   }
 }
 
+// ── PII Mapping Persistence ──────────────────────────────────────────────
+// MV3 service workers can be killed at any time; persist PII mappings to
+// chrome.storage.session so they survive restarts within the browser session.
+
+const PII_MAPPINGS_KEY = 'aeginel_pii_mappings';
+
+proxyEngine.onMappingsChanged(async (data) => {
+  try {
+    await chrome.storage.session.set({ [PII_MAPPINGS_KEY]: data });
+  } catch {
+    // storage.session may not be available in all contexts
+  }
+});
+
+async function restorePiiMappings() {
+  try {
+    const stored = await chrome.storage.session.get(PII_MAPPINGS_KEY);
+    if (stored[PII_MAPPINGS_KEY]) {
+      proxyEngine.importMappings(stored[PII_MAPPINGS_KEY]);
+    }
+  } catch {
+    // storage.session may not be available
+  }
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────
 
 async function initialize() {
@@ -72,6 +97,7 @@ async function initialize() {
   } else {
     await setConfig(DEFAULT_CONFIG);
   }
+  await restorePiiMappings();
   updateBadge(null);
 }
 

@@ -75,4 +75,12 @@ export const claudeAdapter: SiteAdapter = {
   isStreaming() {
     return document.querySelector('[data-is-streaming="true"]') !== null;
   },
+
+  getUserMessageSelector() {
+    return [
+      'div.font-user-message',
+      '[data-testid="user-message"]',
+      '.human-turn',
+    ].join(', ');
+  },
 };
