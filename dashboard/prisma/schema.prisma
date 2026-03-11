@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  admins      Admin[]
+  policies    Policy[]
+  telemetry   ScanTelemetry[]
+  auditEvents AuditEvent[]
+  devices     Device[]
+  apiKeys     ApiKey[]
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  orgId        String
+  org          Organization @relation(fields: [orgId], references: [id])
+  createdAt    DateTime @default(now())
+}
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  key       String    @unique
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id])
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  active    Boolean   @default(true)
+}
+
+model Policy {
+  id                String   @id @default(cuid())
+  orgId             String
+  org               Organization @relation(fields: [orgId], references: [id])
+  version           Int      @default(1)
+  forceDisabled     Boolean  @default(false)
+  blockThreshold    Int      @default(70)
+  sensitivity       Float    @default(1.0)
+  enforcedLayers    String[]
+  blockedSites      String[]
+  mandatoryPiiSites String[]
+  customKeywords    String[]
+  minPiiProxyMode   String   @default("auto")
+  reportTelemetry   Boolean  @default(true)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([orgId, isActive])
+}
+
+model ScanTelemetry {
+  id         String   @id @default(cuid())
+  orgId      String
+  org        Organization @relation(fields: [orgId], references: [id])
+  deviceId   String
+  timestamp  DateTime
+  site       String
+  score      Float
+  level      String
+  categories String[]
+  blocked    Boolean
+  piiCount   Int
+  ruleScore  Float
+  mlScore    Float
+  latencyMs  Float
+  createdAt  DateTime @default(now())
+
+  @@index([orgId, timestamp])
+  @@index([orgId, site])
+}
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id])
+  deviceId  String
+  timestamp DateTime
+  type      String
+  details   Json
+  createdAt DateTime @default(now())
+
+  @@index([orgId, timestamp])
+  @@index([orgId, type])
+}
+
+model Device {
+  id            String   @id @default(cuid())
+  deviceId      String   @unique
+  orgId         String
+  org           Organization @relation(fields: [orgId], references: [id])
+  name          String?
+  lastSeenAt    DateTime @default(now())
+  policyApplied Boolean  @default(false)
+  policyVersion Int?
+  createdAt     DateTime @default(now())
+
+  @@index([orgId])
+}
