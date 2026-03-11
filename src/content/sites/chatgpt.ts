@@ -23,7 +23,11 @@ const SUBMIT_SELECTORS = [
   '[data-testid="send-button"]',
   'button[aria-label="Send prompt"]',
   'button[aria-label="Send"]',
+  'button[aria-label="프롬프트 보내기"]',
+  'button[aria-label="보내기"]',
+  'button[aria-label*="send" i]',
   'form button[type="submit"]',
+  'form button:has(svg)',
 ];
 
 export const chatgptAdapter: SiteAdapter = {
@@ -47,8 +51,12 @@ export const chatgptAdapter: SiteAdapter = {
   },
 
   getWarningAnchor() {
-    return document.querySelector('form')
+    // Try to find a container near the input area for better shield placement
+    // ChatGPT has different DOM structures based on language/version
+    return document.querySelector('[class*="composer-background"]')
       ?? document.querySelector('[class*="composer"]')
+      ?? document.querySelector('#prompt-textarea')?.closest('div[class]')
+      ?? document.querySelector('form')
       ?? document.querySelector('main');
   },
 

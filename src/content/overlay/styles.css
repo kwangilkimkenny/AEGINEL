@@ -271,6 +271,9 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   margin: 4px 0;
+  position: relative;
+  z-index: 100;
+  flex-shrink: 0;
 }
 
 .aeginel-shield-indicator:hover {

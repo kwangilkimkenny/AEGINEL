@@ -369,18 +369,32 @@ export function showShieldIndicator(status: ShieldStatus, anchor: Element): void
 
   shadow.appendChild(shield);
 
-  // Try to insert near the anchor element
+  // Try multiple insertion strategies for better compatibility
   let inserted = false;
-  if (anchor.parentElement) {
+
+  // Strategy 1: Insert as first child of anchor (most reliable for visibility)
+  try {
+    if (anchor.firstChild) {
+      anchor.insertBefore(host, anchor.firstChild);
+    } else {
+      anchor.appendChild(host);
+    }
+    inserted = true;
+  } catch {
+    // insertBefore/appendChild failed
+  }
+
+  // Strategy 2: Insert before anchor (previous approach)
+  if (!inserted && anchor.parentElement) {
     try {
       anchor.parentElement.insertBefore(host, anchor);
       inserted = true;
     } catch {
-      // insertBefore failed, use fallback
+      // insertBefore failed
     }
   }
 
-  // Fallback: use fixed positioning if insertion failed or anchor has no parent
+  // Strategy 3: Fixed position fallback
   if (!inserted) {
     shield.classList.add('aeginel-shield-fixed');
     document.body.appendChild(host);
