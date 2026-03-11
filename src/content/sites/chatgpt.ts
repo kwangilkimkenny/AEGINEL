@@ -51,11 +51,10 @@ export const chatgptAdapter: SiteAdapter = {
   },
 
   getWarningAnchor() {
-    // Try to find a container near the input area for better shield placement
-    // ChatGPT has different DOM structures based on language/version
-    return document.querySelector('[class*="composer-background"]')
-      ?? document.querySelector('[class*="composer"]')
-      ?? document.querySelector('#prompt-textarea')?.closest('div[class]')
+    // Target the composer form so the shield appears right above the text input
+    return document.querySelector('form[data-type="unified-composer"]')
+      ?? document.querySelector('form[class*="composer"]')
+      ?? document.querySelector('[data-composer-surface="true"]')?.closest('form')
       ?? document.querySelector('form')
       ?? document.querySelector('main');
   },

@@ -7,7 +7,7 @@ import { claudeAdapter } from './sites/claude';
 import { geminiAdapter } from './sites/gemini';
 import { createGenericAdapter } from './sites/generic';
 import { siteRegistry } from './sites/registry';
-import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner, showShieldIndicator, hideShieldIndicator } from './overlay/warning-banner';
+import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner, showShieldIndicator, hideShieldIndicator, isShieldVisible } from './overlay/warning-banner';
 import type { ShieldStatus } from './overlay/warning-banner';
 import type { ScanResult, AeginelConfig, ProxyResult, PiiMapping } from '../engine/types';
 import { DEFAULT_CONFIG } from '../engine/types';
@@ -51,6 +51,9 @@ function initContentScript(adapter: SiteAdapter) {
   const attachedInputs = new WeakSet<Element>();
   const attachedSubmitBtns = new WeakSet<Element>();
   const attachedKeydownInputs = new WeakSet<Element>();
+
+  // Track shield status so it can be restored after DOM re-renders
+  let lastShieldStatus: ShieldStatus = 'idle';
 
   // Guard against recursive submit during re-fire
   let isResubmitting = false;
@@ -165,6 +168,7 @@ function initContentScript(adapter: SiteAdapter) {
 
     if (result.score === 0 && result.piiDetected.length === 0) {
       hideWarningBanner();
+      lastShieldStatus = 'safe';
       if (anchor) showShieldIndicator('safe', anchor);
       return;
     }
@@ -176,6 +180,8 @@ function initContentScript(adapter: SiteAdapter) {
     if (result.level === 'high' || result.level === 'critical') shieldStatus = 'danger';
 
     if (!anchor) return;
+
+    lastShieldStatus = shieldStatus;
 
     // Silent mode: low/medium risk → shield icon only (no banner)
     if (result.level === 'low' || result.level === 'medium') {
@@ -792,12 +798,22 @@ function initContentScript(adapter: SiteAdapter) {
     attachSubmitInterception();
   }
 
+  // Re-show the shield if a DOM update removed it
+  function ensureShieldVisible() {
+    if (isShieldVisible()) return;
+    const anchor = adapter.getWarningAnchor();
+    if (anchor) {
+      showShieldIndicator(lastShieldStatus, anchor);
+    }
+  }
+
   // MutationObserver for SPA navigation — debounced
   let spaTimer: ReturnType<typeof setTimeout> | null = null;
   const observer = new MutationObserver(() => {
     if (spaTimer) clearTimeout(spaTimer);
     spaTimer = setTimeout(() => {
       scanExistingElements();
+      ensureShieldVisible();
     }, 200);
   });
 
@@ -810,6 +826,7 @@ function initContentScript(adapter: SiteAdapter) {
   function showIdleShield() {
     const anchor = adapter.getWarningAnchor();
     if (anchor) {
+      lastShieldStatus = 'idle';
       console.debug(`[AEGINEL] Showing shield indicator, anchor:`, anchor.tagName, anchor.className || '(no class)');
       showShieldIndicator('idle', anchor);
     } else {

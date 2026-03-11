@@ -353,6 +353,7 @@ export function showShieldIndicator(status: ShieldStatus, anchor: Element): void
 
   const host = document.createElement('div');
   host.id = SHIELD_HOST_ID;
+  host.style.textAlign = 'left';
   const shadow = host.attachShadow({ mode: 'closed' });
 
   const style = document.createElement('style');
@@ -369,23 +370,11 @@ export function showShieldIndicator(status: ShieldStatus, anchor: Element): void
 
   shadow.appendChild(shield);
 
-  // Try multiple insertion strategies for better compatibility
+  // Insert before anchor so the shield sits right above the input area.
+  // Placing it as a sibling (not a child) avoids removal by React re-renders.
   let inserted = false;
 
-  // Strategy 1: Insert as first child of anchor (most reliable for visibility)
-  try {
-    if (anchor.firstChild) {
-      anchor.insertBefore(host, anchor.firstChild);
-    } else {
-      anchor.appendChild(host);
-    }
-    inserted = true;
-  } catch {
-    // insertBefore/appendChild failed
-  }
-
-  // Strategy 2: Insert before anchor (previous approach)
-  if (!inserted && anchor.parentElement) {
+  if (anchor.parentElement) {
     try {
       anchor.parentElement.insertBefore(host, anchor);
       inserted = true;
@@ -394,11 +383,14 @@ export function showShieldIndicator(status: ShieldStatus, anchor: Element): void
     }
   }
 
-  // Strategy 3: Fixed position fallback
   if (!inserted) {
     shield.classList.add('aeginel-shield-fixed');
     document.body.appendChild(host);
   }
+}
+
+export function isShieldVisible(): boolean {
+  return document.getElementById(SHIELD_HOST_ID) !== null;
 }
 
 export function hideShieldIndicator(): void {
