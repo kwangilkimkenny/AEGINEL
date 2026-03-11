@@ -34,7 +34,10 @@ function detectSite(): SiteAdapter | null {
 
 const adapter = detectSite();
 if (adapter) {
+  console.debug(`[AEGINEL] Site detected: ${adapter.name} (${adapter.id})`);
   initContentScript(adapter);
+} else {
+  console.debug(`[AEGINEL] No matching site adapter for: ${window.location.hostname}`);
 }
 
 function initContentScript(adapter: SiteAdapter) {
@@ -806,7 +809,12 @@ function initContentScript(adapter: SiteAdapter) {
   // Show initial idle shield
   function showIdleShield() {
     const anchor = adapter.getWarningAnchor();
-    if (anchor) showShieldIndicator('idle', anchor);
+    if (anchor) {
+      console.debug(`[AEGINEL] Showing shield indicator, anchor:`, anchor.tagName, anchor.className || '(no class)');
+      showShieldIndicator('idle', anchor);
+    } else {
+      console.debug(`[AEGINEL] No anchor found for shield indicator`);
+    }
   }
 
   // Initial attach

@@ -368,7 +368,23 @@ export function showShieldIndicator(status: ShieldStatus, anchor: Element): void
   shield.textContent = SHIELD_ICONS[status];
 
   shadow.appendChild(shield);
-  anchor.parentElement?.insertBefore(host, anchor);
+
+  // Try to insert near the anchor element
+  let inserted = false;
+  if (anchor.parentElement) {
+    try {
+      anchor.parentElement.insertBefore(host, anchor);
+      inserted = true;
+    } catch {
+      // insertBefore failed, use fallback
+    }
+  }
+
+  // Fallback: use fixed positioning if insertion failed or anchor has no parent
+  if (!inserted) {
+    shield.classList.add('aeginel-shield-fixed');
+    document.body.appendChild(host);
+  }
 }
 
 export function hideShieldIndicator(): void {

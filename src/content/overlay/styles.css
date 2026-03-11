@@ -278,6 +278,18 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 }
 
+/* Fixed position fallback when anchor insertion fails */
+.aeginel-shield-indicator.aeginel-shield-fixed {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+  z-index: 999998;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
 /* ── Health Status Banners ────────────────────────────────────────── */
 
 .aeginel-banner.aeginel-health-error {
