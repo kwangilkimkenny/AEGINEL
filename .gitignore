@@ -4,6 +4,7 @@ dist
 dist.zip
 dist*.zip
 aeginel-*.zip
+aegis-personal-*.zip
 .DS_Store
 *.log
 
