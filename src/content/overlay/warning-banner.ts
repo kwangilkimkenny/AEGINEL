@@ -1,4 +1,4 @@
-// ── AEGINEL Warning Banner (Shadow DOM) ────────────────────────────────────
+// ── Aegis Personal Warning Banner (Shadow DOM) ────────────────────────────────────
 
 import type { ScanResult, ProxyResult } from '../../engine/types';
 import { t } from '../../i18n';
@@ -38,7 +38,7 @@ export function showWarningBanner(result: ScanResult, anchor: Element): void {
 
   const title = document.createElement('div');
   title.className = 'aeginel-title';
-  title.textContent = `AEGINEL: ${t(`risk.${result.level}`)}`;
+  title.textContent = `Aegis: ${t(`risk.${result.level}`)}`;
 
   const detail = document.createElement('div');
   detail.className = 'aeginel-detail';
@@ -341,11 +341,11 @@ const SHIELD_COLORS: Record<ShieldStatus, { bg: string; border: string }> = {
 };
 
 const SHIELD_TOOLTIPS: Record<ShieldStatus, string> = {
-  idle: 'AEGINEL: Monitoring',
-  safe: 'AEGINEL: Safe',
-  pii: 'AEGINEL: PII detected — protected',
-  warning: 'AEGINEL: Risk detected',
-  danger: 'AEGINEL: High risk detected',
+  idle: 'Aegis: Monitoring',
+  safe: 'Aegis: Safe',
+  pii: 'Aegis: PII detected — protected',
+  warning: 'Aegis: Risk detected',
+  danger: 'Aegis: High risk detected',
 };
 
 export function showShieldIndicator(status: ShieldStatus, anchor: Element): void {

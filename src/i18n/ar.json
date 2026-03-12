@@ -1,5 +1,5 @@
 {
-  "guard": "AEGINEL Guard",
+  "guard": "Aegis Personal",
   "status": { "protected": "محمي", "disabled": "معطل", "noSite": "لا يوجد موقع نشط" },
   "stats": { "scans": "عمليات المسح", "blocked": "محظور", "piiProtected": "محمي" },
   "risk": { "low": "خطر منخفض", "medium": "خطر متوسط", "high": "خطر مرتفع", "critical": "خطر حرج", "noScans": "لا توجد عمليات مسح بعد" },

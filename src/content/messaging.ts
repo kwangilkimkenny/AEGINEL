@@ -39,6 +39,6 @@ export async function sendMessage<T = unknown>(message: unknown): Promise<T | nu
     }
   }
 
-  console.warn('[AEGINEL] Message send failed after retries:', lastError);
+  console.warn('[Aegis] Message send failed after retries:', lastError);
   return null;
 }

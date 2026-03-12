@@ -1,4 +1,4 @@
-// ── AEGINEL Content Script ─────────────────────────────────────────────────
+// ── Aegis Personal Content Script ─────────────────────────────────────────────────
 // Detects which LLM site we're on, watches input, sends to service worker.
 
 import type { SiteAdapter } from './sites/base';
@@ -34,10 +34,10 @@ function detectSite(): SiteAdapter | null {
 
 const adapter = detectSite();
 if (adapter) {
-  console.debug(`[AEGINEL] Site detected: ${adapter.name} (${adapter.id})`);
+  console.debug(`[Aegis] Site detected: ${adapter.name} (${adapter.id})`);
   initContentScript(adapter);
 } else {
-  console.debug(`[AEGINEL] No matching site adapter for: ${window.location.hostname}`);
+  console.debug(`[Aegis] No matching site adapter for: ${window.location.hostname}`);
 }
 
 function initContentScript(adapter: SiteAdapter) {
@@ -525,7 +525,7 @@ function initContentScript(adapter: SiteAdapter) {
 
       if (restored) {
         restorationCount++;
-        console.debug(`[AEGINEL] User message restored (count: ${restorationCount})`);
+        console.debug(`[Aegis] User message restored (count: ${restorationCount})`);
       }
 
       return restored;
@@ -535,7 +535,7 @@ function initContentScript(adapter: SiteAdapter) {
     const userMsgObserver = new MutationObserver((mutations) => {
       if (restorationCount >= MAX_RESTORATIONS) {
         userMsgObserver.disconnect();
-        console.debug('[AEGINEL] User message restoration limit reached');
+        console.debug('[Aegis] User message restoration limit reached');
         return;
       }
 
@@ -605,7 +605,7 @@ function initContentScript(adapter: SiteAdapter) {
       clearInterval(checkInterval);
       activeUserMsgWatcher = null;
       activeUserMsgInterval = null;
-      console.debug(`[AEGINEL] User message watch ended (${restorationCount} restorations)`);
+      console.debug(`[Aegis] User message watch ended (${restorationCount} restorations)`);
     }, WATCH_DURATION_MS);
   }
 
@@ -639,7 +639,7 @@ function initContentScript(adapter: SiteAdapter) {
             try {
               responseEls = document.querySelectorAll(sel);
               if (responseEls.length > 0) {
-                console.debug(`[AEGINEL] Gemini fallback selector worked: ${sel}`);
+                console.debug(`[Aegis] Gemini fallback selector worked: ${sel}`);
                 break;
               }
             } catch { /* skip invalid selector */ }
@@ -671,7 +671,7 @@ function initContentScript(adapter: SiteAdapter) {
         // Try enhanced deep restoration first (for Gemini shadow DOM)
         if (adapter.id === 'gemini' && lastProxyResult && lastProxyResult.piiCount > 0) {
           if (deepRestoreInElement(el, lastProxyResult.mappings)) {
-            console.debug('[AEGINEL] Gemini deep restoration succeeded');
+            console.debug('[Aegis] Gemini deep restoration succeeded');
             restoredSnapshots.set(el, el.textContent ?? '');
             restoredElements.add(el);
             continue;
@@ -709,7 +709,7 @@ function initContentScript(adapter: SiteAdapter) {
     if (lastProxyResult && lastProxyResult.piiCount > 0) {
       const restored = restoreTextNodesLocally(container, lastProxyResult.mappings);
       if (restored) {
-        console.debug('[AEGINEL] Client-side restoration succeeded');
+        console.debug('[Aegis] Client-side restoration succeeded');
         return;
       }
     }
@@ -731,7 +731,7 @@ function initContentScript(adapter: SiteAdapter) {
       }
     }
     if (restoredCount > 0) {
-      console.debug(`[AEGINEL] Service worker restoration: ${restoredCount} nodes`);
+      console.debug(`[Aegis] Service worker restoration: ${restoredCount} nodes`);
     }
   }
 
@@ -841,10 +841,10 @@ function initContentScript(adapter: SiteAdapter) {
     const anchor = adapter.getWarningAnchor();
     if (anchor) {
       lastShieldStatus = 'idle';
-      console.debug(`[AEGINEL] Showing shield indicator, anchor:`, anchor.tagName, anchor.className || '(no class)');
+      console.debug(`[Aegis] Showing shield indicator, anchor:`, anchor.tagName, anchor.className || '(no class)');
       showShieldIndicator('idle', anchor);
     } else {
-      console.debug(`[AEGINEL] No anchor found for shield indicator`);
+      console.debug(`[Aegis] No anchor found for shield indicator`);
     }
   }
 

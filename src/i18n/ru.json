@@ -1,5 +1,5 @@
 {
-  "guard": "AEGINEL Guard",
+  "guard": "Aegis Personal",
   "status": { "protected": "Защищено", "disabled": "Отключено", "noSite": "Нет активного сайта" },
   "stats": { "scans": "Сканы", "blocked": "Заблокировано", "piiProtected": "Защищено" },
   "risk": { "low": "Низкий Риск", "medium": "Средний Риск", "high": "Высокий Риск", "critical": "Критический Риск", "noScans": "Пока нет сканов" },

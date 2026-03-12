@@ -1,5 +1,5 @@
 {
-  "guard": "AEGINEL Guard",
+  "guard": "Aegis Personal",
   "status": { "protected": "Skyddad", "disabled": "Inaktiverad", "noSite": "Ingen aktiv sida" },
   "stats": { "scans": "Skanningar", "blocked": "Blockerade", "piiProtected": "Skyddade" },
   "risk": { "low": "Låg Risk", "medium": "Medel Risk", "high": "Hög Risk", "critical": "Kritisk Risk", "noScans": "Inga skanningar än" },

@@ -1,4 +1,4 @@
-// ── AEGINEL Enterprise Admin API ────────────────────────────────────────────
+// ── Aegis Personal Enterprise Admin API ────────────────────────────────────
 // API client for centralized policy management, audit logging, and
 // fleet-wide configuration. This module is the bridge between the
 // browser extension and an enterprise admin server.
@@ -115,7 +115,7 @@ export class AdminApiClient {
       });
 
       if (!response.ok) {
-        console.warn(`[AEGINEL Admin] Policy fetch failed: ${response.status}`);
+        console.warn(`[Aegis Admin] Policy fetch failed: ${response.status}`);
         return this.policyCache; // Return stale cache
       }
 
@@ -123,7 +123,7 @@ export class AdminApiClient {
       this.policyCacheTime = Date.now();
       return this.policyCache;
     } catch (err) {
-      console.warn('[AEGINEL Admin] Policy fetch error:', err);
+      console.warn('[Aegis Admin] Policy fetch error:', err);
       return this.policyCache; // Return stale cache on network error
     }
   }

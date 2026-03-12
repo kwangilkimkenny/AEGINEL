@@ -1,4 +1,4 @@
-// ── AEGINEL 9-Layer Detection Engine ──────────────────────────────────────
+// ── Aegis Personal 9-Layer Detection Engine ──────────────────────────────────────
 // Pure JS, zero dependencies
 
 import type { AeginelConfig, LayerResult, ScanResult, RiskLevel } from './types';

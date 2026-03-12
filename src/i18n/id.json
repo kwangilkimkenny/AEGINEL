@@ -1,5 +1,5 @@
 {
-  "guard": "AEGINEL Guard",
+  "guard": "Aegis Personal",
   "status": { "protected": "Dilindungi", "disabled": "Dinonaktifkan", "noSite": "Tidak ada situs aktif" },
   "stats": { "scans": "Pemindaian", "blocked": "Diblokir", "piiProtected": "Dilindungi" },
   "risk": { "low": "Risiko Rendah", "medium": "Risiko Sedang", "high": "Risiko Tinggi", "critical": "Risiko Kritis", "noScans": "Belum ada pemindaian" },

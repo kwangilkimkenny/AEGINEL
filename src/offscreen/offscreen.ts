@@ -1,4 +1,4 @@
-// ── AEGINEL Offscreen Document ──────────────────────────────────────────────
+// ── Aegis Personal Offscreen Document ──────────────────────────────────────────────
 // Runs inside an Offscreen Document (chrome.offscreen API, MV3).
 // The Service Worker cannot run WASM directly, so ML inference is delegated here.
 // Communication: chrome.runtime.onMessage / sendMessage
@@ -43,7 +43,7 @@ async function loadModel(): Promise<void> {
 
   try {
     loadStartTime = Date.now();
-    console.log(`[AEGINEL Offscreen] Loading guard model (attempt ${loadRetryCount + 1})...`);
+    console.log(`[Aegis Offscreen] Loading guard model (attempt ${loadRetryCount + 1})...`);
     // Cast to ClassifierFn to bypass complex union type from generics
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore — Transformers.js overloaded pipeline() returns a union type too complex for TS
@@ -52,13 +52,13 @@ async function loadModel(): Promise<void> {
     lastLoadError = null;
     loadRetryCount = 0;
     loadDurationMs = Date.now() - loadStartTime;
-    console.log(`[AEGINEL Offscreen] Model ready in ${loadDurationMs}ms.`);
+    console.log(`[Aegis Offscreen] Model ready in ${loadDurationMs}ms.`);
 
     // Report success to service worker
     reportStatus('ok');
   } catch (err) {
     const errorMsg = String(err);
-    console.error('[AEGINEL Offscreen] Model load failed:', err);
+    console.error('[Aegis Offscreen] Model load failed:', err);
     classifierReady = false;
     lastLoadError = errorMsg;
     loadRetryCount++;
@@ -69,12 +69,12 @@ async function loadModel(): Promise<void> {
     // Retry with exponential backoff (max MAX_LOAD_RETRIES retries)
     if (loadRetryCount <= MAX_LOAD_RETRIES) {
       const delay = 1000 * Math.pow(2, loadRetryCount - 1); // 1s, 2s
-      console.log(`[AEGINEL Offscreen] Retrying in ${delay}ms (attempt ${loadRetryCount + 1}/${MAX_LOAD_RETRIES + 1})...`);
+      console.log(`[Aegis Offscreen] Retrying in ${delay}ms (attempt ${loadRetryCount + 1}/${MAX_LOAD_RETRIES + 1})...`);
       classifierLoading = false; // allow retry
       setTimeout(() => loadModel(), delay);
       return;
     }
-    console.error(`[AEGINEL Offscreen] All ${MAX_LOAD_RETRIES + 1} load attempts failed. ML classification unavailable.`);
+    console.error(`[Aegis Offscreen] All ${MAX_LOAD_RETRIES + 1} load attempts failed. ML classification unavailable.`);
   } finally {
     classifierLoading = false;
   }

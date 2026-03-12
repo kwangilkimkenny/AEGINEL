@@ -45,7 +45,7 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10">
             <Shield className="h-8 w-8 text-emerald-500" />
           </div>
-          <h1 className="text-2xl font-bold text-white">AEGINEL Admin</h1>
+          <h1 className="text-2xl font-bold text-white">Aegis Personal Admin</h1>
           <p className="mt-2 text-sm text-zinc-400">
             Enterprise AI Security 관리 대시보드
           </p>

@@ -1,5 +1,5 @@
 {
-  "guard": "AEGINEL Guard",
+  "guard": "Aegis Personal",
   "status": { "protected": "Beschermd", "disabled": "Uitgeschakeld", "noSite": "Geen actieve site" },
   "stats": { "scans": "Scans", "blocked": "Geblokkeerd", "piiProtected": "Beschermd" },
   "risk": { "low": "Laag Risico", "medium": "Gemiddeld Risico", "high": "Hoog Risico", "critical": "Kritiek Risico", "noScans": "Nog geen scans" },

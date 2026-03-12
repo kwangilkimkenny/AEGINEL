@@ -1,5 +1,5 @@
 {
-  "guard": "AEGINEL Guard",
+  "guard": "Aegis Personal",
   "status": { "protected": "Chráněno", "disabled": "Vypnuto", "noSite": "Žádná aktivní stránka" },
   "stats": { "scans": "Skeny", "blocked": "Blokováno", "piiProtected": "Chráněno" },
   "risk": { "low": "Nízké Riziko", "medium": "Střední Riziko", "high": "Vysoké Riziko", "critical": "Kritické Riziko", "noScans": "Zatím žádné skeny" },

@@ -13,7 +13,7 @@ export async function POST() {
       update: {},
       create: {
         id: 'org-default',
-        name: 'AEGINEL Demo Organization',
+        name: 'Aegis Personal Demo Organization',
       },
     });
 

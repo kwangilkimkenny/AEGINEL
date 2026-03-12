@@ -1,5 +1,5 @@
 {
-  "guard": "AEGINEL Guard",
+  "guard": "Aegis Personal",
   "status": { "protected": "ป้องกันอยู่", "disabled": "ปิดใช้งาน", "noSite": "ไม่มีเว็บไซต์ที่ใช้งาน" },
   "stats": { "scans": "สแกน", "blocked": "ถูกบล็อก", "piiProtected": "ได้รับการปกป้อง" },
   "risk": { "low": "ความเสี่ยงต่ำ", "medium": "ความเสี่ยงปานกลาง", "high": "ความเสี่ยงสูง", "critical": "ความเสี่ยงวิกฤต", "noScans": "ยังไม่มีการสแกน" },

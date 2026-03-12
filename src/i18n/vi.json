@@ -1,5 +1,5 @@
 {
-  "guard": "AEGINEL Guard",
+  "guard": "Aegis Personal",
   "status": { "protected": "Đã bảo vệ", "disabled": "Đã tắt", "noSite": "Không có trang hoạt động" },
   "stats": { "scans": "Quét", "blocked": "Đã chặn", "piiProtected": "Đã bảo vệ" },
   "risk": { "low": "Rủi ro Thấp", "medium": "Rủi ro Trung bình", "high": "Rủi ro Cao", "critical": "Rủi ro Nghiêm trọng", "noScans": "Chưa có lần quét nào" },

@@ -1,4 +1,4 @@
-// ── AEGINEL PII Proxy Engine (가명화) ──────────────────────────────────────
+// ── Aegis Personal PII Proxy Engine (가명화) ──────────────────────────────────────
 // Pseudonymizes PII before sending to LLM, restores originals in responses.
 
 import { scanPii } from './pii-scanner';
@@ -297,7 +297,7 @@ export class PiiProxyEngine {
     }
 
     if (foundAny) {
-      console.debug('[AEGINEL] Cross-session PII restoration applied (SPA fallback)');
+      console.debug('[Aegis] Cross-session PII restoration applied (SPA fallback)');
     }
 
     return restored;

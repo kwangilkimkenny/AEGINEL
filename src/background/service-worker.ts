@@ -1,4 +1,4 @@
-// ── AEGINEL Service Worker ─────────────────────────────────────────────────
+// ── Aegis Personal Service Worker ─────────────────────────────────────────────────
 // Hosts the detection engine, handles messages, manages badge + history.
 
 import { scan } from '../engine/detector';
@@ -59,7 +59,7 @@ const healthStatus: Record<string, HealthEntry> = {};
 function recordHealth(entry: HealthEntry) {
   healthStatus[entry.source] = entry;
   if (entry.status === 'error') {
-    console.warn(`[AEGINEL Health] ${entry.source}: ${entry.details ?? 'error'}`);
+    console.warn(`[Aegis Health] ${entry.source}: ${entry.details ?? 'error'}`);
   }
 }
 
@@ -177,7 +177,7 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
         try {
           mlResult = await mlClassify(input);
         } catch (err) {
-          console.warn('[AEGINEL] ML classify failed, using rule-only result:', err);
+          console.warn('[Aegis] ML classify failed, using rule-only result:', err);
           recordHealth({
             source: 'ml-classifier',
             status: 'degraded',
@@ -248,7 +248,7 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
             piiCount: result.piiCount,
           };
         } catch (err) {
-          console.error('[AEGINEL] PII proxy failed:', err);
+          console.error('[Aegis] PII proxy failed:', err);
           return { originalText: message.payload.text, proxiedText: message.payload.text, mappings: [], piiCount: 0 };
         }
       }
@@ -259,7 +259,7 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
           const restoredText = proxyEngine.restore(text, sessionId);
           return { restoredText };
         } catch (err) {
-          console.error('[AEGINEL] PII restore failed:', err);
+          console.error('[Aegis] PII restore failed:', err);
           return { restoredText: message.payload.text };
         }
       }
@@ -326,7 +326,7 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
             await chrome.notifications.create('ml-load-error', {
               type: 'basic',
               iconUrl: chrome.runtime.getURL('icons/icon-48.png'),
-              title: 'AEGINEL: ML Model Error',
+              title: 'Aegis: ML Model Error',
               message: 'The ML detection model failed to load. Rule-based detection is still active.',
             });
           } catch {
@@ -352,7 +352,7 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
         return null;
     }
   } catch (err) {
-    console.error('[AEGINEL] Unhandled error in message handler:', err);
+    console.error('[Aegis] Unhandled error in message handler:', err);
     return { error: String(err) };
   }
 }

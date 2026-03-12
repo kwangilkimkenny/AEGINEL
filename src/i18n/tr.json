@@ -1,5 +1,5 @@
 {
-  "guard": "AEGINEL Guard",
+  "guard": "Aegis Personal",
   "status": { "protected": "Korumalı", "disabled": "Devre Dışı", "noSite": "Aktif site yok" },
   "stats": { "scans": "Taramalar", "blocked": "Engellenen", "piiProtected": "Korunan" },
   "risk": { "low": "Düşük Risk", "medium": "Orta Risk", "high": "Yüksek Risk", "critical": "Kritik Risk", "noScans": "Henüz tarama yok" },

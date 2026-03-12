@@ -71,7 +71,7 @@ export default function ReportsPage() {
     if (!report) return;
 
     const lines = [
-      'AEGINEL Compliance Report',
+      'Aegis Personal Compliance Report',
       `기간: ${from} ~ ${to}`,
       '',
       '=== 요약 ===',

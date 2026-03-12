@@ -51,12 +51,12 @@ export default function WeeklyReport() {
   const hasActivity = thisWeek.totalScans > 0;
 
   const shareText = [
-    `AEGINEL Weekly Report (${period.start} ~ ${period.end})`,
+    `Aegis Personal Weekly Report (${period.start} ~ ${period.end})`,
     `Scans: ${thisWeek.totalScans} | Threats blocked: ${thisWeek.threatsBlocked} | PII protected: ${thisWeek.piiProtected}`,
     thisWeek.topCategories.length > 0
       ? `Top threats: ${thisWeek.topCategories.map(([c, n]) => `${CAT_LABELS[c] ?? c}(${n})`).join(', ')}`
       : '',
-    `Protected by AEGINEL — AI Safety Guard`,
+    `Protected by Aegis Personal`,
   ].filter(Boolean).join('\n');
 
   const handleCopy = async () => {

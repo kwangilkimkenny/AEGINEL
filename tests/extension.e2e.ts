@@ -1,7 +1,7 @@
 /**
- * AEGINEL Extension E2E Tests (Playwright)
+ * Aegis Personal Extension E2E Tests (Playwright)
  *
- * Comprehensive end-to-end tests for the AEGINEL Chrome extension.
+ * Comprehensive end-to-end tests for the Aegis Personal Chrome extension.
  * Tests cover:
  *   1. Extension loading (service worker, build artifacts)
  *   2. Popup UI rendering (all components)
@@ -124,7 +124,7 @@ test.beforeAll(async () => {
   const candidates = chromePaths[platform] ?? chromePaths.linux;
   const executablePath = candidates.find((p) => fs.existsSync(p));
 
-  // Launch a persistent context that loads the AEGINEL extension
+  // Launch a persistent context that loads the Aegis Personal extension
   context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
     ...(executablePath ? { executablePath } : {}),
@@ -157,8 +157,8 @@ test.beforeAll(async () => {
   await new Promise((r) => setTimeout(r, 2000));
 
   extensionId = getExtensionId(context);
-  console.log(`[AEGINEL E2E] Extension ID: "${extensionId}"`);
-  console.log(`[AEGINEL E2E] Service Workers: ${context.serviceWorkers().length}`);
+  console.log(`[Aegis Personal E2E] Extension ID: "${extensionId}"`);
+  console.log(`[Aegis Personal E2E] Service Workers: ${context.serviceWorkers().length}`);
 });
 
 test.afterAll(async () => {
@@ -248,9 +248,9 @@ test.describe('Suite 2: Popup UI Components', () => {
     await expect(root).toBeVisible();
   });
 
-  test('header shows AEGINEL branding and version', async () => {
-    // The header contains "AEGINEL" text and a version string "v1.0.0"
-    await expect(popupPage.getByText('AEGINEL')).toBeVisible();
+  test('header shows Aegis Personal branding and version', async () => {
+    // The header contains "Aegis Personal" text and a version string "v1.0.0"
+    await expect(popupPage.getByText('Aegis Personal')).toBeVisible();
     await expect(popupPage.getByText('v1.0.0')).toBeVisible();
   });
 

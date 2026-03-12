@@ -471,7 +471,7 @@ export default function PoliciesPage() {
           차단 사이트 (blockedSites)
         </h3>
         <p className="text-xs text-zinc-400">
-          AEGINEL이 완전히 비활성화되거나 차단되는 사이트입니다.
+          Aegis Personal이 완전히 비활성화되거나 차단되는 사이트입니다.
         </p>
         <div className="flex gap-2">
           <input

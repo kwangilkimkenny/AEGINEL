@@ -1,5 +1,5 @@
 {
-  "guard": "AEGINEL Guard",
+  "guard": "Aegis Personal",
   "status": {
     "protected": "Protected",
     "disabled": "Disabled",
@@ -85,8 +85,8 @@
     "passport": "Passport"
   },
   "health": {
-    "degraded": "AEGINEL: Some features unavailable",
-    "error": "AEGINEL: Unable to detect input on this page",
+    "degraded": "Aegis Personal: Some features unavailable",
+    "error": "Aegis Personal: Unable to detect input on this page",
     "brokenDetail": "Broken: {{selectors}}. The site may have updated its layout.",
     "dismiss": "Dismiss"
   }

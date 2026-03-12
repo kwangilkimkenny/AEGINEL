@@ -34,7 +34,7 @@ export default function Sidebar() {
     <div className="flex h-screen w-64 flex-col bg-zinc-950 border-r border-zinc-800">
       <div className="flex h-16 items-center gap-2 px-6 border-b border-zinc-800">
         <Shield className="h-7 w-7 text-emerald-500" />
-        <span className="text-lg font-bold text-white tracking-tight">AEGINEL</span>
+        <span className="text-lg font-bold text-white tracking-tight">Aegis Personal</span>
         <span className="ml-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400 uppercase tracking-wider">
           Admin
         </span>

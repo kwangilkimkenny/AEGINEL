@@ -1,4 +1,4 @@
-// ── AEGINEL Extension Engine Types ──────────────────────────────────────────
+// ── Aegis Personal Extension Engine Types ──────────────────────────────────────────
 
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 

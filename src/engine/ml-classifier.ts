@@ -1,4 +1,4 @@
-// ── AEGINEL ML Classifier ────────────────────────────────────────────────────
+// ── Aegis Personal ML Classifier ────────────────────────────────────────────────────
 // Bridge between the Service Worker and the Offscreen Document.
 // The Service Worker cannot run WASM directly (MV3 constraint), so all
 // Transformers.js inference is delegated to the offscreen page via messaging.
@@ -46,7 +46,7 @@ async function ensureOffscreen(): Promise<void> {
     }
     offscreenCreated = true;
   } catch (err) {
-    console.error('[AEGINEL ML] Offscreen creation failed:', err);
+    console.error('[Aegis ML] Offscreen creation failed:', err);
   } finally {
     offscreenCreating = false;
   }
@@ -75,7 +75,7 @@ export async function mlClassify(text: string): Promise<MlClassifyResult> {
     });
     return (response as MlClassifyResult) ?? FALLBACK;
   } catch (err) {
-    console.warn('[AEGINEL ML] classify error:', err);
+    console.warn('[Aegis ML] classify error:', err);
     return FALLBACK;
   }
 }

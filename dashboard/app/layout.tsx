@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'AEGINEL Admin Dashboard',
+  title: 'Aegis Personal Admin Dashboard',
   description: 'Enterprise AI Security Policy Management',
 };
 

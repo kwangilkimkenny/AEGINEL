@@ -107,7 +107,7 @@ export default function App() {
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
           </div>
-          <h1 className="text-xs font-bold text-aeginel-text tracking-tight">AEGINEL</h1>
+          <h1 className="text-xs font-bold text-aeginel-text tracking-tight">Aegis Personal</h1>
         </div>
         <span className="text-[9px] text-aeginel-muted">v1.1.0</span>
       </div>

@@ -1,5 +1,5 @@
 {
-  "guard": "AEGINEL Guard",
+  "guard": "Aegis Personal",
   "status": { "protected": "सुरक्षित", "disabled": "अक्षम", "noSite": "कोई सक्रिय साइट नहीं" },
   "stats": { "scans": "स्कैन", "blocked": "अवरुद्ध", "piiProtected": "सुरक्षित" },
   "risk": { "low": "कम जोखिम", "medium": "मध्यम जोखिम", "high": "उच्च जोखिम", "critical": "गंभीर जोखिम", "noScans": "अभी तक कोई स्कैन नहीं" },

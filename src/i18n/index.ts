@@ -1,4 +1,4 @@
-// ── AEGINEL i18n Engine ────────────────────────────────────────────────────
+// ── Aegis Personal i18n Engine ────────────────────────────────────────────
 // Lightweight i18n with no external dependencies.
 // Usage: t('settings.title') → "설정" or "Settings"
 
@@ -103,7 +103,7 @@ export function getLocale(): SupportedLocale {
  * @returns Translated string, or key if not found
  *
  * @example
- *   t('guard')              // → "AEGINEL Guard" or "AEGINEL 가드"
+ *   t('guard')              // → "Aegis Personal"
  *   t('settings.title')     // → "Settings" or "설정"
  *   t('proxy.protected', { count: 3 })  // → "3개의 개인정보가 보호되었습니다"
  */
