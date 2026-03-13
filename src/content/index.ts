@@ -837,13 +837,53 @@ function initContentScript(adapter: SiteAdapter) {
     attachSubmitInterception();
   }
 
-  // Re-show the shield if a DOM update removed it
-  function ensureShieldVisible() {
-    if (isShieldVisible()) return;
-    const anchor = adapter.getWarningAnchor();
-    if (anchor) {
+  let shieldProperlyPlaced = false;
+  let shieldRetryTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function isGenericAnchor(el: Element): boolean {
+    const tag = el.tagName.toLowerCase();
+    return tag === 'main' || tag === 'body' || tag === 'html';
+  }
+
+  function scheduleShieldRetry(attempt = 0) {
+    if (shieldRetryTimer) clearTimeout(shieldRetryTimer);
+    if (attempt >= 30) return;
+
+    shieldRetryTimer = setTimeout(() => {
+      if (shieldProperlyPlaced) return;
+
+      const anchor = adapter.getWarningAnchor();
+      if (!anchor || isGenericAnchor(anchor)) {
+        scheduleShieldRetry(attempt + 1);
+        return;
+      }
+
+      hideShieldIndicator();
       showShieldIndicator(lastShieldStatus, anchor);
+      shieldProperlyPlaced = true;
+    }, 500);
+  }
+
+  function ensureShieldVisible() {
+    const anchor = adapter.getWarningAnchor();
+    if (!anchor) return;
+
+    if (!shieldProperlyPlaced && !isGenericAnchor(anchor)) {
+      hideShieldIndicator();
+      showShieldIndicator(lastShieldStatus, anchor);
+      shieldProperlyPlaced = true;
+      return;
     }
+
+    if (isShieldVisible()) return;
+
+    if (isGenericAnchor(anchor)) {
+      if (!shieldProperlyPlaced) scheduleShieldRetry();
+      return;
+    }
+
+    showShieldIndicator(lastShieldStatus, anchor);
+    shieldProperlyPlaced = true;
   }
 
   // MutationObserver for SPA navigation — debounced
@@ -861,16 +901,17 @@ function initContentScript(adapter: SiteAdapter) {
     subtree: true,
   });
 
-  // Show initial idle shield
   function showIdleShield() {
     const anchor = adapter.getWarningAnchor();
-    if (anchor) {
-      lastShieldStatus = 'idle';
-      console.debug(`[Aegis] Showing shield indicator, anchor:`, anchor.tagName, anchor.className || '(no class)');
-      showShieldIndicator('idle', anchor);
-    } else {
-      console.debug(`[Aegis] No anchor found for shield indicator`);
+    lastShieldStatus = 'idle';
+
+    if (!anchor || isGenericAnchor(anchor)) {
+      scheduleShieldRetry();
+      return;
     }
+
+    showShieldIndicator('idle', anchor);
+    shieldProperlyPlaced = true;
   }
 
   // Initial attach

@@ -47,9 +47,25 @@ export const geminiAdapter: SiteAdapter = {
   },
 
   getWarningAnchor() {
-    return document.querySelector('.input-area')
-      ?? document.querySelector('rich-textarea')
-      ?? document.querySelector('main');
+    const specific = document.querySelector('input-area-v2')
+      ?? document.querySelector('fieldset.input-area-container')
+      ?? document.querySelector('.input-area')
+      ?? document.querySelector('rich-textarea');
+    if (specific) return specific;
+
+    for (const sel of INPUT_SELECTORS) {
+      try {
+        const el = document.querySelector(sel);
+        if (!el) continue;
+        const container = el.closest('rich-textarea, input-area-v2, .input-area, fieldset');
+        if (container) return container;
+        if (el.parentElement && el.parentElement !== document.body) {
+          return el.parentElement;
+        }
+      } catch { /* skip */ }
+    }
+
+    return document.querySelector('main');
   },
 
   matches(hostname: string) {

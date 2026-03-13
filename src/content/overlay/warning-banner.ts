@@ -18,6 +18,8 @@ export function showWarningBanner(result: ScanResult, anchor: Element): void {
 
   const host = document.createElement('div');
   host.id = BANNER_HOST_ID;
+  host.style.width = '100%';
+  host.style.boxSizing = 'border-box';
   const shadow = host.attachShadow({ mode: 'closed' });
 
   // Inject styles
@@ -163,6 +165,8 @@ export function showProtectedBanner(piiCount: number, anchor: Element): void {
 
   const host = document.createElement('div');
   host.id = PROTECTED_HOST_ID;
+  host.style.width = '100%';
+  host.style.boxSizing = 'border-box';
   const shadow = host.attachShadow({ mode: 'closed' });
 
   const style = document.createElement('style');
