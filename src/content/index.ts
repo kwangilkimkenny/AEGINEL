@@ -420,6 +420,21 @@ function initContentScript(adapter: SiteAdapter) {
   // with pseudonymized text. This observer fires as a microtask (before
   // the browser paints), so the user never sees the pseudonymized value.
 
+  // Build a regex that matches the same digits with optional separators (dashes, spaces, dots)
+  // e.g. pseudonym "01057523572" also matches "010-5752-3572"
+  function buildFuzzyDigitRegex(pseudonym: string): RegExp | null {
+    const digits = pseudonym.replace(/\D/g, '');
+    if (digits.length < 7) return null;
+    const pattern = digits.split('').join('[\\s\\-–.]*');
+    return new RegExp(pattern, 'g');
+  }
+
+  function textContainsPseudonym(text: string, mapping: PiiMapping): boolean {
+    if (text.includes(mapping.pseudonym)) return true;
+    const fuzzy = buildFuzzyDigitRegex(mapping.pseudonym);
+    return fuzzy ? fuzzy.test(text) : false;
+  }
+
   function replaceInText(text: string, mappings: PiiMapping[]): string | null {
     let result = text;
     let changed = false;
@@ -427,6 +442,16 @@ function initContentScript(adapter: SiteAdapter) {
       if (result.includes(mapping.pseudonym)) {
         result = result.split(mapping.pseudonym).join(mapping.original);
         changed = true;
+        continue;
+      }
+      // Fuzzy match: AI may reformat numbers (e.g. add dashes to phone numbers)
+      const fuzzy = buildFuzzyDigitRegex(mapping.pseudonym);
+      if (fuzzy) {
+        const replaced = result.replace(fuzzy, mapping.original);
+        if (replaced !== result) {
+          result = replaced;
+          changed = true;
+        }
       }
     }
     return changed ? result : null;
@@ -447,7 +472,7 @@ function initContentScript(adapter: SiteAdapter) {
 
     // Quick check: does this element contain any pseudonym at all?
     const fullText = node.textContent ?? '';
-    if (!mappings.some(m => fullText.includes(m.pseudonym))) return false;
+    if (!mappings.some(m => textContainsPseudonym(fullText, m))) return false;
 
     const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
     let textNode: Text | null;
@@ -503,7 +528,7 @@ function initContentScript(adapter: SiteAdapter) {
           const text = userMsg.textContent ?? '';
           
           // Check if this message contains any pseudonyms
-          if (mappings.some(m => text.includes(m.pseudonym))) {
+          if (mappings.some(m => textContainsPseudonym(text, m))) {
             if (processNodeForRestore(userMsg, mappings)) {
               restored = true;
             }
@@ -516,7 +541,7 @@ function initContentScript(adapter: SiteAdapter) {
         const main = document.querySelector('main') ?? document.body;
         const fullText = main.textContent ?? '';
         
-        if (mappings.some(m => fullText.includes(m.pseudonym))) {
+        if (mappings.some(m => textContainsPseudonym(fullText, m))) {
           if (processNodeForRestore(main, mappings)) {
             restored = true;
           }
@@ -544,7 +569,7 @@ function initContentScript(adapter: SiteAdapter) {
       
       for (const mutation of mutations) {
         const targetText = (mutation.target as Element).textContent ?? '';
-        if (mappings.some(m => targetText.includes(m.pseudonym))) {
+        if (mappings.some(m => textContainsPseudonym(targetText, m))) {
           needsRestore = true;
           break;
         }
@@ -552,7 +577,7 @@ function initContentScript(adapter: SiteAdapter) {
         if (mutation.type === 'childList') {
           for (const node of mutation.addedNodes) {
             const nodeText = node.textContent ?? '';
-            if (mappings.some(m => nodeText.includes(m.pseudonym))) {
+            if (mappings.some(m => textContainsPseudonym(nodeText, m))) {
               needsRestore = true;
               break;
             }
@@ -588,7 +613,7 @@ function initContentScript(adapter: SiteAdapter) {
       const fullText = main.textContent ?? '';
       
       // Only restore if pseudonyms are still present
-      if (mappings.some(m => fullText.includes(m.pseudonym))) {
+      if (mappings.some(m => textContainsPseudonym(fullText, m))) {
         scanAndRestore();
       }
     }, 500);
@@ -660,7 +685,7 @@ function initContentScript(adapter: SiteAdapter) {
         // Check if this element likely contains pseudonyms
         if (lastProxyResult && lastProxyResult.piiCount > 0) {
           const hasPseudonyms = lastProxyResult.mappings.some(
-            m => currentText.includes(m.pseudonym)
+            m => textContainsPseudonym(currentText, m)
           );
           if (!hasPseudonyms) {
             restoredSnapshots.set(el, currentText);

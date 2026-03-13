@@ -1,7 +1,7 @@
 {
   "name": "@aegis-personal/extension",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "description": "Aegis Personal Chrome Extension - AI Privacy & Prompt Security Guard",
   "scripts": {

@@ -11,11 +11,18 @@ import { pipeline, env } from '@huggingface/transformers';
 
 // Point to the bundled model inside the extension's public/models/ directory.
 env.localModelPath = chrome.runtime.getURL('models/');
+env.allowLocalModels = true;
 env.allowRemoteModels = false;
-env.useBrowserCache = true;
+env.useBrowserCache = false; // Cache API doesn't support chrome-extension:// scheme
 
-// Use IndexedDB + Cache API for faster subsequent loads
-env.cacheDir = 'aeginel-model-cache';
+// ONNX WASM backend: load .mjs/.wasm from bundled local files instead of CDN
+// (MV3 CSP blocks dynamic script loading from external origins)
+// @ts-ignore — backends.onnx.wasm exists at runtime in Transformers.js v3
+env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL('wasm/');
+// @ts-ignore
+env.backends.onnx.wasm.numThreads = 1;
+// @ts-ignore
+env.backends.onnx.wasm.proxy = false;
 
 const MODEL_KEY = 'guard';
 const THRESHOLD = 0.5;
@@ -47,7 +54,10 @@ async function loadModel(): Promise<void> {
     // Cast to ClassifierFn to bypass complex union type from generics
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore — Transformers.js overloaded pipeline() returns a union type too complex for TS
-    classifier = (await pipeline('text-classification', MODEL_KEY)) as ClassifierFn;
+    classifier = (await pipeline('text-classification', MODEL_KEY, {
+      dtype: 'q8',
+      device: 'wasm',
+    })) as ClassifierFn;
     classifierReady = true;
     lastLoadError = null;
     loadRetryCount = 0;
