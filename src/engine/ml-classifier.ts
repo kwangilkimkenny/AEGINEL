@@ -24,10 +24,15 @@ export interface MlClassifyResult {
 async function ensureOffscreen(): Promise<void> {
   if (offscreenCreated) return;
   if (offscreenCreating) {
-    // Wait for in-flight creation
+    // Wait for in-flight creation (max 5 seconds)
     await new Promise<void>((resolve) => {
+      const WAIT_TIMEOUT_MS = 5000;
+      const deadline = Date.now() + WAIT_TIMEOUT_MS;
       const check = setInterval(() => {
-        if (!offscreenCreating) { clearInterval(check); resolve(); }
+        if (!offscreenCreating || Date.now() >= deadline) {
+          clearInterval(check);
+          resolve();
+        }
       }, 100);
     });
     return;

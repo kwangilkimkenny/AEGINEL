@@ -337,11 +337,11 @@ const SHIELD_ICONS: Record<ShieldStatus, string> = {
 };
 
 const SHIELD_COLORS: Record<ShieldStatus, { bg: string; border: string }> = {
-  idle: { bg: '#f3f4f6', border: '#d1d5db' },
-  safe: { bg: '#f0fdf4', border: '#86efac' },
-  pii: { bg: '#eff6ff', border: '#93c5fd' },
-  warning: { bg: '#fffbeb', border: '#fcd34d' },
-  danger: { bg: '#fef2f2', border: '#fca5a5' },
+  idle:    { bg: '#161b22', border: '#30363d' },
+  safe:    { bg: 'rgba(63,185,80,0.12)',   border: 'rgba(63,185,80,0.4)' },
+  pii:     { bg: 'rgba(88,166,255,0.12)',  border: 'rgba(88,166,255,0.4)' },
+  warning: { bg: 'rgba(210,153,34,0.12)',  border: 'rgba(210,153,34,0.4)' },
+  danger:  { bg: 'rgba(248,81,73,0.12)',   border: 'rgba(248,81,73,0.4)' },
 };
 
 const SHIELD_TOOLTIPS: Record<ShieldStatus, string> = {

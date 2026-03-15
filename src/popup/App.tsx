@@ -18,10 +18,8 @@ export default function App() {
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const [history, setHistory] = useState<ScanResult[]>([]);
   const [siteName, setSiteName] = useState('');
-  const [, forceRender] = useState(0);
 
   useEffect(() => {
-    // Force English
     setLocale('en');
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -44,24 +42,22 @@ export default function App() {
         setThreatsBlocked(res.payload.threatsBlocked);
         setLastScan(res.payload.lastScan);
       }
-    });
+    }).catch(() => {});
 
     chrome.runtime.sendMessage({ type: 'GET_CONFIG' }).then((res: ConfigResponseMessage) => {
       if (res?.payload) {
         setConfig(res.payload);
-        // Always use English regardless of saved config
         setLocale('en');
-        forceRender(n => n + 1);
       }
-    });
+    }).catch(() => {});
 
     chrome.runtime.sendMessage({ type: 'GET_HISTORY' }).then((res: HistoryResponseMessage) => {
       if (res?.payload) setHistory(res.payload);
-    });
+    }).catch(() => {});
 
     chrome.runtime.sendMessage({ type: 'GET_PROXY_STATS' }).then((res) => {
       if (res?.totalProtected != null) setPiiProtected(res.totalProtected);
-    });
+    }).catch(() => {});
   }, []);
 
   const now = Date.now();
@@ -83,10 +79,7 @@ export default function App() {
     if (partial.piiProxy) newConfig.piiProxy = { ...config.piiProxy, ...partial.piiProxy };
     setConfig(newConfig);
     chrome.runtime.sendMessage({ type: 'UPDATE_CONFIG', payload: newConfig });
-    if (partial.language) {
-      setLocale('en'); // Always English
-      forceRender(n => n + 1);
-    }
+    if (partial.language) setLocale('en');
   };
 
   const handleClearHistory = () => {
@@ -98,44 +91,79 @@ export default function App() {
   };
 
   return (
-    <div className="px-3 py-2 space-y-1.5">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-0.5">
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-4 rounded bg-aeginel-green flex items-center justify-center">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <div className="bg-aeginel-bg min-h-full" style={{ width: '360px' }}>
+
+      {/* ── Header ── */}
+      <div className="px-4 pt-4 pb-3 flex items-center justify-between border-b border-aeginel-border">
+        <div className="flex items-center gap-2.5">
+          {/* Brand logo */}
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300"
+            style={config.enabled
+              ? { background: '#3fb950', boxShadow: '0 0 12px rgba(63,185,80,0.45)' }
+              : { background: '#21262d', border: '1px solid #30363d' }
+            }
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke={config.enabled ? '#0d1117' : '#8b949e'}
+              strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
           </div>
-          <h1 className="text-xs font-bold text-aeginel-text tracking-tight">Aegis Personal</h1>
+          <div>
+            <h1 className="text-[13px] font-bold text-aeginel-text tracking-tight leading-none">AEGINEL</h1>
+            <p className="text-[9px] text-aeginel-muted leading-none mt-0.5 tracking-wide uppercase">AI Prompt Guard</p>
+          </div>
         </div>
-        <span className="text-[9px] text-aeginel-muted">v1.1.0</span>
+
+        <div className="flex items-center gap-2">
+          <MlStatus />
+          {/* Power toggle */}
+          <button
+            onClick={handleToggle}
+            className="relative w-10 h-[22px] rounded-full transition-all duration-300 flex-shrink-0"
+            style={config.enabled
+              ? { background: '#3fb950', boxShadow: '0 0 8px rgba(63,185,80,0.4)' }
+              : { background: '#21262d', border: '1px solid #30363d' }
+            }
+          >
+            <span
+              className="absolute top-[3px] w-4 h-4 rounded-full bg-white shadow transition-transform duration-300"
+              style={{ transform: config.enabled ? 'translateX(21px)' : 'translateX(3px)' }}
+            />
+          </button>
+        </div>
       </div>
 
-      <StatusCard
-        enabled={config.enabled}
-        siteName={siteName}
-        totalScans={totalScans}
-        threatsBlocked={threatsBlocked}
-        piiProtected={piiProtected}
-        todayScans={todayScans}
-        weekScans={weekScans}
-        onToggle={handleToggle}
-      />
+      {/* ── Body ── */}
+      <div className="px-3 py-3 space-y-2">
+        <StatusCard
+          enabled={config.enabled}
+          siteName={siteName}
+          totalScans={totalScans}
+          threatsBlocked={threatsBlocked}
+          piiProtected={piiProtected}
+          todayScans={todayScans}
+          weekScans={weekScans}
+          onToggle={handleToggle}
+        />
+        <RiskMeter lastScan={lastScan} />
+        <RecentScans scans={history} />
+        <WeeklyReport />
+        <SettingsPanel
+          config={config}
+          onUpdate={handleUpdateConfig}
+          onClearHistory={handleClearHistory}
+        />
 
-      <MlStatus />
-
-      <RiskMeter lastScan={lastScan} />
-
-      <RecentScans scans={history} />
-
-      <WeeklyReport />
-
-      <SettingsPanel
-        config={config}
-        onUpdate={handleUpdateConfig}
-        onClearHistory={handleClearHistory}
-      />
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-1 pb-0.5">
+          <span className="text-[9px] text-aeginel-muted/50">v1.1.0</span>
+          <span className="text-[9px] text-aeginel-muted/40">
+            {todayScans > 0 ? `${todayScans} scan${todayScans > 1 ? 's' : ''} today` : 'No scans today'}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

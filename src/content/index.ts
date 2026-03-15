@@ -636,7 +636,7 @@ function initContentScript(adapter: SiteAdapter) {
 
   // ── Response Watching (restore pseudonyms in AI responses) ────────────
 
-  function watchResponses() {
+  function watchResponses(): MutationObserver {
     const responseSelector = adapter.getResponseSelector();
     let restoreTimer: ReturnType<typeof setTimeout> | null = null;
     const restoredElements = new WeakSet<Element>();
@@ -727,6 +727,8 @@ function initContentScript(adapter: SiteAdapter) {
     // For Gemini, check more frequently
     const checkInterval = adapter.id === 'gemini' ? 1500 : 2000;
     setInterval(tryRestoreAll, checkInterval);
+
+    return responseObserver;
   }
 
   async function restoreInDom(container: Element) {
@@ -751,8 +753,12 @@ function initContentScript(adapter: SiteAdapter) {
         payload: { text: node.textContent, sessionId },
       });
       if (restored?.restoredText && restored.restoredText !== node.textContent) {
-        node.textContent = restored.restoredText;
-        restoredCount++;
+        try {
+          node.textContent = restored.restoredText;
+          restoredCount++;
+        } catch {
+          // Node may have been removed from DOM during async operation
+        }
       }
     }
     if (restoredCount > 0) {
@@ -901,6 +907,20 @@ function initContentScript(adapter: SiteAdapter) {
     subtree: true,
   });
 
+  // Store reference to response observer for cleanup
+  let responseObserverRef: MutationObserver | null = null;
+
+  // Cleanup: disconnect observers and clear timers on page unload/navigation
+  function cleanup() {
+    observer.disconnect();
+    responseObserverRef?.disconnect();
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (spaTimer) clearTimeout(spaTimer);
+  }
+
+  window.addEventListener('pagehide', cleanup);
+
+  // Show initial idle shield
   function showIdleShield() {
     const anchor = adapter.getWarningAnchor();
     lastShieldStatus = 'idle';
@@ -918,17 +938,18 @@ function initContentScript(adapter: SiteAdapter) {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       scanExistingElements();
-      watchResponses();
+      responseObserverRef = watchResponses();
       showIdleShield();
       setTimeout(checkAdapterHealth, 2000);
     });
   } else {
     scanExistingElements();
-    watchResponses();
+    responseObserverRef = watchResponses();
     showIdleShield();
     setTimeout(checkAdapterHealth, 2000);
   }
 
   // Periodic health check every 5 minutes to detect site layout changes
-  setInterval(checkAdapterHealth, 5 * 60 * 1000);
+  const HEALTH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+  setInterval(checkAdapterHealth, HEALTH_CHECK_INTERVAL_MS);
 }

@@ -482,21 +482,23 @@ function detectMultiTurnContext(currentLower: string, history: string[], cats: s
   return Math.min(bonus, 15);
 }
 
+// ── Layer 9 helpers: pre-compiled at module load ─────────────────────────
+
+const HARMFUL_ACTION_RES: RegExp[] = [
+  /make a bomb/i, /create a virus/i, /synthesize drugs/i, /synthesize methamphetamine/i,
+  /steal/i, /kill/i, /forge/i, /counterfeit/i, /manipulate the market/i, /evade taxes/i,
+  /pump.?and.?dump/i, /wire transfer/i, /offshore account/i,
+  /toxic gas/i, /ransomware program/i, /encrypt all files/i,
+  /change my gr[a4]des/i, /h[a4]ck/i, /fake website/i,
+  /폭발물/i, /위조/i, /탈세/i, /사기/i, /해킹하는/i,
+];
+
 // ── Layer 9: Semantic Risk ──────────────────────────────────────────────
 
 function detectSemanticRisk(lower: string, cats: string[], allCats: string[]): number {
   let s = 0;
 
-  const harmfulActions = [
-    'make a bomb', 'create a virus', 'synthesize drugs', 'synthesize methamphetamine',
-    'steal', 'kill', 'forge', 'counterfeit', 'manipulate the market', 'evade taxes',
-    'pump.?and.?dump', 'wire transfer', 'offshore account',
-    'toxic gas', 'ransomware program', 'encrypt all files',
-    'change my gr[a4]des', 'h[a4]ck', 'fake website',
-    '폭발물', '위조', '탈세', '사기', '해킹하는',
-  ];
-  for (const action of harmfulActions) {
-    const re = new RegExp(action, 'i');
+  for (const re of HARMFUL_ACTION_RES) {
     if (re.test(lower)) { cats.push('harmful_content'); s += 15; break; }
   }
 

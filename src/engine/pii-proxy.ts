@@ -75,8 +75,10 @@ function generateFakeValue(type: PiiType, original: string): string {
       for (const sep of separators) {
         const [posStr, ch] = sep.split(':');
         const pos = parseInt(posStr, 10) + offset;
-        result = result.slice(0, pos) + ch + result.slice(pos);
-        offset++;
+        if (pos >= 0 && pos <= result.length) {
+          result = result.slice(0, pos) + ch + result.slice(pos);
+          offset++;
+        }
       }
       return result;
     }

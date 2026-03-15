@@ -5,11 +5,18 @@ interface Props {
   scans: ScanResult[];
 }
 
-const LEVEL_DOT: Record<string, string> = {
-  low: 'bg-aeginel-green',
-  medium: 'bg-aeginel-yellow',
-  high: 'bg-aeginel-orange',
-  critical: 'bg-aeginel-red',
+const LEVEL_COLOR: Record<string, string> = {
+  low:      '#3fb950',
+  medium:   '#d29922',
+  high:     '#db6d28',
+  critical: '#f85149',
+};
+
+const LEVEL_BG: Record<string, string> = {
+  low:      'rgba(63,185,80,0.08)',
+  medium:   'rgba(210,153,34,0.08)',
+  high:     'rgba(219,109,40,0.08)',
+  critical: 'rgba(248,81,73,0.08)',
 };
 
 export default function RecentScans({ scans }: Props) {
@@ -27,30 +34,67 @@ export default function RecentScans({ scans }: Props) {
   };
 
   return (
-    <div className="rounded-md p-2 border border-aeginel-border bg-aeginel-card">
-      <div className="flex items-center justify-between mb-1">
-        <h3 className="text-[11px] font-semibold">Recent Scans</h3>
+    <div className="rounded-xl border border-aeginel-border bg-aeginel-surface p-3">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-[11px] font-semibold text-aeginel-text">Recent Scans</h3>
         {scans.length > 0 && (
           <button
             onClick={handleExport}
-            className="text-[9px] text-aeginel-muted hover:text-aeginel-text transition-colors"
+            className="text-[9px] text-aeginel-muted hover:text-aeginel-blue transition-colors px-1.5 py-0.5 rounded-md hover:bg-aeginel-surface2 flex items-center gap-1"
           >
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
             Export
           </button>
         )}
       </div>
+
       {recent.length === 0 ? (
-        <p className="text-[9px] text-aeginel-muted text-center py-1.5">No scans yet</p>
+        <div className="flex flex-col items-center gap-1 py-4">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#30363d" strokeWidth="1.5" strokeLinecap="round">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <p className="text-[9px] text-aeginel-muted">No scans yet</p>
+        </div>
       ) : (
-        <div className="space-y-0.5">
-          {recent.map((scan) => (
-            <div key={scan.id} className="flex items-center gap-1 text-[10px] bg-white rounded px-1.5 py-0.5 border border-aeginel-border">
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${LEVEL_DOT[scan.level]}`} />
-              <span className="font-medium w-5 text-right">{scan.score}</span>
-              <span className="text-aeginel-muted truncate flex-1">{scan.site}</span>
-              <span className="text-aeginel-muted text-[9px]">{fmt(scan.timestamp)}</span>
-            </div>
-          ))}
+        <div className="space-y-1">
+          {recent.map((scan) => {
+            const color = LEVEL_COLOR[scan.level];
+            const bg = LEVEL_BG[scan.level];
+            return (
+              <div
+                key={scan.id}
+                className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 border transition-colors"
+                style={{
+                  borderLeft: `3px solid ${color}`,
+                  borderRight: '1px solid rgba(48,54,61,0.6)',
+                  borderTop: '1px solid rgba(48,54,61,0.6)',
+                  borderBottom: '1px solid rgba(48,54,61,0.6)',
+                  background: bg,
+                }}
+              >
+                {/* Score */}
+                <span
+                  className="text-sm font-bold number-hero flex-shrink-0 w-6 text-right"
+                  style={{ color }}
+                >
+                  {scan.score}
+                </span>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] font-medium text-aeginel-text truncate">{scan.site}</div>
+                  {scan.categories.length > 0 && (
+                    <div className="text-[8px] text-aeginel-muted truncate">{scan.categories[0]}</div>
+                  )}
+                </div>
+
+                {/* Time */}
+                <span className="text-[8px] text-aeginel-muted flex-shrink-0">{fmt(scan.timestamp)}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
