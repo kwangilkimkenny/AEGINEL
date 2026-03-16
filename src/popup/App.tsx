@@ -158,7 +158,7 @@ export default function App() {
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-1 pb-0.5">
-          <span className="text-[9px] text-aeginel-muted/50">v1.1.0</span>
+          <span className="text-[9px] text-aeginel-muted/50">v{chrome.runtime.getManifest().version}</span>
           <span className="text-[9px] text-aeginel-muted/40">
             {todayScans > 0 ? `${todayScans} scan${todayScans > 1 ? 's' : ''} today` : 'No scans today'}
           </span>
