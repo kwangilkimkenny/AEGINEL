@@ -94,8 +94,8 @@ export default function App() {
     <div className="bg-aeginel-bg min-h-full" style={{ width: '360px' }}>
 
       {/* ── Header ── */}
-      <div className="px-4 pt-4 pb-3 flex items-center justify-between border-b border-aeginel-border">
-        <div className="flex items-center gap-2.5">
+      <div className="px-3 pt-4 pb-3 flex items-center justify-between border-b border-aeginel-border gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           {/* Brand logo */}
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300"
@@ -110,13 +110,13 @@ export default function App() {
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-[13px] font-bold text-aeginel-text tracking-tight leading-none">AEGINEL</h1>
             <p className="text-[9px] text-aeginel-muted leading-none mt-0.5 tracking-wide uppercase">AI Prompt Guard</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <MlStatus />
           {/* Power toggle */}
           <button
