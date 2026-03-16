@@ -91,10 +91,10 @@ export default function App() {
   };
 
   return (
-    <div className="bg-aeginel-bg min-h-full" style={{ width: '360px' }}>
+    <div className="bg-aeginel-bg min-h-full" style={{ width: '380px' }}>
 
       {/* ── Header ── */}
-      <div className="px-3 pt-4 pb-3 flex items-center justify-between border-b border-aeginel-border gap-2">
+      <div className="pl-3 pr-5 pt-4 pb-3 flex items-center justify-between border-b border-aeginel-border gap-2">
         <div className="flex items-center gap-2 min-w-0">
           {/* Brand logo */}
           <div
@@ -121,14 +121,14 @@ export default function App() {
           {/* Power toggle */}
           <button
             onClick={handleToggle}
-            className="relative w-10 h-[22px] rounded-full transition-all duration-300 flex-shrink-0"
+            className="relative w-10 h-[22px] rounded-full transition-all duration-300 flex-shrink-0 p-0 border-0"
             style={config.enabled
               ? { background: '#3fb950', boxShadow: '0 0 8px rgba(63,185,80,0.4)' }
               : { background: '#21262d', border: '1px solid #30363d' }
             }
           >
             <span
-              className="absolute top-[3px] w-4 h-4 rounded-full bg-white shadow transition-transform duration-300"
+              className="absolute left-0 top-[3px] w-4 h-4 rounded-full bg-white shadow transition-transform duration-300"
               style={{ transform: config.enabled ? 'translateX(21px)' : 'translateX(3px)' }}
             />
           </button>
