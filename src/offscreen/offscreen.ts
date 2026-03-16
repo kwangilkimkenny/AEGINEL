@@ -1,42 +1,45 @@
 // ── Aegis Personal Offscreen Document ──────────────────────────────────────────────
 // Runs inside an Offscreen Document (chrome.offscreen API, MV3).
 // The Service Worker cannot run WASM directly, so ML inference is delegated here.
-// Communication: chrome.runtime.onMessage / sendMessage
+//
+// Tokenization: @huggingface/transformers AutoTokenizer (pure JS, handles SentencePiece)
+// Inference:    onnxruntime-web InferenceSession (direct ONNX, bypasses Transformers.js pipeline)
+//
+// The v2 guard model was exported with a custom GuardEncoderONNX wrapper that takes
+// only (input_ids, attention_mask) and outputs raw logits. Transformers.js pipeline()
+// is incompatible with this layout, so we drive ONNX Runtime directly.
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore — pipeline is typed for single-label by default; we cast manually
-import { pipeline, env } from '@huggingface/transformers';
+// @ts-ignore — AutoTokenizer type
+import { AutoTokenizer, env } from '@huggingface/transformers';
+import * as ort from 'onnxruntime-web';
 
-// ── Config ──────────────────────────────────────────────────────────────────
-
-// Point to the bundled model inside the extension's public/models/ directory.
+// ── Transformers.js config (tokenizer only) ──────────────────────────────────
 env.localModelPath = chrome.runtime.getURL('models/');
 env.allowLocalModels = true;
 env.allowRemoteModels = false;
-env.useBrowserCache = false; // Cache API doesn't support chrome-extension:// scheme
+env.useBrowserCache = false;
 
-// ONNX WASM backend: load .mjs/.wasm from bundled local files instead of CDN
-// (MV3 CSP blocks dynamic script loading from external origins)
-// @ts-ignore — backends.onnx.wasm exists at runtime in Transformers.js v3
-env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL('wasm/');
-// @ts-ignore
-env.backends.onnx.wasm.numThreads = 1;
-// @ts-ignore
-env.backends.onnx.wasm.proxy = false;
+// ── ONNX Runtime WASM config ─────────────────────────────────────────────────
+ort.env.wasm.wasmPaths = chrome.runtime.getURL('wasm/');
+ort.env.wasm.numThreads = 1;
+ort.env.wasm.proxy = false;
 
-const MODEL_KEY = 'guard';
+// ── Constants ────────────────────────────────────────────────────────────────
+const LABEL_NAMES = [
+  'safe', 'jailbreak', 'encoding_bypass', 'script_evasion',
+  'social_engineering', 'prompt_injection', 'harmful_content',
+] as const;
 const THRESHOLD = 0.5;
+const MAX_LENGTH = 256;
 const MAX_LOAD_RETRIES = 2;
 
 // ── State ────────────────────────────────────────────────────────────────────
-
-// Loosely-typed to avoid Transformers.js generic-union complexity
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ClassifierFn = (text: string, opts?: Record<string, unknown>) => Promise<any>;
-
+let tokenizer: any = null;
+let session: ort.InferenceSession | null = null;
 let classifierReady = false;
 let classifierLoading = false;
-let classifier: ClassifierFn | null = null;
 let loadRetryCount = 0;
 let lastLoadError: string | null = null;
 let loadStartTime = 0;
@@ -51,20 +54,31 @@ async function loadModel(): Promise<void> {
   try {
     loadStartTime = Date.now();
     console.log(`[Aegis Offscreen] Loading guard model (attempt ${loadRetryCount + 1})...`);
-    // Cast to ClassifierFn to bypass complex union type from generics
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore — Transformers.js overloaded pipeline() returns a union type too complex for TS
-    classifier = (await pipeline('text-classification', MODEL_KEY, {
-      dtype: 'q8',
-      device: 'wasm',
-    })) as ClassifierFn;
+
+    // 1) Load tokenizer via Transformers.js (pure JS, no WASM needed)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    tokenizer = await AutoTokenizer.from_pretrained('guard');
+    console.log('[Aegis Offscreen] Tokenizer loaded');
+
+    // 2) Fetch the ONNX model binary and create an InferenceSession
+    const modelUrl = chrome.runtime.getURL('models/guard/onnx/model_quantized.onnx');
+    console.log('[Aegis Offscreen] Fetching ONNX model...');
+    const resp = await fetch(modelUrl);
+    if (!resp.ok) throw new Error(`Failed to fetch model: ${resp.status}`);
+    const modelBuffer = await resp.arrayBuffer();
+    console.log(`[Aegis Offscreen] Model fetched (${(modelBuffer.byteLength / 1024 / 1024).toFixed(1)} MB)`);
+
+    session = await ort.InferenceSession.create(modelBuffer, {
+      executionProviders: ['wasm'],
+    });
+    console.log('[Aegis Offscreen] ONNX inference session created');
+
     classifierReady = true;
     lastLoadError = null;
     loadRetryCount = 0;
     loadDurationMs = Date.now() - loadStartTime;
-    console.log(`[Aegis Offscreen] Model ready in ${loadDurationMs}ms.`);
+    console.log(`[Aegis Offscreen] Model ready in ${(loadDurationMs / 1000).toFixed(1)}s`);
 
-    // Report success to service worker
     reportStatus('ok');
   } catch (err) {
     const errorMsg = String(err);
@@ -73,14 +87,12 @@ async function loadModel(): Promise<void> {
     lastLoadError = errorMsg;
     loadRetryCount++;
 
-    // Report error to service worker
     reportLoadError(errorMsg, loadRetryCount);
 
-    // Retry with exponential backoff (max MAX_LOAD_RETRIES retries)
     if (loadRetryCount <= MAX_LOAD_RETRIES) {
-      const delay = 1000 * Math.pow(2, loadRetryCount - 1); // 1s, 2s
+      const delay = 1000 * Math.pow(2, loadRetryCount - 1);
       console.log(`[Aegis Offscreen] Retrying in ${delay}ms (attempt ${loadRetryCount + 1}/${MAX_LOAD_RETRIES + 1})...`);
-      classifierLoading = false; // allow retry
+      classifierLoading = false;
       setTimeout(() => loadModel(), delay);
       return;
     }
@@ -157,8 +169,12 @@ interface ClassifyResult {
   error?: string;
 }
 
+function sigmoid(x: number): number {
+  return 1 / (1 + Math.exp(-x));
+}
+
 async function handleClassify(text: string): Promise<ClassifyResult> {
-  if (!classifierReady || !classifier) {
+  if (!classifierReady || !session || !tokenizer) {
     return {
       success: false, labels: [], scores: {}, isHarmful: false, mlScore: 0,
       error: classifierLoading ? 'MODEL_LOADING' : 'MODEL_NOT_READY',
@@ -166,21 +182,51 @@ async function handleClassify(text: string): Promise<ClassifyResult> {
   }
 
   try {
-    // Return all label scores with sigmoid (multi-label model requires sigmoid, not softmax)
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const raw = await classifier(text, { function_to_apply: 'sigmoid', top_k: null });
-    // Normalise to flat array regardless of batch wrapping
-    const items: { label: string; score: number }[] = Array.isArray(raw)
-      ? (Array.isArray(raw[0]) ? raw[0] : raw) as { label: string; score: number }[]
-      : [];
+    // 1) Tokenize — must match training config: max_length=256, pad to max_length
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const encoded = await tokenizer(text, {
+      padding: 'max_length',
+      truncation: true,
+      max_length: MAX_LENGTH,
+    });
+
+    // 2) Build ONNX Runtime tensors from tokenizer output
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const seqLen: number = encoded.input_ids.dims[1] ?? encoded.input_ids.dims[0] ?? MAX_LENGTH;
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const idsRaw = encoded.input_ids.data;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const maskRaw = encoded.attention_mask.data;
+
+    // Ensure BigInt64Array (onnxruntime-web expects this for int64 inputs)
+    const idsBigInt = idsRaw instanceof BigInt64Array
+      ? idsRaw
+      : BigInt64Array.from(Array.from(idsRaw as ArrayLike<number>).map(BigInt));
+    const maskBigInt = maskRaw instanceof BigInt64Array
+      ? maskRaw
+      : BigInt64Array.from(Array.from(maskRaw as ArrayLike<number>).map(BigInt));
+
+    const inputIds = new ort.Tensor('int64', idsBigInt, [1, seqLen]);
+    const attentionMask = new ort.Tensor('int64', maskBigInt, [1, seqLen]);
+
+    // 3) Run inference — only input_ids + attention_mask (no token_type_ids)
+    const output = await session.run({
+      input_ids: inputIds,
+      attention_mask: attentionMask,
+    });
+
+    // 4) Extract logits → sigmoid → threshold
+    const logitsData = Array.from(output.logits.data as Float32Array);
 
     const scores: Record<string, number> = {};
     const detectedLabels: string[] = [];
 
-    for (const item of items) {
-      scores[item.label] = item.score;
-      if (item.label !== 'safe' && item.score >= THRESHOLD) {
-        detectedLabels.push(item.label);
+    for (let i = 0; i < LABEL_NAMES.length; i++) {
+      const prob = sigmoid(logitsData[i]);
+      scores[LABEL_NAMES[i]] = prob;
+      if (LABEL_NAMES[i] !== 'safe' && prob >= THRESHOLD) {
+        detectedLabels.push(LABEL_NAMES[i]);
       }
     }
 
@@ -195,6 +241,7 @@ async function handleClassify(text: string): Promise<ClassifyResult> {
 
     return { success: true, labels: detectedLabels, scores, isHarmful, mlScore };
   } catch (err) {
+    console.error('[Aegis Offscreen] Classify error:', err);
     return {
       success: false, labels: [], scores: {}, isHarmful: false, mlScore: 0,
       error: String(err),

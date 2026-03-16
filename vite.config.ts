@@ -11,17 +11,20 @@ function copyOnnxWasmPlugin(): Plugin {
     apply: 'build',
     async closeBundle() {
       const root = process.cwd();
-      const srcDir = path.resolve(root, 'node_modules/@huggingface/transformers/dist');
       const destDir = path.resolve(root, 'dist/wasm');
       await fs.mkdir(destDir, { recursive: true });
 
+      // Copy WASM files from onnxruntime-web (used for direct ONNX inference)
+      const ortDir = path.resolve(root, 'node_modules/onnxruntime-web/dist');
       const files = [
+        'ort-wasm-simd-threaded.mjs',
+        'ort-wasm-simd-threaded.wasm',
         'ort-wasm-simd-threaded.jsep.mjs',
         'ort-wasm-simd-threaded.jsep.wasm',
       ];
       for (const f of files) {
         try {
-          await fs.copyFile(path.join(srcDir, f), path.join(destDir, f));
+          await fs.copyFile(path.join(ortDir, f), path.join(destDir, f));
           console.log(`[copy-onnx-wasm] copied ${f}`);
         } catch (err) {
           console.warn(`[copy-onnx-wasm] could not copy ${f}:`, err);
