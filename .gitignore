@@ -3,6 +3,7 @@ node_modules
 dist
 dist.zip
 dist*.zip
+AEGINEL_*.zip
 aeginel-*.zip
 aegis-personal-*.zip
 .DS_Store

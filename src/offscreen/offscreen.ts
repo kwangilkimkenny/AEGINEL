@@ -2,12 +2,14 @@
 // Runs inside an Offscreen Document (chrome.offscreen API, MV3).
 // The Service Worker cannot run WASM directly, so ML inference is delegated here.
 //
+// Lifecycle: Lazy Load + Auto Release
+//   - Tokenizer loads once on first request and stays resident (lightweight ~20MB)
+//   - ONNX session loads on-demand when ML_CLASSIFY is received
+//   - After IDLE_TIMEOUT_MS of no requests, session is released to free ~300MB
+//   - Next request transparently reloads the session
+//
 // Tokenization: @huggingface/transformers AutoTokenizer (pure JS, handles SentencePiece)
 // Inference:    onnxruntime-web InferenceSession (direct ONNX, bypasses Transformers.js pipeline)
-//
-// The v2 guard model was exported with a custom GuardEncoderONNX wrapper that takes
-// only (input_ids, attention_mask) and outputs raw logits. Transformers.js pipeline()
-// is incompatible with this layout, so we drive ONNX Runtime directly.
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore — AutoTokenizer type
@@ -33,10 +35,12 @@ const LABEL_NAMES = [
 const THRESHOLD = 0.5;
 const MAX_LENGTH = 256;
 const MAX_LOAD_RETRIES = 2;
+const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 // ── State ────────────────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let tokenizer: any = null;
+let tokenizerReady = false;
 let session: ort.InferenceSession | null = null;
 let classifierReady = false;
 let classifierLoading = false;
@@ -44,8 +48,36 @@ let loadRetryCount = 0;
 let lastLoadError: string | null = null;
 let loadStartTime = 0;
 let loadDurationMs = 0;
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
-// ── Model Loading ────────────────────────────────────────────────────────────
+// ── Idle Timer ───────────────────────────────────────────────────────────────
+
+function resetIdleTimer() {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(releaseSession, IDLE_TIMEOUT_MS);
+}
+
+function releaseSession() {
+  if (!session) return;
+  console.log('[Aegis Offscreen] Idle timeout — releasing ONNX session to free memory');
+  try { session.release(); } catch { /* already released */ }
+  session = null;
+  classifierReady = false;
+  loadDurationMs = 0;
+  reportStatus('ok', 'standby');
+}
+
+// ── Tokenizer Loading (once, stays resident) ─────────────────────────────────
+
+async function ensureTokenizer(): Promise<void> {
+  if (tokenizerReady && tokenizer) return;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  tokenizer = await AutoTokenizer.from_pretrained('guard');
+  tokenizerReady = true;
+  console.log('[Aegis Offscreen] Tokenizer loaded');
+}
+
+// ── Model Loading (on-demand) ────────────────────────────────────────────────
 
 async function loadModel(): Promise<void> {
   if (classifierReady || classifierLoading) return;
@@ -55,12 +87,8 @@ async function loadModel(): Promise<void> {
     loadStartTime = Date.now();
     console.log(`[Aegis Offscreen] Loading guard model (attempt ${loadRetryCount + 1})...`);
 
-    // 1) Load tokenizer via Transformers.js (pure JS, no WASM needed)
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    tokenizer = await AutoTokenizer.from_pretrained('guard');
-    console.log('[Aegis Offscreen] Tokenizer loaded');
+    await ensureTokenizer();
 
-    // 2) Fetch the ONNX model binary and create an InferenceSession
     const modelUrl = chrome.runtime.getURL('models/guard/onnx/model_quantized.onnx');
     console.log('[Aegis Offscreen] Fetching ONNX model...');
     const resp = await fetch(modelUrl);
@@ -79,6 +107,7 @@ async function loadModel(): Promise<void> {
     loadDurationMs = Date.now() - loadStartTime;
     console.log(`[Aegis Offscreen] Model ready in ${(loadDurationMs / 1000).toFixed(1)}s`);
 
+    resetIdleTimer();
     reportStatus('ok');
   } catch (err) {
     const errorMsg = String(err);
@@ -129,8 +158,8 @@ function reportStatus(status: 'ok' | 'degraded' | 'error', details?: string) {
   }
 }
 
-// Start loading immediately when the offscreen doc is created
-loadModel();
+// Pre-load tokenizer only (lightweight) — model loads on first classify request
+ensureTokenizer().catch(() => {});
 
 // ── Message Handler ──────────────────────────────────────────────────────────
 
@@ -140,16 +169,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   switch (message.type) {
     case 'ML_CLASSIFY': {
       handleClassify(message.text as string).then(sendResponse);
-      return true; // keep channel open for async
+      return true;
     }
     case 'ML_STATUS': {
       sendResponse({
         ready: classifierReady,
         loading: classifierLoading,
+        standby: !classifierReady && !classifierLoading && !lastLoadError,
         retryCount: loadRetryCount,
         lastError: lastLoadError,
         loadDurationMs,
       });
+      return false;
+    }
+    case 'ML_RELEASE': {
+      releaseSession();
+      sendResponse({ released: true });
       return false;
     }
     default:
@@ -174,6 +209,20 @@ function sigmoid(x: number): number {
 }
 
 async function handleClassify(text: string): Promise<ClassifyResult> {
+  // On-demand load: if session not ready, trigger load and wait
+  if (!classifierReady || !session) {
+    if (!classifierLoading) {
+      loadRetryCount = 0;
+      await loadModel();
+    } else {
+      // Already loading — wait up to 10s for it to finish
+      const deadline = Date.now() + 10000;
+      while (classifierLoading && Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+  }
+
   if (!classifierReady || !session || !tokenizer) {
     return {
       success: false, labels: [], scores: {}, isHarmful: false, mlScore: 0,
@@ -181,8 +230,9 @@ async function handleClassify(text: string): Promise<ClassifyResult> {
     };
   }
 
+  resetIdleTimer();
+
   try {
-    // 1) Tokenize — must match training config: max_length=256, pad to max_length
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     const encoded = await tokenizer(text, {
       padding: 'max_length',
@@ -190,7 +240,6 @@ async function handleClassify(text: string): Promise<ClassifyResult> {
       max_length: MAX_LENGTH,
     });
 
-    // 2) Build ONNX Runtime tensors from tokenizer output
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const seqLen: number = encoded.input_ids.dims[1] ?? encoded.input_ids.dims[0] ?? MAX_LENGTH;
 
@@ -199,7 +248,6 @@ async function handleClassify(text: string): Promise<ClassifyResult> {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const maskRaw = encoded.attention_mask.data;
 
-    // Ensure BigInt64Array (onnxruntime-web expects this for int64 inputs)
     const idsBigInt = idsRaw instanceof BigInt64Array
       ? idsRaw
       : BigInt64Array.from(Array.from(idsRaw as ArrayLike<number>).map(BigInt));
@@ -210,13 +258,11 @@ async function handleClassify(text: string): Promise<ClassifyResult> {
     const inputIds = new ort.Tensor('int64', idsBigInt, [1, seqLen]);
     const attentionMask = new ort.Tensor('int64', maskBigInt, [1, seqLen]);
 
-    // 3) Run inference — only input_ids + attention_mask (no token_type_ids)
     const output = await session.run({
       input_ids: inputIds,
       attention_mask: attentionMask,
     });
 
-    // 4) Extract logits → sigmoid → threshold
     const logitsData = Array.from(output.logits.data as Float32Array);
 
     const scores: Record<string, number> = {};
@@ -232,7 +278,6 @@ async function handleClassify(text: string): Promise<ClassifyResult> {
 
     const isHarmful = detectedLabels.length > 0;
 
-    // Scale max harmful confidence (0–1) to 0–40 points
     const maxConf = detectedLabels.reduce(
       (max, lbl) => Math.max(max, scores[lbl] ?? 0),
       0,

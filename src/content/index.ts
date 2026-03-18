@@ -163,6 +163,12 @@ function initContentScript(adapter: SiteAdapter) {
 
   // Send to service worker for scanning (with retry)
   async function scanInput(input: string) {
+    // Show loading shield while ML model may be cold-starting
+    const anchor = adapter.getWarningAnchor();
+    if (anchor && lastShieldStatus === 'idle') {
+      showShieldIndicator('loading', anchor);
+    }
+
     const response = await sendMessage<{ type?: string; payload?: ScanResult }>({
       type: 'SCAN_INPUT',
       payload: { input, site: adapter.name },
@@ -171,6 +177,8 @@ function initContentScript(adapter: SiteAdapter) {
     if (response?.type === 'SCAN_RESULT' && response.payload) {
       currentResult = response.payload;
       handleScanResult(response.payload);
+    } else if (anchor) {
+      showShieldIndicator(lastShieldStatus === 'loading' ? 'idle' : lastShieldStatus, anchor);
     }
   }
 

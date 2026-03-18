@@ -1,7 +1,11 @@
 // ── Aegis Personal ML Classifier ────────────────────────────────────────────────────
 // Bridge between the Service Worker and the Offscreen Document.
 // The Service Worker cannot run WASM directly (MV3 constraint), so all
-// Transformers.js inference is delegated to the offscreen page via messaging.
+// ONNX inference is delegated to the offscreen page via messaging.
+//
+// Resilience: The offscreen document uses lazy-load + auto-release.
+// This bridge handles SW restarts by re-checking offscreen existence,
+// and retries once when the model is still loading on-demand.
 
 const OFFSCREEN_URL = 'src/offscreen/offscreen.html';
 let offscreenCreating = false;
@@ -22,12 +26,20 @@ export interface MlClassifyResult {
 // ── Offscreen Lifecycle ──────────────────────────────────────────────────────
 
 async function ensureOffscreen(): Promise<void> {
-  if (offscreenCreated) return;
+  // After SW restart, in-memory flag is stale — always verify via API
+  if (offscreenCreated) {
+    try {
+      const exists = await chrome.offscreen.hasDocument?.() ?? false;
+      if (exists) return;
+      offscreenCreated = false;
+    } catch {
+      offscreenCreated = false;
+    }
+  }
+
   if (offscreenCreating) {
-    // Wait for in-flight creation (max 5 seconds)
     await new Promise<void>((resolve) => {
-      const WAIT_TIMEOUT_MS = 5000;
-      const deadline = Date.now() + WAIT_TIMEOUT_MS;
+      const deadline = Date.now() + 5000;
       const check = setInterval(() => {
         if (!offscreenCreating || Date.now() >= deadline) {
           clearInterval(check);
@@ -40,7 +52,6 @@ async function ensureOffscreen(): Promise<void> {
 
   offscreenCreating = true;
   try {
-    // Check if already exists (Service Worker restarts lose state)
     const existing = await chrome.offscreen.hasDocument?.() ?? false;
     if (!existing) {
       await chrome.offscreen.createDocument({
@@ -57,29 +68,46 @@ async function ensureOffscreen(): Promise<void> {
   }
 }
 
+async function sendToOffscreen(type: string, extra?: Record<string, unknown>): Promise<unknown> {
+  await ensureOffscreen();
+  return chrome.runtime.sendMessage({ target: 'offscreen', type, ...extra });
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
+const FALLBACK: MlClassifyResult = {
+  success: false, labels: [], scores: {}, isHarmful: false, mlScore: 0,
+};
+
 /**
- * Ask the Offscreen Document to classify `text` using the ONNX guard model.
- * Returns a result with `mlScore` in range 0–40 to augment the rule-based score.
- *
- * Falls back gracefully (mlScore=0) if model isn't loaded yet or offscreen
- * creation fails — the rule-based engine still works independently.
+ * Classify text via the offscreen ONNX guard model.
+ * The model loads on-demand on first request; subsequent calls are instant.
+ * If the model is loading (cold start / after idle release), retries once
+ * after a short wait so the caller doesn't have to handle it.
  */
 export async function mlClassify(text: string): Promise<MlClassifyResult> {
-  const FALLBACK: MlClassifyResult = {
-    success: false, labels: [], scores: {}, isHarmful: false, mlScore: 0,
-  };
-
   try {
-    await ensureOffscreen();
-    const response = await chrome.runtime.sendMessage({
-      target: 'offscreen',
-      type: 'ML_CLASSIFY',
-      text,
-    });
-    return (response as MlClassifyResult) ?? FALLBACK;
+    let response = await sendToOffscreen('ML_CLASSIFY', { text }) as MlClassifyResult | null;
+
+    // Model is loading on-demand — wait and retry once
+    if (response?.error === 'MODEL_LOADING' || response?.error === 'MODEL_NOT_READY') {
+      await new Promise(r => setTimeout(r, 3000));
+      response = await sendToOffscreen('ML_CLASSIFY', { text }) as MlClassifyResult | null;
+    }
+
+    return response ?? FALLBACK;
   } catch (err) {
+    const errMsg = String(err);
+    // Offscreen gone — reset flag and retry once
+    if (errMsg.includes('Receiving end does not exist') || errMsg.includes('disconnected')) {
+      offscreenCreated = false;
+      try {
+        const retry = await sendToOffscreen('ML_CLASSIFY', { text }) as MlClassifyResult | null;
+        return retry ?? FALLBACK;
+      } catch {
+        return FALLBACK;
+      }
+    }
     console.warn('[Aegis ML] classify error:', err);
     return FALLBACK;
   }
@@ -88,15 +116,11 @@ export async function mlClassify(text: string): Promise<MlClassifyResult> {
 /**
  * Query whether the offscreen ML model is ready.
  */
-export async function mlStatus(): Promise<{ ready: boolean; loading: boolean }> {
+export async function mlStatus(): Promise<{ ready: boolean; loading: boolean; standby?: boolean }> {
   try {
-    await ensureOffscreen();
-    const response = await chrome.runtime.sendMessage({
-      target: 'offscreen',
-      type: 'ML_STATUS',
-    });
-    return response ?? { ready: false, loading: false };
+    const response = await sendToOffscreen('ML_STATUS');
+    return (response as { ready: boolean; loading: boolean; standby?: boolean }) ?? { ready: false, loading: false, standby: true };
   } catch {
-    return { ready: false, loading: false };
+    return { ready: false, loading: false, standby: true };
   }
 }

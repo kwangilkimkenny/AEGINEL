@@ -130,7 +130,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["wasm/*.wasm", "wasm/*.mjs", "models/*"],
+      "resources": ["wasm/*.wasm", "wasm/*.mjs", "models/guard/*", "models/guard/onnx/*"],
       "matches": ["<all_urls>"]
     }
   ]

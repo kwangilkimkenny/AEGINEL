@@ -326,10 +326,11 @@ function hideProxyConfirmModal(): void {
 // ── Shield Status Indicator ──────────────────────────────────────────────
 // Non-intrusive icon near the input area. Always visible when active.
 
-export type ShieldStatus = 'safe' | 'pii' | 'warning' | 'danger' | 'idle';
+export type ShieldStatus = 'safe' | 'pii' | 'warning' | 'danger' | 'idle' | 'loading';
 
 const SHIELD_ICONS: Record<ShieldStatus, string> = {
   idle: '\u{1F6E1}\uFE0F',
+  loading: '\u23F3',
   safe: '\u2705',
   pii: '\u{1F512}',
   warning: '\u26A0\uFE0F',
@@ -338,6 +339,7 @@ const SHIELD_ICONS: Record<ShieldStatus, string> = {
 
 const SHIELD_COLORS: Record<ShieldStatus, { bg: string; border: string }> = {
   idle:    { bg: '#161b22', border: '#30363d' },
+  loading: { bg: 'rgba(88,166,255,0.12)',  border: 'rgba(88,166,255,0.4)' },
   safe:    { bg: 'rgba(63,185,80,0.12)',   border: 'rgba(63,185,80,0.4)' },
   pii:     { bg: 'rgba(88,166,255,0.12)',  border: 'rgba(88,166,255,0.4)' },
   warning: { bg: 'rgba(210,153,34,0.12)',  border: 'rgba(210,153,34,0.4)' },
@@ -346,6 +348,7 @@ const SHIELD_COLORS: Record<ShieldStatus, { bg: string; border: string }> = {
 
 const SHIELD_TOOLTIPS: Record<ShieldStatus, string> = {
   idle: 'Aegis: Monitoring',
+  loading: 'Aegis: Loading ML model...',
   safe: 'Aegis: Safe',
   pii: 'Aegis: PII detected — protected',
   warning: 'Aegis: Risk detected',

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 interface MlStatusData {
   ready: boolean;
   loading: boolean;
+  standby?: boolean;
   retryCount: number;
   lastError: string | null;
   loadDurationMs: number;
@@ -45,14 +46,40 @@ export default function MlStatus() {
     );
   }
 
+  if (status.standby) {
+    return (
+      <div
+        className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold"
+        style={{ background: 'rgba(139,148,158,0.1)', border: '1px solid rgba(139,148,158,0.25)', color: '#8b949e' }}
+        title="ML standby — loads on first input"
+      >
+        <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: '#8b949e' }} />
+        ML
+      </div>
+    );
+  }
+
+  if (status.lastError) {
+    return (
+      <div
+        className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold"
+        style={{ background: 'rgba(219,109,40,0.1)', border: '1px solid rgba(219,109,40,0.25)', color: '#db6d28' }}
+        title={`ML error — rule-based only: ${status.lastError}`}
+      >
+        <span className="w-1 h-1 rounded-full bg-aeginel-orange flex-shrink-0" />
+        RL
+      </div>
+    );
+  }
+
   return (
     <div
       className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold"
-      style={{ background: 'rgba(219,109,40,0.1)', border: '1px solid rgba(219,109,40,0.25)', color: '#db6d28' }}
-      title="ML unavailable — rule-based only"
+      style={{ background: 'rgba(139,148,158,0.1)', border: '1px solid rgba(139,148,158,0.25)', color: '#8b949e' }}
+      title="ML standby — loads on first input"
     >
-      <span className="w-1 h-1 rounded-full bg-aeginel-orange flex-shrink-0" />
-      RL
+      <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: '#8b949e' }} />
+      ML
     </div>
   );
 }
