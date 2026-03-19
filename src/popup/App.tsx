@@ -111,7 +111,7 @@ export default function App() {
             </svg>
           </div>
           <div className="min-w-0">
-            <h1 className="text-[13px] font-bold text-aeginel-text tracking-tight leading-none">AEGINEL</h1>
+            <h1 className="text-[13px] font-bold text-aeginel-text tracking-tight leading-none">Aegis Personal</h1>
             <p className="text-[9px] text-aeginel-muted leading-none mt-0.5 tracking-wide uppercase">AI Prompt Guard</p>
           </div>
         </div>

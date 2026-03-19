@@ -25,3 +25,5 @@ public/models/
 # Test artifacts
 playwright-report/
 test-results/
+
+model-tester
