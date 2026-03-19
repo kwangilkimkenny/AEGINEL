@@ -270,7 +270,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
   return (
     <button
       onClick={onChange}
-      className="relative flex-shrink-0 rounded-full transition-all duration-300"
+      className="relative flex-shrink-0 rounded-full transition-all duration-300 p-0 border-0 overflow-hidden"
       style={{
         width: '32px', height: '18px',
         ...(checked
@@ -280,7 +280,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
       }}
     >
       <span
-        className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform duration-300"
+        className="absolute left-0 top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform duration-300"
         style={{ transform: checked ? 'translateX(15px)' : 'translateX(2px)' }}
       />
     </button>
