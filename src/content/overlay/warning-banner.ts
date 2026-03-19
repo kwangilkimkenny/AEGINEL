@@ -460,6 +460,67 @@ export function hideHealthBanner(): void {
   document.getElementById(HEALTH_HOST_ID)?.remove();
 }
 
+// ── Disconnected Banner (extension context lost) ─────────────────────────
+
+const DISCONNECTED_HOST_ID = 'aeginel-disconnected-host';
+let disconnectedShown = false;
+
+export function showDisconnectedBanner(): void {
+  if (disconnectedShown) return;
+  disconnectedShown = true;
+
+  hideShieldIndicator();
+
+  const host = document.createElement('div');
+  host.id = DISCONNECTED_HOST_ID;
+  const shadow = host.attachShadow({ mode: 'closed' });
+
+  const style = document.createElement('style');
+  style.textContent = styles;
+  shadow.appendChild(style);
+
+  const banner = document.createElement('div');
+  banner.className = 'aeginel-banner aeginel-health-degraded';
+
+  const icon = document.createElement('span');
+  icon.className = 'aeginel-shield';
+  icon.textContent = '\u{1F504}';
+
+  const content = document.createElement('div');
+  content.className = 'aeginel-content';
+
+  const title = document.createElement('div');
+  title.className = 'aeginel-title';
+  title.textContent = 'Aegis: 연결이 끊겼습니다';
+
+  const detail = document.createElement('div');
+  detail.className = 'aeginel-detail';
+  detail.textContent = '보호 기능을 복구하려면 새로고침이 필요합니다.';
+
+  content.appendChild(title);
+  content.appendChild(detail);
+
+  const refreshBtn = document.createElement('button');
+  refreshBtn.className = 'aeginel-close';
+  refreshBtn.textContent = '↻';
+  refreshBtn.title = '새로고침';
+  refreshBtn.style.fontSize = '16px';
+  refreshBtn.style.cursor = 'pointer';
+  refreshBtn.onclick = () => location.reload();
+
+  banner.appendChild(icon);
+  banner.appendChild(content);
+  banner.appendChild(refreshBtn);
+  shadow.appendChild(banner);
+
+  document.body.prepend(host);
+}
+
+export function hideDisconnectedBanner(): void {
+  document.getElementById(DISCONNECTED_HOST_ID)?.remove();
+  disconnectedShown = false;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 function piiTypeLabel(type: string): string {

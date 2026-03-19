@@ -5,6 +5,17 @@
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 200;
 
+let disconnectedCallback: (() => void) | null = null;
+let isDisconnected = false;
+
+/**
+ * Register a callback to be invoked when the extension context is
+ * permanently lost (e.g. extension updated/reloaded while page is open).
+ */
+export function onDisconnected(cb: () => void): void {
+  disconnectedCallback = cb;
+}
+
 /**
  * Send a message to the service worker with automatic retry.
  *
@@ -15,6 +26,8 @@ const BASE_DELAY_MS = 200;
  * Retrying after a short delay gives the worker time to initialise.
  */
 export async function sendMessage<T = unknown>(message: unknown): Promise<T | null> {
+  if (isDisconnected) return null;
+
   let lastError: unknown;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -25,13 +38,12 @@ export async function sendMessage<T = unknown>(message: unknown): Promise<T | nu
       lastError = err;
       const errMsg = String(err);
 
-      // Extension context invalidated (e.g., extension updated/reloaded).
-      // No point retrying — bail immediately.
       if (errMsg.includes('Extension context invalidated')) {
+        isDisconnected = true;
+        disconnectedCallback?.();
         return null;
       }
 
-      // Service worker not ready yet — wait and retry
       if (attempt < MAX_RETRIES - 1) {
         const delay = BASE_DELAY_MS * Math.pow(2, attempt);
         await new Promise(resolve => setTimeout(resolve, delay));

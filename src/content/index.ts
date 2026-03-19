@@ -7,13 +7,13 @@ import { claudeAdapter } from './sites/claude';
 import { geminiAdapter } from './sites/gemini';
 import { createGenericAdapter } from './sites/generic';
 import { siteRegistry } from './sites/registry';
-import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner, showShieldIndicator, hideShieldIndicator, isShieldVisible } from './overlay/warning-banner';
+import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner, showShieldIndicator, hideShieldIndicator, isShieldVisible, showDisconnectedBanner } from './overlay/warning-banner';
 import type { ShieldStatus } from './overlay/warning-banner';
 import type { ScanResult, AeginelConfig, ProxyResult, PiiMapping } from '../engine/types';
 import { DEFAULT_CONFIG } from '../engine/types';
 import { DEBOUNCE_MS, INPUT_MIN_LENGTH } from '../shared/constants';
 import { setLocale } from '../i18n';
-import { sendMessage } from './messaging';
+import { sendMessage, onDisconnected } from './messaging';
 
 // ── Site Detection ───────────────────────────────────────────────────────
 // Priority: hand-tuned adapters first, then generic registry-based adapters
@@ -67,10 +67,12 @@ function initContentScript(adapter: SiteAdapter) {
 
   // ── Health Check: validate adapter selectors ────────────────────────
   function checkAdapterHealth() {
+    // Only check input + submit — response elements don't exist until
+    // the AI has replied at least once, so checking them on a fresh
+    // conversation would always produce a false "degraded" warning.
     const selectors: Record<string, string> = {
       input: adapter.getInputSelector(),
       submit: adapter.getSubmitSelector(),
-      response: adapter.getResponseSelector(),
     };
 
     const brokenSelectors: string[] = [];
@@ -81,7 +83,6 @@ function initContentScript(adapter: SiteAdapter) {
           brokenSelectors.push(name);
         }
       } catch {
-        // Invalid selector syntax
         brokenSelectors.push(name);
       }
     }
@@ -861,8 +862,10 @@ function initContentScript(adapter: SiteAdapter) {
 
   function scheduleShieldRetry(attempt = 0) {
     if (shieldRetryTimer) clearTimeout(shieldRetryTimer);
-    if (attempt >= 30) return;
+    if (attempt >= 50) return;
 
+    // Fast retries initially (100ms × 10), then slower (300ms)
+    const delay = attempt < 10 ? 100 : 300;
     shieldRetryTimer = setTimeout(() => {
       if (shieldProperlyPlaced) return;
 
@@ -875,7 +878,7 @@ function initContentScript(adapter: SiteAdapter) {
       hideShieldIndicator();
       showShieldIndicator(lastShieldStatus, anchor);
       shieldProperlyPlaced = true;
-    }, 500);
+    }, delay);
   }
 
   function ensureShieldVisible() {
@@ -900,11 +903,32 @@ function initContentScript(adapter: SiteAdapter) {
     shieldProperlyPlaced = true;
   }
 
+  // ── SPA Navigation Detection ───────────────────────────────────────
+  // ChatGPT/Claude etc. change conversations via pushState without a
+  // full reload. Detect URL changes and reset scan state so the shield
+  // returns to idle on a fresh conversation.
+
+  let lastUrl = location.href;
+
+  function checkForNavigation() {
+    if (location.href !== lastUrl) {
+      lastUrl = location.href;
+      lastScannedText = '';
+      currentResult = null;
+      lastShieldStatus = 'idle';
+      shieldProperlyPlaced = false;
+      hideWarningBanner();
+      const anchor = adapter.getWarningAnchor();
+      if (anchor) showShieldIndicator('idle', anchor);
+    }
+  }
+
   // MutationObserver for SPA navigation — debounced
   let spaTimer: ReturnType<typeof setTimeout> | null = null;
   const observer = new MutationObserver(() => {
     if (spaTimer) clearTimeout(spaTimer);
     spaTimer = setTimeout(() => {
+      checkForNavigation();
       scanExistingElements();
       ensureShieldVisible();
     }, 200);
@@ -960,4 +984,21 @@ function initContentScript(adapter: SiteAdapter) {
   // Periodic health check every 5 minutes to detect site layout changes
   const HEALTH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
   setInterval(checkAdapterHealth, HEALTH_CHECK_INTERVAL_MS);
+
+  // ── Disconnection Detection ──────────────────────────────────────────
+  // Show a non-intrusive banner when the extension context is lost
+  // (e.g. extension updated/reloaded while the page remains open).
+
+  onDisconnected(() => {
+    console.warn('[Aegis] Extension context lost — showing reconnect banner');
+    showDisconnectedBanner();
+  });
+
+  // Heartbeat: periodically verify the connection is alive.
+  // If the SW was killed and context invalidated silently (e.g. after
+  // Mac sleep/wake), the heartbeat catches it and shows the banner.
+  const HEARTBEAT_INTERVAL_MS = 30 * 1000;
+  setInterval(() => {
+    sendMessage({ type: 'GET_CONFIG' }).catch(() => {});
+  }, HEARTBEAT_INTERVAL_MS);
 }
