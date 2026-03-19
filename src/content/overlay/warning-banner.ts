@@ -16,10 +16,20 @@ const SHIELD_HOST_ID = 'aeginel-shield-host';
 export function showWarningBanner(result: ScanResult, anchor: Element): void {
   hideWarningBanner();
 
+  const useFixed = shouldUseFixedPosition(anchor);
+
   const host = document.createElement('div');
   host.id = BANNER_HOST_ID;
-  host.style.width = '100%';
-  host.style.boxSizing = 'border-box';
+  if (useFixed) {
+    const inputEl = findNearbyInput(anchor);
+    const targetEl = inputEl ?? anchor;
+    const cRect = getContainerRect(targetEl);
+    const bannerWidth = Math.min(cRect.width, 520);
+    host.style.cssText = `position:fixed;z-index:2147483647;margin:0;padding:0;width:${bannerWidth}px;left:${cRect.left}px;bottom:${window.innerHeight - cRect.top + 54}px;`;
+  } else {
+    host.style.width = '100%';
+    host.style.boxSizing = 'border-box';
+  }
   const shadow = host.attachShadow({ mode: 'closed' });
 
   // Inject styles
@@ -66,7 +76,11 @@ export function showWarningBanner(result: ScanResult, anchor: Element): void {
   banner.appendChild(close);
   shadow.appendChild(banner);
 
-  anchor.parentElement?.insertBefore(host, anchor);
+  if (useFixed) {
+    document.body.appendChild(host);
+  } else {
+    anchor.parentElement?.insertBefore(host, anchor);
+  }
 }
 
 // ── Hide Warning Banner ──────────────────────────────────────────────────
@@ -355,12 +369,101 @@ const SHIELD_TOOLTIPS: Record<ShieldStatus, string> = {
   danger: 'Aegis: High risk detected',
 };
 
+// ── Layout detection helpers ──────────────────────────────────────────────
+
+const INPUT_CANDIDATES = [
+  'textarea',
+  '[contenteditable="true"][role="textbox"]',
+  '[role="textbox"]',
+  '[contenteditable="true"]',
+  'input[type="text"]',
+];
+
+function findNearbyInput(anchor: Element): Element | null {
+  for (const sel of INPUT_CANDIDATES) {
+    try { const el = anchor.querySelector(sel); if (el) return el; } catch { /* skip */ }
+  }
+  if (anchor.parentElement) {
+    for (const sel of INPUT_CANDIDATES) {
+      try { const el = anchor.parentElement.querySelector(sel); if (el) return el; } catch { /* skip */ }
+    }
+  }
+  for (const sel of INPUT_CANDIDATES) {
+    try { const el = document.querySelector(sel); if (el) return el; } catch { /* skip */ }
+  }
+  return null;
+}
+
+function getContainerRect(inputEl: Element): DOMRect {
+  const inputRect = inputEl.getBoundingClientRect();
+  let best: DOMRect = inputRect;
+  let el: Element | null = inputEl.parentElement;
+  for (let i = 0; i < 8 && el; i++) {
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'main' || tag === 'body' || tag === 'html') break;
+    const rect = el.getBoundingClientRect();
+    if (rect.height > inputRect.height + 30 && rect.width > inputRect.width) {
+      best = rect;
+      break;
+    }
+    if (rect.height > best.height + 5) best = rect;
+    el = el.parentElement;
+  }
+  return best;
+}
+
+function shouldUseFixedPosition(anchor: Element): boolean {
+  const tag = anchor.tagName.toLowerCase();
+  if (tag === 'form') return false;
+  if (tag === 'main' || tag === 'body' || tag === 'html') return true;
+  const parent = anchor.parentElement;
+  if (!parent) return true;
+  const parentTag = parent.tagName.toLowerCase();
+  return parentTag === 'main' || parentTag === 'body' || parentTag === 'html';
+}
+
+// ── Fixed-position tracking ──────────────────────────────────────────────
+
+let _shieldPositionCleanup: (() => void) | null = null;
+let _shieldPositionRAF: number | null = null;
+
+function updateShieldPosition(host: HTMLElement, target: Element): void {
+  const rect = getContainerRect(target);
+  host.style.left = `${rect.left}px`;
+  host.style.top = `${Math.max(0, rect.top - 46)}px`;
+}
+
+function startShieldPositionTracking(host: HTMLElement, target: Element): void {
+  stopShieldPositionTracking();
+  const update = () => {
+    if (!document.body.contains(host)) { stopShieldPositionTracking(); return; }
+    updateShieldPosition(host, target);
+  };
+  const scheduleUpdate = () => {
+    if (_shieldPositionRAF) cancelAnimationFrame(_shieldPositionRAF);
+    _shieldPositionRAF = requestAnimationFrame(update);
+  };
+  document.addEventListener('scroll', scheduleUpdate, { capture: true, passive: true } as AddEventListenerOptions);
+  window.addEventListener('resize', scheduleUpdate);
+  _shieldPositionCleanup = () => {
+    document.removeEventListener('scroll', scheduleUpdate, true);
+    window.removeEventListener('resize', scheduleUpdate);
+    if (_shieldPositionRAF) { cancelAnimationFrame(_shieldPositionRAF); _shieldPositionRAF = null; }
+  };
+}
+
+function stopShieldPositionTracking(): void {
+  _shieldPositionCleanup?.();
+  _shieldPositionCleanup = null;
+}
+
+// ── Show / Hide Shield ───────────────────────────────────────────────────
+
 export function showShieldIndicator(status: ShieldStatus, anchor: Element): void {
   hideShieldIndicator();
 
   const host = document.createElement('div');
   host.id = SHIELD_HOST_ID;
-  host.style.textAlign = 'left';
   const shadow = host.attachShadow({ mode: 'closed' });
 
   const style = document.createElement('style');
@@ -374,25 +477,26 @@ export function showShieldIndicator(status: ShieldStatus, anchor: Element): void
   shield.style.borderColor = colors.border;
   shield.title = SHIELD_TOOLTIPS[status];
   shield.textContent = SHIELD_ICONS[status];
-
   shadow.appendChild(shield);
 
-  // Insert before anchor so the shield sits right above the input area.
-  // Placing it as a sibling (not a child) avoids removal by React re-renders.
-  let inserted = false;
-
-  if (anchor.parentElement) {
-    try {
-      anchor.parentElement.insertBefore(host, anchor);
-      inserted = true;
-    } catch {
-      // insertBefore failed
-    }
-  }
-
-  if (!inserted) {
-    shield.classList.add('aeginel-shield-fixed');
+  if (shouldUseFixedPosition(anchor)) {
+    const inputEl = findNearbyInput(anchor);
+    const targetEl = inputEl ?? anchor;
+    host.style.cssText = 'position:fixed;z-index:2147483647;pointer-events:none;margin:0;padding:0;width:auto;height:auto;display:inline-block;overflow:visible;';
+    shield.style.pointerEvents = 'auto';
     document.body.appendChild(host);
+    updateShieldPosition(host, targetEl);
+    startShieldPositionTracking(host, targetEl);
+  } else {
+    host.style.cssText = 'display:inline-block;width:auto;height:auto;position:relative;z-index:999999;text-align:left;margin:0;padding:0;vertical-align:top;flex-shrink:0;';
+    let inserted = false;
+    if (anchor.parentElement) {
+      try { anchor.parentElement.insertBefore(host, anchor); inserted = true; } catch { /* skip */ }
+    }
+    if (!inserted) {
+      host.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:2147483647;margin:0;padding:0;width:auto;height:auto;';
+      document.body.appendChild(host);
+    }
   }
 }
 
@@ -401,6 +505,7 @@ export function isShieldVisible(): boolean {
 }
 
 export function hideShieldIndicator(): void {
+  stopShieldPositionTracking();
   document.getElementById(SHIELD_HOST_ID)?.remove();
 }
 

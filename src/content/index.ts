@@ -990,7 +990,7 @@ function initContentScript(adapter: SiteAdapter) {
   // (e.g. extension updated/reloaded while the page remains open).
 
   onDisconnected(() => {
-    console.warn('[Aegis] Extension context lost — showing reconnect banner');
+    console.debug('[Aegis] Extension context lost — showing reconnect banner');
     showDisconnectedBanner();
   });
 
