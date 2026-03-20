@@ -72,7 +72,7 @@ function releaseSession() {
 async function ensureTokenizer(): Promise<void> {
   if (tokenizerReady && tokenizer) return;
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  tokenizer = await AutoTokenizer.from_pretrained('guard');
+  tokenizer = await AutoTokenizer.from_pretrained('guard_encoder_v2_onnx');
   tokenizerReady = true;
   console.log('[Aegis Offscreen] Tokenizer loaded');
 }
@@ -89,7 +89,7 @@ async function loadModel(): Promise<void> {
 
     await ensureTokenizer();
 
-    const modelUrl = chrome.runtime.getURL('models/guard/onnx/model_quantized.onnx');
+    const modelUrl = chrome.runtime.getURL('models/guard_encoder_v2_onnx/model_int8.onnx');
     console.log('[Aegis Offscreen] Fetching ONNX model...');
     const resp = await fetch(modelUrl);
     if (!resp.ok) throw new Error(`Failed to fetch model: ${resp.status}`);

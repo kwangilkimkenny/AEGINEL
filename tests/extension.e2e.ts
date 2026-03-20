@@ -1307,11 +1307,11 @@ test.describe('Suite 11: Popup Reflects Scan Results', () => {
 
 test.describe('Suite 12: Model & Asset Integrity', () => {
   const modelFiles: { path: string; minSizeKB: number }[] = [
-    { path: 'models/guard/model_quantized.onnx', minSizeKB: 100_000 },
-    { path: 'models/guard/config.json', minSizeKB: 0 },
-    { path: 'models/guard/tokenizer.json', minSizeKB: 1000 },
-    { path: 'models/guard/labels.json', minSizeKB: 0 },
-    { path: 'models/guard/tokenizer_config.json', minSizeKB: 0 },
+    { path: 'models/guard_encoder_v2_onnx/model_int8.onnx', minSizeKB: 100_000 },
+    { path: 'models/guard_encoder_v2_onnx/export_metadata.json', minSizeKB: 0 },
+    { path: 'models/guard_encoder_v2_onnx/tokenizer.json', minSizeKB: 1000 },
+    { path: 'models/guard_encoder_v2_onnx/label_names.json', minSizeKB: 0 },
+    { path: 'models/guard_encoder_v2_onnx/tokenizer_config.json', minSizeKB: 0 },
   ];
 
   for (const { path: relPath, minSizeKB } of modelFiles) {
@@ -1329,19 +1329,17 @@ test.describe('Suite 12: Model & Asset Integrity', () => {
     });
   }
 
-  test('labels.json has correct schema with all 7 label categories', () => {
-    const labelsPath = path.resolve(EXTENSION_PATH, 'models/guard/labels.json');
+  test('label_names.json has all 7 label categories', () => {
+    const labelsPath = path.resolve(EXTENSION_PATH, 'models/guard_encoder_v2_onnx/label_names.json');
     if (!fs.existsSync(labelsPath)) {
       test.skip();
       return;
     }
-    const labels = JSON.parse(fs.readFileSync(labelsPath, 'utf-8'));
-    expect(labels.id2label).toBeDefined();
-    expect(labels.label2id).toBeDefined();
-    expect(labels.all_labels).toHaveLength(7);
-    expect(labels.all_labels).toContain('safe');
-    expect(labels.all_labels).toContain('jailbreak');
-    expect(labels.all_labels).toContain('prompt_injection');
+    const labels = JSON.parse(fs.readFileSync(labelsPath, 'utf-8')) as string[];
+    expect(labels).toHaveLength(7);
+    expect(labels).toContain('safe');
+    expect(labels).toContain('jailbreak');
+    expect(labels).toContain('prompt_injection');
   });
 
   test('WASM runtime bundles exist in dist/assets', () => {
@@ -1355,7 +1353,7 @@ test.describe('Suite 12: Model & Asset Integrity', () => {
   });
 
   test('ONNX model starts with valid protobuf header', () => {
-    const onnxPath = path.resolve(EXTENSION_PATH, 'models/guard/model_quantized.onnx');
+    const onnxPath = path.resolve(EXTENSION_PATH, 'models/guard_encoder_v2_onnx/model_int8.onnx');
     if (!fs.existsSync(onnxPath)) {
       test.skip();
       return;
