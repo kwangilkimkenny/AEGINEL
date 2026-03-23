@@ -14,6 +14,15 @@ export interface ScanResult {
   blocked: boolean;
   totalLatencyMs: number;
   piiDetected: PiiMatch[];
+  localScore?: number;
+  serverAvailable?: boolean;
+  serverScore?: number;
+  serverAction?: string;
+  serverEndpoint?: string;
+  serverLatencyMs?: number;
+  serverCategories?: string[];
+  serverExplanation?: string;
+  endpointDetails?: AegisEndpointDetail[];
 }
 
 export interface PiiMatch {
@@ -68,6 +77,15 @@ export interface AegisServerConfig {
   };
 }
 
+export interface AegisEndpointDetail {
+  endpoint: string;
+  action: string;
+  score: number;
+  categories: string[];
+  explanation: string;
+  latencyMs: number;
+}
+
 export interface AegisServerResult {
   available: boolean;
   score: number;
@@ -76,6 +94,7 @@ export interface AegisServerResult {
   explanation: string;
   latencyMs: number;
   endpoint: string;
+  endpointDetails?: AegisEndpointDetail[];
 }
 
 export interface DevLogEntry {
@@ -93,6 +112,14 @@ export interface AegisUsageInfo {
   overageAllowed: boolean;
   period: { start: string; end: string };
   byEndpoint: Array<{ endpoint: string; calls: number }>;
+}
+
+export interface HealthEntry {
+  source: string;
+  status: 'ok' | 'degraded' | 'error';
+  details?: string;
+  brokenSelectors?: string[];
+  timestamp: number;
 }
 
 export type VersionAccess = 'allowed' | 'denied' | 'unknown';

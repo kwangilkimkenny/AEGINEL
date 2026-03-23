@@ -15,8 +15,9 @@ type Tab = 'privacy' | 'advanced';
 
 export default function SettingsPanel({ config, onUpdate, onClearHistory }: Props) {
   const { t } = useI18n();
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>('privacy');
+  const hashIsAegis = window.location.hash === '#aegis';
+  const [isOpen, setIsOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState<Tab>(hashIsAegis ? 'advanced' : 'privacy');
 
   const piiTypeCount = Object.values(config.pii.types).filter(Boolean).length;
 
