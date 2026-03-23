@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import StatusCard from './components/StatusCard';
-import RiskMeter from './components/RiskMeter';
-import RecentScans from './components/RecentScans';
 import WeeklyReport from './components/WeeklyReport';
 import SettingsPanel from './components/SettingsPanel';
 import type { AeginelConfig, ScanResult } from '../engine/types';
 import { DEFAULT_CONFIG } from '../engine/types';
 import { setLocale, useI18n } from '../i18n';
 import type { StatusResponseMessage, ConfigResponseMessage, HistoryResponseMessage } from '../shared/messages';
+
+const BADGE_VIS_KEY = 'aeginel_badge_visible';
 
 export default function App() {
   const { t } = useI18n();
@@ -18,6 +18,19 @@ export default function App() {
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const [history, setHistory] = useState<ScanResult[]>([]);
   const [siteName, setSiteName] = useState('');
+  const [badgeVisible, setBadgeVisible] = useState(true);
+
+  const toggleBadge = useCallback(() => {
+    const next = !badgeVisible;
+    setBadgeVisible(next);
+    chrome.storage.local.set({ [BADGE_VIS_KEY]: next });
+  }, [badgeVisible]);
+
+  useEffect(() => {
+    chrome.storage.local.get(BADGE_VIS_KEY).then((stored) => {
+      setBadgeVisible(stored[BADGE_VIS_KEY] !== false);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -145,8 +158,36 @@ export default function App() {
           weekScans={weekScans}
           onToggle={handleToggle}
         />
-        <RiskMeter lastScan={lastScan} />
-        <RecentScans scans={history} />
+
+        {/* Floating badge toggle */}
+        <div className="flex items-center justify-between px-2.5 py-2 rounded-lg bg-aeginel-surface2 border border-aeginel-border/40">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={badgeVisible ? '#3fb950' : '#8b949e'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium text-aeginel-text">{t('floating.showBadge')}</p>
+              <p className="text-[8px] text-aeginel-muted">{t('floating.showBadgeDesc')}</p>
+            </div>
+          </div>
+          <button
+            onClick={toggleBadge}
+            className="relative flex-shrink-0 rounded-full transition-all duration-300 p-0 border-0 overflow-hidden"
+            style={{
+              width: '32px', height: '18px',
+              ...(badgeVisible
+                ? { background: '#3fb950', boxShadow: '0 0 6px rgba(63,185,80,0.4)' }
+                : { background: '#21262d', border: '1px solid #30363d' }
+              ),
+            }}
+          >
+            <span
+              className="absolute left-0 top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform duration-300"
+              style={{ transform: badgeVisible ? 'translateX(15px)' : 'translateX(2px)' }}
+            />
+          </button>
+        </div>
+
         <WeeklyReport />
         <SettingsPanel
           config={config}
