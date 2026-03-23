@@ -6,10 +6,11 @@ import WeeklyReport from './components/WeeklyReport';
 import SettingsPanel from './components/SettingsPanel';
 import type { AeginelConfig, ScanResult } from '../engine/types';
 import { DEFAULT_CONFIG } from '../engine/types';
-import { setLocale } from '../i18n';
+import { setLocale, useI18n } from '../i18n';
 import type { StatusResponseMessage, ConfigResponseMessage, HistoryResponseMessage } from '../shared/messages';
 
 export default function App() {
+  const { t } = useI18n();
   const [config, setConfig] = useState<AeginelConfig>(DEFAULT_CONFIG);
   const [totalScans, setTotalScans] = useState(0);
   const [threatsBlocked, setThreatsBlocked] = useState(0);
@@ -19,8 +20,6 @@ export default function App() {
   const [siteName, setSiteName] = useState('');
 
   useEffect(() => {
-    setLocale('en');
-
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]?.url) {
         try {
@@ -46,7 +45,7 @@ export default function App() {
     chrome.runtime.sendMessage({ type: 'GET_CONFIG' }).then((res: ConfigResponseMessage) => {
       if (res?.payload) {
         setConfig(res.payload);
-        setLocale('en');
+        setLocale(res.payload.uiLanguage ?? 'auto');
       }
     }).catch(() => {});
 
@@ -77,7 +76,7 @@ export default function App() {
     if (partial.piiProxy) newConfig.piiProxy = { ...config.piiProxy, ...partial.piiProxy };
     setConfig(newConfig);
     chrome.runtime.sendMessage({ type: 'UPDATE_CONFIG', payload: newConfig });
-    if (partial.language) setLocale('en');
+    if (partial.uiLanguage) setLocale(partial.uiLanguage);
   };
 
   const handleClearHistory = () => {
@@ -87,6 +86,10 @@ export default function App() {
     setThreatsBlocked(0);
     setLastScan(null);
   };
+
+  const footerText = todayScans > 0
+    ? t(todayScans > 1 ? 'footer.scansToday' : 'footer.scanToday', { count: todayScans })
+    : t('footer.noScansToday');
 
   return (
     <div className="bg-aeginel-bg min-h-full" style={{ width: '380px' }}>
@@ -108,8 +111,8 @@ export default function App() {
             </svg>
           </div>
           <div className="min-w-0">
-            <h1 className="text-[13px] font-bold text-aeginel-text tracking-tight leading-none">Aegis Personal</h1>
-            <p className="text-[9px] text-aeginel-muted leading-none mt-0.5 tracking-wide uppercase">AI Privacy Guard</p>
+            <h1 className="text-[13px] font-bold text-aeginel-text tracking-tight leading-none">{t('guard')}</h1>
+            <p className="text-[9px] text-aeginel-muted leading-none mt-0.5 tracking-wide uppercase">{t('subtitle')}</p>
           </div>
         </div>
 
@@ -154,9 +157,7 @@ export default function App() {
         {/* Footer */}
         <div className="flex items-center justify-between pt-1 pb-0.5">
           <span className="text-[9px] text-aeginel-muted/50">v{chrome.runtime.getManifest().version}</span>
-          <span className="text-[9px] text-aeginel-muted/40">
-            {todayScans > 0 ? `${todayScans} scan${todayScans > 1 ? 's' : ''} today` : 'No scans today'}
-          </span>
+          <span className="text-[9px] text-aeginel-muted/40">{footerText}</span>
         </div>
       </div>
     </div>

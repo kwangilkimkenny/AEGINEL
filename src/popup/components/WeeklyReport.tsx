@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useI18n } from '../../i18n';
 
 interface WeeklyReportData {
   period: { start: string; end: string };
@@ -27,6 +28,7 @@ const CAT_LABELS: Record<string, string> = {
 };
 
 export default function WeeklyReport() {
+  const { t } = useI18n();
   const [report, setReport] = useState<WeeklyReportData | null>(null);
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(false);
@@ -43,12 +45,12 @@ export default function WeeklyReport() {
   const hasActivity = thisWeek.totalScans > 0;
 
   const shareText = [
-    `AEGINEL Weekly Report (${period.start} ~ ${period.end})`,
-    `Scans: ${thisWeek.totalScans} | PII Protected: ${thisWeek.piiProtected}`,
+    `AEGINEL ${t('weekly.title')} (${period.start} ~ ${period.end})`,
+    `${t('stats.scans')}: ${thisWeek.totalScans} | ${t('stats.piiProtected')}: ${thisWeek.piiProtected}`,
     thisWeek.topCategories.length > 0
-      ? `Categories: ${thisWeek.topCategories.map(([c, n]) => `${CAT_LABELS[c] ?? c}(${n})`).join(', ')}`
+      ? `${t('weekly.categories')}: ${thisWeek.topCategories.map(([c, n]) => `${CAT_LABELS[c] ?? c}(${n})`).join(', ')}`
       : '',
-    `Protected by Aegis Personal`,
+    `Protected by ${t('guard')}`,
   ].filter(Boolean).join('\n');
 
   const handleCopy = async () => {
@@ -68,7 +70,6 @@ export default function WeeklyReport() {
 
   return (
     <div className="rounded-xl border border-aeginel-border bg-aeginel-surface overflow-hidden">
-      {/* Collapsible header */}
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-aeginel-surface2 transition-colors"
@@ -79,7 +80,7 @@ export default function WeeklyReport() {
             <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
             <line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
-          <span className="text-[11px] font-semibold text-aeginel-text">Weekly Report</span>
+          <span className="text-[11px] font-semibold text-aeginel-text">{t('weekly.title')}</span>
           {hasActivity && (
             <span
               className="text-[8px] font-semibold px-1.5 py-0.5 rounded-full"
@@ -103,19 +104,17 @@ export default function WeeklyReport() {
       {open && (
         <div className="px-3 pb-3 pt-2 border-t border-aeginel-border space-y-2.5 animate-fade-in">
           {!hasActivity ? (
-            <p className="text-[10px] text-aeginel-muted text-center py-3">No activity this week yet.</p>
+            <p className="text-[10px] text-aeginel-muted text-center py-3">{t('weekly.noActivity')}</p>
           ) : (
             <>
-              {/* Stats row */}
               <div className="grid grid-cols-2 gap-1.5">
-                <MiniStat label="Scans"         value={thisWeek.totalScans}    color="#e6edf3" />
-                <MiniStat label="PII Protected"  value={thisWeek.piiProtected}  color="#58a6ff" />
+                <MiniStat label={t('stats.scans')}        value={thisWeek.totalScans}    color="#e6edf3" />
+                <MiniStat label={t('stats.piiProtected')}  value={thisWeek.piiProtected}  color="#58a6ff" />
               </div>
 
-              {/* Top categories */}
               {thisWeek.topCategories.length > 0 && (
                 <div>
-                  <p className="text-[9px] font-semibold text-aeginel-muted mb-1.5 uppercase tracking-wide">Categories</p>
+                  <p className="text-[9px] font-semibold text-aeginel-muted mb-1.5 uppercase tracking-wide">{t('weekly.categories')}</p>
                   <div className="flex flex-wrap gap-1">
                     {thisWeek.topCategories.map(([cat, count]) => (
                       <span
@@ -130,10 +129,9 @@ export default function WeeklyReport() {
                 </div>
               )}
 
-              {/* Site breakdown with mini bars */}
               {thisWeek.siteBreakdown.length > 0 && (
                 <div>
-                  <p className="text-[9px] font-semibold text-aeginel-muted mb-1.5 uppercase tracking-wide">Sites</p>
+                  <p className="text-[9px] font-semibold text-aeginel-muted mb-1.5 uppercase tracking-wide">{t('weekly.sites')}</p>
                   <div className="space-y-1.5">
                     {thisWeek.siteBreakdown.map(([site, count]) => {
                       const pct = thisWeek.totalScans > 0
@@ -156,7 +154,6 @@ export default function WeeklyReport() {
                 </div>
               )}
 
-              {/* Copy button */}
               <button
                 onClick={handleCopy}
                 className="w-full text-[10px] py-1.5 rounded-lg border font-medium transition-all"
@@ -165,7 +162,7 @@ export default function WeeklyReport() {
                   : { background: '#21262d', border: '1px solid #30363d', color: '#8b949e' }
                 }
               >
-                {copied ? '✓ Copied!' : 'Copy Report'}
+                {copied ? `✓ ${t('weekly.copied')}` : t('weekly.copyReport')}
               </button>
             </>
           )}

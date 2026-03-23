@@ -1,5 +1,6 @@
 {
   "guard": "Aegis Personal",
+  "subtitle": "AI Privacy Guard",
   "status": {
     "protected": "Protected",
     "disabled": "Disabled",
@@ -7,41 +8,92 @@
   },
   "stats": {
     "scans": "Scans",
-    "blocked": "Blocked",
-    "piiProtected": "Protected"
+    "piiProtected": "PII Protected",
+    "today": "today",
+    "thisWeek": "this week"
   },
   "risk": {
+    "title": "PII Exposure",
     "low": "Low Risk",
     "medium": "Medium Risk",
     "high": "High Risk",
-    "critical": "Critical Risk",
-    "noScans": "No scans yet"
+    "critical": "Critical",
+    "noScans": "No scan yet",
+    "waiting": "Waiting for scan\u2026"
   },
   "history": {
     "title": "Recent Scans",
-    "empty": "No scans yet. Start chatting on a supported site.",
+    "export": "Export",
+    "empty": "No scans yet",
     "clean": "clean"
   },
   "settings": {
     "title": "Settings",
+    "tabs": {
+      "privacy": "Privacy",
+      "advanced": "Advanced"
+    },
+    "piiTypesCount": "{{count}}/7 PII types",
     "pii": "PII Detection",
-    "threshold": "Block Threshold",
-    "sensitivity": "Sensitivity",
-    "layers": "Detection Layers",
-    "language": "Language",
-    "clear": "Clear Scan History",
-    "auto": "Auto",
-    "layerNames": {
-      "basicKeywords": "Basic Keywords",
-      "jailbreak": "Jailbreak Detection",
-      "injection": "Injection Detection",
-      "extraction": "Data Extraction",
-      "socialEngineering": "Social Engineering",
-      "koreanEvasion": "Korean/CJK Evasion",
-      "encodingAttacks": "Encoding Attacks",
-      "multiTurn": "Multi-turn Signals",
-      "semanticRisk": "Semantic Risk"
-    }
+    "piiDesc": "Detect personal data in prompts",
+    "autoPseudonymize": "Auto Pseudonymize",
+    "autoPseudonymizeDesc": "Replace PII with fake values before sending",
+    "proxyMode": "Proxy Mode",
+    "proxyAuto": "Auto",
+    "proxyConfirm": "Confirm",
+    "showNotification": "Show Notification",
+    "showNotificationDesc": "Banner when PII is protected",
+    "blockThreshold": "Block Threshold",
+    "blockThresholdDesc": "Score at which input is blocked",
+    "displayLanguage": "Display Language",
+    "displayLanguageDesc": "Language used for the interface",
+    "inputLanguage": "Input Detection Language",
+    "inputLanguageDesc": "Language for detecting PII patterns",
+    "autoDetect": "Auto (Browser)",
+    "allowedSites": "Allowed Sites",
+    "allowedSitesDesc": "One domain per line \u2014 these sites skip scanning.",
+    "domainsCount": "{{count}} domains",
+    "clearHistory": "Clear All History",
+    "devMode": "Developer Mode",
+    "devModeDesc": "Show real-time scan logs & debug info",
+    "loadingConsole": "Loading console..."
+  },
+  "aegis": {
+    "title": "AEGIS Server",
+    "enterprise": "Enterprise",
+    "desc": "Connect to AEGIS server for attack defense",
+    "serverUrl": "Server URL",
+    "apiKey": "API Key",
+    "verifyKey": "Verify API Key",
+    "verifying": "Verifying...",
+    "verified": "Verified \u2014 Key is valid",
+    "invalid": "Invalid key \u2014 check URL and key",
+    "invalidDetail": "Could not authenticate with the AEGIS server. Check that the URL is correct and the API key is valid (format: aegis_sk_...).",
+    "endpoints": "API Endpoints",
+    "endpointsActive": "{{count}}/5 active",
+    "info": "AEGIS server provides attack defense (jailbreak, injection, etc.). Server verdict is authoritative.",
+    "timeout": "Timeout",
+    "disconnect": "Disconnect",
+    "usage": "API Usage",
+    "refresh": "Refresh",
+    "remaining": "{{count}} left",
+    "quotaCritical": "Quota almost exhausted!",
+    "quotaOverage": "Overage charges may apply.",
+    "quotaRejected": "API calls will be rejected soon.",
+    "quotaLow": "{{pct}}% remaining \u2014 consider reducing endpoint usage."
+  },
+  "weekly": {
+    "title": "Weekly Report",
+    "noActivity": "No activity this week yet.",
+    "categories": "Categories",
+    "sites": "Sites",
+    "copyReport": "Copy Report",
+    "copied": "Copied!"
+  },
+  "footer": {
+    "scansToday": "{{count}} scans today",
+    "scanToday": "{{count}} scan today",
+    "noScansToday": "No scans today"
   },
   "banner": {
     "detected": "Risk Detected",
@@ -50,15 +102,6 @@
     "sendAnyway": "Send Anyway"
   },
   "categories": {
-    "harmful_content": "Harmful Content",
-    "jailbreak": "Jailbreak",
-    "prompt_injection": "Prompt Injection",
-    "data_extraction": "Data Extraction",
-    "social_engineering": "Social Engineering",
-    "script_evasion": "Script Evasion",
-    "encoding_attack": "Encoding Attack",
-    "multi_turn": "Multi-turn Attack",
-    "self_harm": "Self Harm",
     "pii_exposure": "PII Exposure"
   },
   "proxy": {
