@@ -1,5 +1,6 @@
 {
   "guard": "Aegis Personal",
+  "subtitle": "Protección de Privacidad IA",
   "status": {
     "protected": "Protegido",
     "disabled": "Desactivado",
@@ -7,41 +8,92 @@
   },
   "stats": {
     "scans": "Escaneos",
-    "blocked": "Bloqueados",
-    "piiProtected": "Protegidos"
+    "piiProtected": "PII Protegidos",
+    "today": "hoy",
+    "thisWeek": "esta semana"
   },
   "risk": {
+    "title": "Exposición PII",
     "low": "Riesgo Bajo",
     "medium": "Riesgo Medio",
     "high": "Riesgo Alto",
-    "critical": "Riesgo Crítico",
-    "noScans": "Sin escaneos aún"
+    "critical": "Crítico",
+    "noScans": "Sin escaneos aún",
+    "waiting": "Esperando escaneo\u2026"
   },
   "history": {
     "title": "Escaneos Recientes",
-    "empty": "Sin escaneos aún. Comienza a chatear en un sitio compatible.",
+    "export": "Exportar",
+    "empty": "Sin escaneos aún",
     "clean": "limpio"
   },
   "settings": {
     "title": "Configuración",
+    "tabs": {
+      "privacy": "Privacidad",
+      "advanced": "Avanzado"
+    },
+    "piiTypesCount": "{{count}}/7 tipos PII",
     "pii": "Detección de PII",
-    "threshold": "Umbral de Bloqueo",
-    "sensitivity": "Sensibilidad",
-    "layers": "Capas de Detección",
-    "language": "Idioma",
-    "clear": "Borrar Historial",
-    "auto": "Automático",
-    "layerNames": {
-      "basicKeywords": "Palabras Clave Básicas",
-      "jailbreak": "Detección de Jailbreak",
-      "injection": "Detección de Inyección",
-      "extraction": "Extracción de Datos",
-      "socialEngineering": "Ingeniería Social",
-      "koreanEvasion": "Evasión CJK/Coreano",
-      "encodingAttacks": "Ataques de Codificación",
-      "multiTurn": "Señales Multi-turno",
-      "semanticRisk": "Riesgo Semántico"
-    }
+    "piiDesc": "Detectar datos personales en prompts",
+    "autoPseudonymize": "Seudonimización Automática",
+    "autoPseudonymizeDesc": "Reemplazar PII con valores falsos antes de enviar",
+    "proxyMode": "Modo Proxy",
+    "proxyAuto": "Automático",
+    "proxyConfirm": "Confirmar",
+    "showNotification": "Mostrar Notificación",
+    "showNotificationDesc": "Banner cuando se protege PII",
+    "blockThreshold": "Umbral de Bloqueo",
+    "blockThresholdDesc": "Puntuación a la que se bloquea la entrada",
+    "displayLanguage": "Idioma de Interfaz",
+    "displayLanguageDesc": "Idioma utilizado para la interfaz",
+    "inputLanguage": "Idioma de Detección",
+    "inputLanguageDesc": "Idioma para detectar patrones PII",
+    "autoDetect": "Automático (Navegador)",
+    "allowedSites": "Sitios Permitidos",
+    "allowedSitesDesc": "Un dominio por línea \u2014 estos sitios omiten el escaneo.",
+    "domainsCount": "{{count}} dominios",
+    "clearHistory": "Borrar Todo el Historial",
+    "devMode": "Modo Desarrollador",
+    "devModeDesc": "Mostrar logs de escaneo en tiempo real",
+    "loadingConsole": "Cargando consola..."
+  },
+  "aegis": {
+    "title": "Servidor AEGIS",
+    "enterprise": "Enterprise",
+    "desc": "Conectar al servidor AEGIS para defensa contra ataques",
+    "serverUrl": "URL del Servidor",
+    "apiKey": "Clave API",
+    "verifyKey": "Verificar Clave API",
+    "verifying": "Verificando...",
+    "verified": "Verificado \u2014 Clave válida",
+    "invalid": "Inválido \u2014 verifique URL y clave",
+    "invalidDetail": "No se pudo autenticar con el servidor AEGIS. Verifique que la URL sea correcta y la clave API sea válida (formato: aegis_sk_...).",
+    "endpoints": "Endpoints API",
+    "endpointsActive": "{{count}}/5 activos",
+    "info": "El servidor AEGIS proporciona defensa contra ataques (jailbreak, inyección, etc.). El veredicto del servidor es autoritativo.",
+    "timeout": "Tiempo límite",
+    "disconnect": "Desconectar",
+    "usage": "Uso de API",
+    "refresh": "Actualizar",
+    "remaining": "{{count}} restantes",
+    "quotaCritical": "¡Cuota casi agotada!",
+    "quotaOverage": "Se pueden aplicar cargos por exceso.",
+    "quotaRejected": "Las llamadas API serán rechazadas pronto.",
+    "quotaLow": "{{pct}}% restante \u2014 considere reducir el uso de endpoints."
+  },
+  "weekly": {
+    "title": "Informe Semanal",
+    "noActivity": "Sin actividad esta semana.",
+    "categories": "Categorías",
+    "sites": "Sitios",
+    "copyReport": "Copiar Informe",
+    "copied": "¡Copiado!"
+  },
+  "footer": {
+    "scansToday": "{{count}} escaneos hoy",
+    "scanToday": "{{count}} escaneo hoy",
+    "noScansToday": "Sin escaneos hoy"
   },
   "banner": {
     "detected": "Riesgo Detectado",
@@ -50,15 +102,6 @@
     "sendAnyway": "Enviar de Todos Modos"
   },
   "categories": {
-    "harmful_content": "Contenido Dañino",
-    "jailbreak": "Jailbreak",
-    "prompt_injection": "Inyección de Prompt",
-    "data_extraction": "Extracción de Datos",
-    "social_engineering": "Ingeniería Social",
-    "script_evasion": "Evasión de Script",
-    "encoding_attack": "Ataque de Codificación",
-    "multi_turn": "Ataque Multi-turno",
-    "self_harm": "Autolesión",
     "pii_exposure": "Exposición de PII"
   },
   "proxy": {
@@ -83,5 +126,11 @@
     "phone_intl": "Teléfono (Intl)",
     "ssn": "SSN",
     "passport": "Pasaporte"
+  },
+  "health": {
+    "degraded": "Aegis Personal: Algunas funciones no disponibles",
+    "error": "Aegis Personal: No se puede detectar entrada en esta página",
+    "brokenDetail": "Fallido: {{selectors}}. El diseño del sitio pudo haber cambiado.",
+    "dismiss": "Cerrar"
   }
 }

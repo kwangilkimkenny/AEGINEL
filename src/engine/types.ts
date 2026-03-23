@@ -95,15 +95,18 @@ export interface AegisUsageInfo {
   byEndpoint: Array<{ endpoint: string; calls: number }>;
 }
 
+export type UiLanguage = 'auto' | 'en' | 'ko' | 'es';
+
 export interface AeginelConfig {
   enabled: boolean;
+  uiLanguage: UiLanguage;
   pii: {
     enabled: boolean;
     types: Record<PiiType, boolean>;
   };
   piiProxy: PiiProxyConfig;
   blockThreshold: number; // 0-100, default 60
-  language: string; // 'auto' | SupportedLocale code
+  language: string; // 'auto' | SupportedLocale code — input detection language
   allowlist: string[]; // domains to skip scanning
   aegisServer: AegisServerConfig;
   devMode: boolean;
@@ -125,6 +128,7 @@ export const DEFAULT_AEGIS_SERVER_CONFIG: AegisServerConfig = {
 
 export const DEFAULT_CONFIG: AeginelConfig = {
   enabled: true,
+  uiLanguage: 'auto',
   pii: {
     enabled: true,
     types: {

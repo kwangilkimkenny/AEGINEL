@@ -2,6 +2,7 @@
 // Lightweight i18n with no external dependencies.
 // Usage: t('settings.title') → "설정" or "Settings"
 
+import { useSyncExternalStore } from 'react';
 import en from './en.json';
 import ko from './ko.json';
 import es from './es.json';
@@ -38,7 +39,7 @@ const locales: Record<SupportedLocale, TranslationMap> = {
   ru, ar, tr, pl, vi, id, th, hi, sv, cs,
 };
 
-/** Display names for language selector */
+/** Display names for input detection language selector (all 20 languages) */
 export const LANGUAGE_OPTIONS: { code: SupportedLocale; label: string }[] = [
   { code: 'en', label: 'English' },
   { code: 'es', label: 'Español' },
@@ -62,16 +63,29 @@ export const LANGUAGE_OPTIONS: { code: SupportedLocale; label: string }[] = [
   { code: 'cs', label: 'Čeština' },
 ];
 
+/** UI display language options (en, ko, es only) */
+export const UI_LANGUAGE_OPTIONS: { code: 'auto' | SupportedLocale; label: string }[] = [
+  { code: 'auto', label: 'Auto' },
+  { code: 'en',   label: 'English' },
+  { code: 'ko',   label: '한국어' },
+  { code: 'es',   label: 'Español' },
+];
+
 // ── Current Language State ──────────────────────────────────────────────
 
 let currentLocale: SupportedLocale = 'en';
+
+const listeners = new Set<() => void>();
+
+function emitChange(): void {
+  for (const cb of listeners) cb();
+}
 
 /** Detect browser language and map to supported locale */
 export function detectLocale(): SupportedLocale {
   const nav = typeof navigator !== 'undefined' ? navigator.language : 'en';
   const lang = nav.split('-')[0].toLowerCase();
   if (lang in locales) return lang as SupportedLocale;
-  // Fallback mappings
   if (nav.startsWith('zh')) return 'zh';
   if (nav.startsWith('pt')) return 'pt';
   return 'en';
@@ -79,18 +93,39 @@ export function detectLocale(): SupportedLocale {
 
 /** Set the active locale */
 export function setLocale(locale: string): void {
+  let next: SupportedLocale;
   if (locale === 'auto') {
-    currentLocale = detectLocale();
+    next = detectLocale();
   } else if (locale in locales) {
-    currentLocale = locale as SupportedLocale;
+    next = locale as SupportedLocale;
   } else {
-    currentLocale = 'en';
+    next = 'en';
+  }
+  if (next !== currentLocale) {
+    currentLocale = next;
+    emitChange();
   }
 }
 
 /** Get the active locale */
 export function getLocale(): SupportedLocale {
   return currentLocale;
+}
+
+// ── React Hook ──────────────────────────────────────────────────────────
+
+function subscribe(cb: () => void): () => void {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
+
+/**
+ * React hook that re-renders when the UI locale changes.
+ * Returns { t, locale } so components stay reactive.
+ */
+export function useI18n() {
+  const locale = useSyncExternalStore(subscribe, getLocale, getLocale);
+  return { t, locale };
 }
 
 // ── Translation Function ────────────────────────────────────────────────
@@ -116,7 +151,6 @@ export function t(key: string, params?: Record<string, string | number>): string
 
   if (!params) return value;
 
-  // Interpolate {{param}} placeholders
   return value.replace(/\{\{(\w+)\}\}/g, (_, k) =>
     params[k] != null ? String(params[k]) : `{{${k}}}`
   );
@@ -133,6 +167,3 @@ function resolve(obj: TranslationMap | undefined, key: string): unknown {
   }
   return current;
 }
-
-// Initialize with English as default
-setLocale('en');

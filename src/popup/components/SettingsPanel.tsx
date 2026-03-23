@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import type { AeginelConfig, AegisServerConfig, AegisUsageInfo } from '../../engine/types';
-import { LANGUAGE_OPTIONS } from '../../i18n';
+import { LANGUAGE_OPTIONS, UI_LANGUAGE_OPTIONS, useI18n } from '../../i18n';
 
 const DevConsole = lazy(() => import('./DevConsole'));
 
@@ -11,16 +11,18 @@ interface Props {
 }
 
 type Tab = 'privacy' | 'advanced';
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'privacy',   label: 'Privacy' },
-  { key: 'advanced',  label: 'Advanced' },
-];
 
 export default function SettingsPanel({ config, onUpdate, onClearHistory }: Props) {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('privacy');
 
   const piiTypeCount = Object.values(config.pii.types).filter(Boolean).length;
+
+  const TABS: { key: Tab; label: string }[] = [
+    { key: 'privacy',   label: t('settings.tabs.privacy') },
+    { key: 'advanced',  label: t('settings.tabs.advanced') },
+  ];
 
   return (
     <div className="rounded-xl border border-aeginel-border bg-aeginel-surface overflow-hidden">
@@ -34,10 +36,10 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
             <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
             <circle cx="12" cy="12" r="3"/>
           </svg>
-          <span className="text-[11px] font-semibold text-aeginel-text">Settings</span>
+          <span className="text-[11px] font-semibold text-aeginel-text">{t('settings.title')}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-aeginel-muted">{piiTypeCount}/7 PII types</span>
+          <span className="text-[9px] text-aeginel-muted">{t('settings.piiTypesCount', { count: piiTypeCount })}</span>
           <svg
             width="9" height="9" viewBox="0 0 10 10"
             className={`text-aeginel-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
@@ -76,9 +78,31 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
             {/* ── PRIVACY TAB ── */}
             {activeTab === 'privacy' && (
               <>
+                {/* Display Language */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-medium text-aeginel-text">{t('settings.displayLanguage')}</p>
+                      <p className="text-[8px] text-aeginel-muted">{t('settings.displayLanguageDesc')}</p>
+                    </div>
+                    <select
+                      value={config.uiLanguage}
+                      onChange={(e) => onUpdate({ uiLanguage: e.target.value as AeginelConfig['uiLanguage'] })}
+                      className="bg-aeginel-surface2 rounded-lg px-2 py-1 text-[10px] text-aeginel-text focus:outline-none"
+                      style={{ border: '1px solid #30363d' }}
+                    >
+                      {UI_LANGUAGE_OPTIONS.map(({ code, label }) => (
+                        <option key={code} value={code}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="h-px bg-aeginel-border" />
+
                 <ToggleRow
-                  label="PII Detection"
-                  desc="Detect personal data in prompts"
+                  label={t('settings.pii')}
+                  desc={t('settings.piiDesc')}
                   checked={config.pii.enabled}
                   onChange={() => onUpdate({ pii: { ...config.pii, enabled: !config.pii.enabled } })}
                 />
@@ -86,8 +110,8 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                 <div className="h-px bg-aeginel-border" />
 
                 <ToggleRow
-                  label="Auto Pseudonymize"
-                  desc="Replace PII with fake values before sending"
+                  label={t('settings.autoPseudonymize')}
+                  desc={t('settings.autoPseudonymizeDesc')}
                   checked={config.piiProxy.enabled}
                   onChange={() => onUpdate({ piiProxy: { ...config.piiProxy, enabled: !config.piiProxy.enabled } })}
                 />
@@ -95,21 +119,21 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                 {config.piiProxy.enabled && (
                   <>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-aeginel-muted">Proxy Mode</span>
+                      <span className="text-[10px] text-aeginel-muted">{t('settings.proxyMode')}</span>
                       <select
                         value={config.piiProxy.mode}
                         onChange={(e) => onUpdate({ piiProxy: { ...config.piiProxy, mode: e.target.value as 'auto' | 'confirm' } })}
                         className="bg-aeginel-surface2 rounded-lg px-2 py-1 text-[10px] text-aeginel-text focus:outline-none"
                         style={{ border: '1px solid #30363d' }}
                       >
-                        <option value="auto">Auto</option>
-                        <option value="confirm">Confirm</option>
+                        <option value="auto">{t('settings.proxyAuto')}</option>
+                        <option value="confirm">{t('settings.proxyConfirm')}</option>
                       </select>
                     </div>
 
                     <ToggleRow
-                      label="Show Notification"
-                      desc="Banner when PII is protected"
+                      label={t('settings.showNotification')}
+                      desc={t('settings.showNotificationDesc')}
                       checked={config.piiProxy.showNotification}
                       onChange={() => onUpdate({ piiProxy: { ...config.piiProxy, showNotification: !config.piiProxy.showNotification } })}
                     />
@@ -122,8 +146,8 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <div>
-                      <p className="text-[10px] font-medium text-aeginel-text">Block Threshold</p>
-                      <p className="text-[8px] text-aeginel-muted">Score at which input is blocked</p>
+                      <p className="text-[10px] font-medium text-aeginel-text">{t('settings.blockThreshold')}</p>
+                      <p className="text-[8px] text-aeginel-muted">{t('settings.blockThresholdDesc')}</p>
                     </div>
                     <span
                       className="text-[13px] font-bold number-hero"
@@ -156,27 +180,33 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
 
                 <div className="h-px bg-aeginel-border" />
 
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-medium text-aeginel-text">Language</span>
-                  <select
-                    value={config.language}
-                    onChange={(e) => onUpdate({ language: e.target.value })}
-                    className="bg-aeginel-surface2 rounded-lg px-2 py-1 text-[10px] text-aeginel-text focus:outline-none"
-                    style={{ border: '1px solid #30363d' }}
-                  >
-                    <option value="auto">Auto</option>
-                    {LANGUAGE_OPTIONS.map(({ code, label }) => (
-                      <option key={code} value={code}>{label}</option>
-                    ))}
-                  </select>
+                {/* Input Detection Language */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-medium text-aeginel-text">{t('settings.inputLanguage')}</p>
+                      <p className="text-[8px] text-aeginel-muted">{t('settings.inputLanguageDesc')}</p>
+                    </div>
+                    <select
+                      value={config.language}
+                      onChange={(e) => onUpdate({ language: e.target.value })}
+                      className="bg-aeginel-surface2 rounded-lg px-2 py-1 text-[10px] text-aeginel-text focus:outline-none"
+                      style={{ border: '1px solid #30363d' }}
+                    >
+                      <option value="auto">{t('settings.autoDetect')}</option>
+                      {LANGUAGE_OPTIONS.map(({ code, label }) => (
+                        <option key={code} value={code}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-medium text-aeginel-text">Allowed Sites</span>
-                    <span className="text-[8px] text-aeginel-muted">{(config.allowlist ?? []).length} domains</span>
+                    <span className="text-[10px] font-medium text-aeginel-text">{t('settings.allowedSites')}</span>
+                    <span className="text-[8px] text-aeginel-muted">{t('settings.domainsCount', { count: (config.allowlist ?? []).length })}</span>
                   </div>
-                  <p className="text-[8px] text-aeginel-muted mb-1.5">One domain per line — these sites skip scanning.</p>
+                  <p className="text-[8px] text-aeginel-muted mb-1.5">{t('settings.allowedSitesDesc')}</p>
                   <textarea
                     value={(config.allowlist ?? []).join('\n')}
                     onChange={(e) => {
@@ -195,15 +225,15 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                   className="w-full text-[10px] py-2 rounded-lg font-medium transition-all hover:opacity-90"
                   style={{ background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.25)', color: '#f85149' }}
                 >
-                  Clear All History
+                  {t('settings.clearHistory')}
                 </button>
 
                 {/* Developer Mode */}
                 <div className="pt-2 mt-1" style={{ borderTop: '1px solid #21262d' }}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] font-medium text-aeginel-text">Developer Mode</span>
-                      <p className="text-[8px] text-aeginel-muted mt-0.5">Show real-time scan logs &amp; debug info</p>
+                      <span className="text-[10px] font-medium text-aeginel-text">{t('settings.devMode')}</span>
+                      <p className="text-[8px] text-aeginel-muted mt-0.5">{t('settings.devModeDesc')}</p>
                     </div>
                     <button
                       onClick={() => onUpdate({ devMode: !config.devMode })}
@@ -222,7 +252,7 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
 
                   {config.devMode && (
                     <div className="mt-2">
-                      <Suspense fallback={<p className="text-[9px] text-aeginel-muted">Loading console...</p>}>
+                      <Suspense fallback={<p className="text-[9px] text-aeginel-muted">{t('settings.loadingConsole')}</p>}>
                         <DevConsole />
                       </Suspense>
                     </div>
@@ -285,6 +315,7 @@ function AegisServerPanel({
   config: AegisServerConfig;
   onUpdate: (partial: Partial<AegisServerConfig>) => void;
 }) {
+  const { t } = useI18n();
   const [keyStatus, setKeyStatus] = useState<KeyStatus>('idle');
   const [usage, setUsage] = useState<AegisUsageInfo | null>(null);
   const [usageLoading, setUsageLoading] = useState(false);
@@ -360,9 +391,9 @@ function AegisServerPanel({
 
   const statusConfig: Record<KeyStatus, { color: string; label: string }> = {
     idle: { color: '#8b949e', label: '' },
-    validating: { color: '#d29922', label: 'Verifying...' },
-    valid: { color: '#3fb950', label: 'Verified' },
-    invalid: { color: '#f85149', label: 'Invalid' },
+    validating: { color: '#d29922', label: t('aegis.verifying') },
+    valid: { color: '#3fb950', label: t('aegis.verified').split(' — ')[0] },
+    invalid: { color: '#f85149', label: t('aegis.invalid').split(' — ')[0] },
   };
 
   return (
@@ -373,10 +404,10 @@ function AegisServerPanel({
           <path d="M2 17l10 5 10-5" />
           <path d="M2 12l10 5 10-5" />
         </svg>
-        <span className="text-[10px] font-semibold text-aeginel-text">AEGIS Server</span>
+        <span className="text-[10px] font-semibold text-aeginel-text">{t('aegis.title')}</span>
         <span className="ml-auto text-[8px] px-1.5 py-0.5 rounded-full font-medium"
           style={{ background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.2)', color: '#58a6ff' }}>
-          Enterprise
+          {t('aegis.enterprise')}
         </span>
         {keyStatus !== 'idle' && (
           <span className="text-[8px] font-medium" style={{ color: statusConfig[keyStatus].color }}>
@@ -386,7 +417,7 @@ function AegisServerPanel({
       </div>
       <div className="flex items-center justify-between mb-2">
         <p className="text-[8px] text-aeginel-muted">
-          Connect to AEGIS server for attack defense
+          {t('aegis.desc')}
         </p>
         <a
           href="https://aiaegis.io"
@@ -405,7 +436,7 @@ function AegisServerPanel({
       </div>
 
       <div>
-        <p className="text-[10px] font-medium text-aeginel-text mb-1">Server URL</p>
+        <p className="text-[10px] font-medium text-aeginel-text mb-1">{t('aegis.serverUrl')}</p>
         <input
           type="url"
           value={urlDraft}
@@ -419,7 +450,7 @@ function AegisServerPanel({
       </div>
 
       <div>
-        <p className="text-[10px] font-medium text-aeginel-text mb-1">API Key</p>
+        <p className="text-[10px] font-medium text-aeginel-text mb-1">{t('aegis.apiKey')}</p>
         <div className="relative">
           <input
             type={showKey ? 'text' : 'password'}
@@ -465,16 +496,16 @@ function AegisServerPanel({
               : { background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.25)', color: '#58a6ff' }
         }
       >
-        {keyStatus === 'validating' ? 'Verifying...'
-          : keyStatus === 'valid' ? 'Verified — Key is valid'
-          : keyStatus === 'invalid' ? 'Invalid key — check URL and key'
-          : 'Verify API Key'}
+        {keyStatus === 'validating' ? t('aegis.verifying')
+          : keyStatus === 'valid' ? t('aegis.verified')
+          : keyStatus === 'invalid' ? t('aegis.invalid')
+          : t('aegis.verifyKey')}
       </button>
 
       {keyStatus === 'invalid' && (
         <div className="rounded-lg p-2" style={{ background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.2)' }}>
           <p className="text-[9px]" style={{ color: '#f85149' }}>
-            Could not authenticate with the AEGIS server. Check that the URL is correct and the API key is valid (format: aegis_sk_...).
+            {t('aegis.invalidDetail')}
           </p>
         </div>
       )}
@@ -489,9 +520,9 @@ function AegisServerPanel({
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <p className="text-[10px] font-medium text-aeginel-text">API Endpoints</p>
+              <p className="text-[10px] font-medium text-aeginel-text">{t('aegis.endpoints')}</p>
               <span className="text-[8px] text-aeginel-muted">
-                {[config.endpoints.judge, config.endpoints.jailbreakDetect, config.endpoints.safetyCheck, config.endpoints.classify, config.endpoints.koreanAnalyze].filter(Boolean).length}/5 active
+                {t('aegis.endpointsActive', { count: [config.endpoints.judge, config.endpoints.jailbreakDetect, config.endpoints.safetyCheck, config.endpoints.classify, config.endpoints.koreanAnalyze].filter(Boolean).length })}
               </span>
             </div>
             <div className="space-y-1.5">
@@ -542,12 +573,12 @@ function AegisServerPanel({
 
           <div className="rounded-lg p-2" style={{ background: 'rgba(88,166,255,0.08)', border: '1px solid rgba(88,166,255,0.2)' }}>
             <p className="text-[9px] text-aeginel-muted">
-              AEGIS server provides attack defense (jailbreak, injection, etc.). Server verdict is authoritative.
+              {t('aegis.info')}
             </p>
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-aeginel-muted">Timeout</span>
+            <span className="text-[10px] text-aeginel-muted">{t('aegis.timeout')}</span>
             <select
               value={config.timeoutMs}
               onChange={(e) => onUpdate({ timeoutMs: Number(e.target.value) })}
@@ -572,7 +603,7 @@ function AegisServerPanel({
             className="w-full text-[10px] py-1.5 rounded-lg font-medium transition-all hover:opacity-90"
             style={{ background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.2)', color: '#f85149' }}
           >
-            Disconnect
+            {t('aegis.disconnect')}
           </button>
         </>
       )}
@@ -591,6 +622,7 @@ function UsageBar({
   loading: boolean;
   onRefresh: () => void;
 }) {
+  const { t } = useI18n();
   const pct = usage.percentUsed;
   const isLow = pct >= 80;
   const isCritical = pct >= 95;
@@ -613,13 +645,13 @@ function UsageBar({
       style={{ background: bgTint, border: `1px solid ${borderTint}` }}
     >
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-medium text-aeginel-text">API Usage</span>
+        <span className="text-[10px] font-medium text-aeginel-text">{t('aegis.usage')}</span>
         <button
           onClick={onRefresh}
           disabled={loading}
           className="text-[8px] text-aeginel-muted hover:text-aeginel-text transition-colors disabled:opacity-40"
         >
-          {loading ? '...' : 'Refresh'}
+          {loading ? '...' : t('aegis.refresh')}
         </button>
       </div>
 
@@ -635,7 +667,7 @@ function UsageBar({
           {usage.used.toLocaleString()} / {usage.allocated.toLocaleString()} calls
         </span>
         <span className="text-[9px] font-semibold" style={{ color: barColor }}>
-          {usage.remaining.toLocaleString()} left
+          {t('aegis.remaining', { count: usage.remaining.toLocaleString() })}
         </span>
       </div>
 
@@ -662,7 +694,7 @@ function UsageBar({
             <line x1="12" y1="17" x2="12.01" y2="17" />
           </svg>
           <span className="text-[9px] font-medium" style={{ color: '#f85149' }}>
-            Quota almost exhausted! {usage.overageAllowed ? 'Overage charges may apply.' : 'API calls will be rejected soon.'}
+            {t('aegis.quotaCritical')} {usage.overageAllowed ? t('aegis.quotaOverage') : t('aegis.quotaRejected')}
           </span>
         </div>
       )}
@@ -674,7 +706,7 @@ function UsageBar({
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           <span className="text-[9px] font-medium" style={{ color: '#d29922' }}>
-            {100 - pct}% remaining — consider reducing endpoint usage.
+            {t('aegis.quotaLow', { pct: 100 - pct })}
           </span>
         </div>
       )}

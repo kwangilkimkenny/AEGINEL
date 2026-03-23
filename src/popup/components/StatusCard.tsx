@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '../../i18n';
 
 interface Props {
   enabled: boolean;
@@ -14,6 +15,14 @@ interface Props {
 export default function StatusCard({
   enabled, siteName, totalScans, threatsBlocked, piiProtected, todayScans, weekScans,
 }: Props) {
+  const { t } = useI18n();
+
+  const subText = todayScans > 0
+    ? `${todayScans} ${t('stats.today')}`
+    : weekScans > 0
+      ? `${weekScans} ${t('stats.thisWeek')}`
+      : undefined;
+
   return (
     <div className="rounded-xl border border-aeginel-border bg-aeginel-surface p-3 animate-slide-up">
       {/* Status row */}
@@ -30,7 +39,7 @@ export default function StatusCard({
             <span
               className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${enabled ? 'bg-aeginel-green status-dot-active' : 'bg-aeginel-muted'}`}
             />
-            {enabled ? 'Protected' : 'Disabled'}
+            {enabled ? t('status.protected') : t('status.disabled')}
           </div>
 
           {/* Site pill */}
@@ -45,9 +54,9 @@ export default function StatusCard({
       {/* Stats bento grid */}
       <div className="grid grid-cols-2 gap-1.5">
         <StatBox
-          label="Scans"
+          label={t('stats.scans')}
           value={totalScans}
-          sub={todayScans > 0 ? `${todayScans} today` : weekScans > 0 ? `${weekScans} this week` : undefined}
+          sub={subText}
           color="#e6edf3"
           icon={
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8b949e" strokeWidth="2" strokeLinecap="round">
@@ -56,7 +65,7 @@ export default function StatusCard({
           }
         />
         <StatBox
-          label="PII Protected"
+          label={t('stats.piiProtected')}
           value={piiProtected}
           color="#58a6ff"
           icon={
