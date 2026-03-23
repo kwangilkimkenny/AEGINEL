@@ -23,6 +23,8 @@ export type MessageType =
   | 'AEGIS_HEALTH_RESPONSE'
   | 'AEGIS_GET_USAGE'
   | 'AEGIS_USAGE_RESPONSE'
+  | 'AEGIS_CHECK_ACCESS'
+  | 'AEGIS_ACCESS_RESPONSE'
   | 'GET_DEV_LOGS'
   | 'DEV_LOGS_RESPONSE'
   | 'CLEAR_DEV_LOGS'
@@ -134,6 +136,15 @@ export interface AegisUsageResponseMessage {
   payload: import('../engine/types').AegisUsageInfo | null;
 }
 
+export interface AegisCheckAccessMessage {
+  type: 'AEGIS_CHECK_ACCESS';
+}
+
+export interface AegisAccessResponseMessage {
+  type: 'AEGIS_ACCESS_RESPONSE';
+  payload: import('../engine/types').AegisVersionMap;
+}
+
 export interface GetDevLogsMessage {
   type: 'GET_DEV_LOGS';
 }
@@ -175,6 +186,8 @@ export type ExtensionMessage =
   | AegisHealthResponseMessage
   | AegisGetUsageMessage
   | AegisUsageResponseMessage
+  | AegisCheckAccessMessage
+  | AegisAccessResponseMessage
   | GetDevLogsMessage
   | DevLogsResponseMessage
   | ClearDevLogsMessage

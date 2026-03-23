@@ -95,6 +95,9 @@ export interface AegisUsageInfo {
   byEndpoint: Array<{ endpoint: string; calls: number }>;
 }
 
+export type VersionAccess = 'allowed' | 'denied' | 'unknown';
+export type AegisVersionMap = Record<string, VersionAccess>;
+
 export type UiLanguage = 'auto' | 'en' | 'ko' | 'es';
 
 export interface AeginelConfig {

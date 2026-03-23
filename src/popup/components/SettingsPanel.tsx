@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
-import type { AeginelConfig, AegisServerConfig, AegisUsageInfo } from '../../engine/types';
+import type { AeginelConfig, AegisServerConfig, AegisUsageInfo, AegisVersionMap } from '../../engine/types';
 import { LANGUAGE_OPTIONS, UI_LANGUAGE_OPTIONS, useI18n } from '../../i18n';
 
 const DevConsole = lazy(() => import('./DevConsole'));
@@ -392,18 +392,40 @@ function ToggleRow({
 }
 
 function EndpointRow({
-  label, desc, info, checked, onChange,
-}: { label: string; desc: string; info: string; checked: boolean; onChange: () => void }) {
+  label, desc, info, checked, locked, version, onChange,
+}: { label: string; desc: string; info: string; checked: boolean; locked?: boolean; version?: string; onChange: () => void }) {
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div className={`flex items-center justify-between gap-2${locked ? ' opacity-50' : ''}`}>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
+          {locked && (
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#d29922" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          )}
           <p className="text-[10px] font-medium text-aeginel-text">{label}</p>
+          {version && (
+            <span className="text-[7px] px-1 py-px rounded font-medium flex-shrink-0"
+              style={{
+                background: locked ? 'rgba(210,153,34,0.1)' : 'rgba(63,185,80,0.1)',
+                color: locked ? '#d29922' : '#3fb950',
+                border: `1px solid ${locked ? 'rgba(210,153,34,0.2)' : 'rgba(63,185,80,0.15)'}`,
+              }}>
+              {version}
+            </span>
+          )}
           <InfoTip text={info} />
         </div>
         <p className="text-[8px] text-aeginel-muted">{desc}</p>
       </div>
-      <Toggle checked={checked} onChange={onChange} />
+      {locked ? (
+        <span className="text-[8px] font-medium flex-shrink-0" style={{ color: '#d29922' }}>
+          {/* Lock icon inline */}
+        </span>
+      ) : (
+        <Toggle checked={checked} onChange={onChange} />
+      )}
     </div>
   );
 }
@@ -426,8 +448,12 @@ function AegisServerPanel({
   const [urlDraft, setUrlDraft] = useState(config.baseUrl);
   const [keyDraft, setKeyDraft] = useState(config.apiKey);
   const [showKey, setShowKey] = useState(false);
+  const [versionAccess, setVersionAccess] = useState<AegisVersionMap>({});
 
   const isKeyValid = keyStatus === 'valid';
+  const deniedVersions = Object.entries(versionAccess)
+    .filter(([, v]) => v === 'denied')
+    .map(([k]) => k.toUpperCase());
 
   const fetchUsage = useCallback(async () => {
     setUsageLoading(true);
@@ -454,6 +480,9 @@ function AegisServerPanel({
       if (res?.payload) {
         setKeyStatus('valid');
         setUsage(res.payload);
+        chrome.runtime.sendMessage({ type: 'AEGIS_CHECK_ACCESS' }).then(accessRes => {
+          if (accessRes?.payload) setVersionAccess(accessRes.payload);
+        }).catch(() => {});
       } else {
         setKeyStatus('invalid');
         setUsage(null);
@@ -473,6 +502,9 @@ function AegisServerPanel({
         if (res?.payload) {
           setKeyStatus('valid');
           setUsage(res.payload);
+          chrome.runtime.sendMessage({ type: 'AEGIS_CHECK_ACCESS' }).then(accessRes => {
+            if (accessRes?.payload) setVersionAccess(accessRes.payload);
+          }).catch(() => {});
         } else {
           setKeyStatus('invalid');
         }
@@ -629,12 +661,43 @@ function AegisServerPanel({
                 {t('aegis.endpointsActive', { count: [config.endpoints.judge, config.endpoints.jailbreakDetect, config.endpoints.safetyCheck, config.endpoints.classify, config.endpoints.koreanAnalyze].filter(Boolean).length })}
               </span>
             </div>
+
+            {/* Plan restriction banner */}
+            {deniedVersions.length > 0 && (
+              <div className="rounded-lg p-2 mb-1.5 flex items-start gap-2" style={{ background: 'rgba(210,153,34,0.08)', border: '1px solid rgba(210,153,34,0.25)' }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#d29922" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[9px]" style={{ color: '#d29922' }}>
+                    {t('aegis.planDeniedBanner', { version: deniedVersions.join(', ') })}
+                  </p>
+                  <a
+                    href="https://aiaegis.io/pricing"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 mt-1 text-[8px] font-medium hover:opacity-80 transition-opacity"
+                    style={{ color: '#d29922' }}
+                  >
+                    {t('aegis.planUpgrade')}
+                    <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="15 3 21 3 21 9" />
+                      <line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <EndpointRow
                 label={t('aegis.endpointJudge')}
                 desc={t('aegis.endpointJudgeDesc')}
                 info={t('aegis.endpointJudgeInfo')}
                 checked={config.endpoints.judge}
+                locked={versionAccess.v1 === 'denied'}
+                version="v1"
                 onChange={() => onUpdate({
                   endpoints: { ...config.endpoints, judge: !config.endpoints.judge },
                 })}
@@ -644,6 +707,8 @@ function AegisServerPanel({
                 desc={t('aegis.endpointJailbreakDesc')}
                 info={t('aegis.endpointJailbreakInfo')}
                 checked={config.endpoints.jailbreakDetect}
+                locked={versionAccess.v2 === 'denied'}
+                version="v2"
                 onChange={() => onUpdate({
                   endpoints: { ...config.endpoints, jailbreakDetect: !config.endpoints.jailbreakDetect },
                 })}
@@ -653,6 +718,8 @@ function AegisServerPanel({
                 desc={t('aegis.endpointSafetyDesc')}
                 info={t('aegis.endpointSafetyInfo')}
                 checked={config.endpoints.safetyCheck}
+                locked={versionAccess.v2 === 'denied'}
+                version="v2"
                 onChange={() => onUpdate({
                   endpoints: { ...config.endpoints, safetyCheck: !config.endpoints.safetyCheck },
                 })}
@@ -662,6 +729,8 @@ function AegisServerPanel({
                 desc={t('aegis.endpointClassifyDesc')}
                 info={t('aegis.endpointClassifyInfo')}
                 checked={config.endpoints.classify}
+                locked={versionAccess.v2 === 'denied'}
+                version="v2"
                 onChange={() => onUpdate({
                   endpoints: { ...config.endpoints, classify: !config.endpoints.classify },
                 })}
@@ -671,6 +740,8 @@ function AegisServerPanel({
                 desc={t('aegis.endpointKoreanDesc')}
                 info={t('aegis.endpointKoreanInfo')}
                 checked={config.endpoints.koreanAnalyze}
+                locked={versionAccess.v3 === 'denied'}
+                version="v3"
                 onChange={() => onUpdate({
                   endpoints: { ...config.endpoints, koreanAnalyze: !config.endpoints.koreanAnalyze },
                 })}

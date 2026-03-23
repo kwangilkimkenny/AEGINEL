@@ -3,13 +3,13 @@
 // authoritative — local scan only serves as a fallback when the server is
 // unreachable. Network failures gracefully degrade to local-only results.
 
-import type { AegisServerConfig, AegisServerResult, AegisUsageInfo } from './types';
+import type { AegisServerConfig, AegisServerResult, AegisUsageInfo, AegisVersionMap } from './types';
 
 // ── /v1/judge ───────────────────────────────────────────────────────────────
 
 interface JudgeRequest {
-  content: string;
-  context?: {
+  prompt: string;
+  metadata?: {
     site: string;
     local_score: number;
     local_categories: string[];
@@ -235,8 +235,8 @@ export class AegisClient {
     const t0 = performance.now();
     try {
       const body: JudgeRequest = {
-        content,
-        context: { site, local_score: localScore, local_categories: localCategories },
+        prompt: content,
+        metadata: { site, local_score: localScore, local_categories: localCategories },
       };
 
       const res = await this.fetchPost('/v1/judge', body as unknown as Record<string, unknown>, signal);
@@ -278,7 +278,7 @@ export class AegisClient {
   ): Promise<AegisServerResult> {
     const t0 = performance.now();
     try {
-      const res = await this.fetchPost('/v2/jailbreak/detect', { content }, signal);
+      const res = await this.fetchPost('/v2/jailbreak/detect', { text: content }, signal);
       const data = res as JailbreakDetectResponse;
 
       const score = data.is_jailbreak ? Math.round(data.confidence * 80) : 0;
@@ -311,7 +311,7 @@ export class AegisClient {
   ): Promise<AegisServerResult> {
     const t0 = performance.now();
     try {
-      const res = await this.fetchPost('/v2/safety/check', { content }, signal);
+      const res = await this.fetchPost('/v2/safety/check', { text: content }, signal);
       const data = res as SafetyCheckResponse;
 
       const score = data.is_safe ? 0 : Math.round(data.overall_score * 100);
@@ -337,7 +337,7 @@ export class AegisClient {
   ): Promise<AegisServerResult> {
     const t0 = performance.now();
     try {
-      const res = await this.fetchPost('/v2/classify', { content }, signal);
+      const res = await this.fetchPost('/v2/classify', { text: content }, signal);
       const data = res as ClassifyResponse;
 
       const topCategory = data.categories?.[0];
@@ -370,7 +370,7 @@ export class AegisClient {
   ): Promise<AegisServerResult> {
     const t0 = performance.now();
     try {
-      const res = await this.fetchPost('/v3/korean/analyze', { content }, signal);
+      const res = await this.fetchPost('/v3/korean/analyze', { text: content }, signal);
       const data = res as KoreanAnalyzeResponse;
 
       const score = data.is_safe ? 0 : Math.round((data.risk_score ?? 0) * 100);
@@ -417,6 +417,54 @@ export class AegisClient {
       console.warn('[Aegis Client] /v1/usage failed:', err);
       return null;
     }
+  }
+
+  // ── Version Access Probe ────────────────────────────────────────────────
+
+  async probeVersionAccess(): Promise<AegisVersionMap> {
+    if (!this.isEnabled) return { v1: 'unknown', v2: 'unknown', v3: 'unknown' };
+
+    const probes: Array<{ version: string; path: string; body: Record<string, unknown> }> = [
+      { version: 'v1', path: '/v1/judge', body: { prompt: '_access_check' } },
+      { version: 'v2', path: '/v2/classify', body: { text: '_access_check' } },
+      { version: 'v3', path: '/v3/korean/analyze', body: { text: '_access_check' } },
+    ];
+
+    const baseUrl = this.config.baseUrl.replace(/\/+$/, '');
+    const access: AegisVersionMap = {};
+
+    await Promise.allSettled(probes.map(async ({ version, path, body }) => {
+      try {
+        const res = await fetch(`${baseUrl}${path}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': this.config.apiKey,
+            'X-Source': 'aegis-personal',
+          },
+          body: JSON.stringify(body),
+        });
+        if (res.status === 403) {
+          const data = await res.json().catch(() => null) as { code?: string } | null;
+          access[version] = data?.code === 'API_VERSION_DENIED' ? 'denied' : 'allowed';
+        } else {
+          access[version] = 'allowed';
+        }
+      } catch {
+        access[version] = 'unknown';
+      }
+    }));
+
+    // Cascading: plan tiers are cumulative (v1 ⊂ v2 ⊂ v3).
+    // If a lower version is denied, higher versions must also be denied.
+    if (access.v1 === 'denied') {
+      access.v2 = 'denied';
+      access.v3 = 'denied';
+    } else if (access.v2 === 'denied') {
+      access.v3 = 'denied';
+    }
+
+    return access;
   }
 
   // ── HTTP helpers ───────────────────────────────────────────────────────
