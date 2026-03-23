@@ -1,4 +1,4 @@
-import type { ScanResult, AeginelConfig } from '../engine/types';
+import type { ScanResult, AeginelConfig, HealthEntry } from '../engine/types';
 
 // ── Message Types ────────────────────────────────────────────────────────
 
@@ -28,7 +28,10 @@ export type MessageType =
   | 'GET_DEV_LOGS'
   | 'DEV_LOGS_RESPONSE'
   | 'CLEAR_DEV_LOGS'
-  | 'SCAN_PROGRESS';
+  | 'SCAN_PROGRESS'
+  | 'GET_DASHBOARD'
+  | 'DASHBOARD_RESPONSE'
+  | 'SCAN_COMPLETE';
 
 export interface ScanInputMessage {
   type: 'SCAN_INPUT';
@@ -158,6 +161,27 @@ export interface ClearDevLogsMessage {
   type: 'CLEAR_DEV_LOGS';
 }
 
+export interface GetDashboardMessage {
+  type: 'GET_DASHBOARD';
+}
+
+export interface DashboardResponseMessage {
+  type: 'DASHBOARD_RESPONSE';
+  payload: {
+    lastScan: ScanResult | null;
+    recentScans: ScanResult[];
+    health: Record<string, HealthEntry>;
+    aegisEnabled: boolean;
+    totalScans: number;
+    piiProtected: number;
+  };
+}
+
+export interface ScanCompleteMessage {
+  type: 'SCAN_COMPLETE';
+  payload: ScanResult;
+}
+
 export type ScanPhase = 'pii' | 'aegis' | 'done';
 
 export interface ScanProgressMessage {
@@ -191,4 +215,8 @@ export type ExtensionMessage =
   | GetDevLogsMessage
   | DevLogsResponseMessage
   | ClearDevLogsMessage
-  | ScanProgressMessage;
+  | ScanProgressMessage
+  | GetDashboardMessage
+  | DashboardResponseMessage
+  | ScanCompleteMessage
+  | { type: 'OPEN_AEGIS_SETTINGS' };

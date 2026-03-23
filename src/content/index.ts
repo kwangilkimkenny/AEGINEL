@@ -9,6 +9,7 @@ import { createGenericAdapter } from './sites/generic';
 import { siteRegistry } from './sites/registry';
 import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner, showShieldIndicator, hideShieldIndicator, isShieldVisible, showDisconnectedBanner, updateShieldTooltip } from './overlay/warning-banner';
 import type { ShieldStatus } from './overlay/warning-banner';
+import { showFloatingBadge, updateFloatingPanel, isFloatingBadgeShown } from './overlay/floating-panel';
 import type { ScanResult, AeginelConfig, ProxyResult, PiiMapping } from '../engine/types';
 import { DEFAULT_CONFIG } from '../engine/types';
 import { DEBOUNCE_MS, INPUT_MIN_LENGTH } from '../shared/constants';
@@ -931,6 +932,9 @@ function initContentScript(adapter: SiteAdapter) {
       checkForNavigation();
       scanExistingElements();
       ensureShieldVisible();
+      if (!isFloatingBadgeShown()) {
+        showFloatingBadge();
+      }
     }, 200);
   });
 
@@ -966,18 +970,25 @@ function initContentScript(adapter: SiteAdapter) {
     shieldProperlyPlaced = true;
   }
 
+  // Initialize floating badge
+  function initFloatingBadge() {
+    showFloatingBadge();
+  }
+
   // Initial attach
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       scanExistingElements();
       responseObserverRef = watchResponses();
       showIdleShield();
+      initFloatingBadge();
       setTimeout(checkAdapterHealth, 2000);
     });
   } else {
     scanExistingElements();
     responseObserverRef = watchResponses();
     showIdleShield();
+    initFloatingBadge();
     setTimeout(checkAdapterHealth, 2000);
   }
 
@@ -997,6 +1008,9 @@ function initContentScript(adapter: SiteAdapter) {
       const { phase, detail } = msg.payload as { phase: string; detail: string };
       const tooltip = PHASE_TOOLTIPS[phase] ?? `Aegis: ${detail}`;
       updateShieldTooltip(tooltip);
+    }
+    if (msg?.type === 'SCAN_COMPLETE' && msg.payload) {
+      updateFloatingPanel(msg.payload as ScanResult);
     }
   });
 

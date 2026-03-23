@@ -1,0 +1,682 @@
+// ── AEGIS Floating Dashboard Panel (Shadow DOM) ─────────────────────────────────
+// Draggable badge + expandable mini dashboard injected into web pages.
+// Panel direction adapts based on badge position (4-quadrant).
+
+import type { ScanResult, HealthEntry, PiiMatch, AegisEndpointDetail } from '../../engine/types';
+import type { DashboardResponseMessage } from '../../shared/messages';
+import { t } from '../../i18n';
+import styles from './styles.css?inline';
+
+const FLOAT_HOST_ID = 'aeginel-float-host';
+const STORAGE_KEY_POS = 'aeginel_badge_pos';
+const STORAGE_KEY_VIS = 'aeginel_badge_visible';
+
+const BADGE_SIZE = 36;
+const PANEL_WIDTH = 340;
+const PANEL_MAX_H = 440;
+const GAP = 8;
+
+let _shadow: ShadowRoot | null = null;
+let _host: HTMLElement | null = null;
+let _panelOpen = false;
+let _dashboardData: DashboardResponseMessage['payload'] | null = null;
+let _survivalObserver: MutationObserver | null = null;
+let _reinjectTimer: ReturnType<typeof setTimeout> | null = null;
+
+// ── Level color helpers ──────────────────────────────────────────────
+
+const LEVEL_COLORS: Record<string, string> = {
+  low: '#3fb950', medium: '#d29922', high: '#db6d28', critical: '#f85149',
+};
+
+function getAegisStatus(data: DashboardResponseMessage['payload'] | null): 'ok' | 'degraded' | 'error' | 'off' {
+  if (!data || !data.aegisEnabled) return 'off';
+  const h = data.health['aegis-server'];
+  if (!h) return 'ok';
+  return h.status;
+}
+
+function formatTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function actionToVerdict(action: string): string {
+  const map: Record<string, string> = {
+    approve: 'approve', block: 'block', modify: 'modify',
+    escalate: 'escalate', reask: 'reask', throttle: 'throttle',
+  };
+  return map[action.toLowerCase()] || action.toLowerCase();
+}
+
+function verdictClass(action: string): string {
+  const a = action.toLowerCase();
+  if (a === 'approve') return 'verdict-approve';
+  if (a === 'block') return 'verdict-block';
+  return 'verdict-other';
+}
+
+function epVerdictClass(action: string): string {
+  const a = action.toLowerCase();
+  if (a === 'approve') return 'ep-approve';
+  if (a === 'block') return 'ep-block';
+  return 'ep-other';
+}
+
+function groupPiiByType(piiDetected: PiiMatch[]): Map<string, number> {
+  const groups = new Map<string, number>();
+  for (const pii of piiDetected) {
+    groups.set(pii.type, (groups.get(pii.type) || 0) + 1);
+  }
+  return groups;
+}
+
+function categoryClass(cat: string): string {
+  const danger = ['jailbreak', 'prompt_injection', 'harmful', 'violence', 'dangerous', 'self_harm', 'hate_speech'];
+  const warning = ['pii_exposure', 'sensitive', 'sexual', 'harassment'];
+  const safe = ['safe'];
+  const lower = cat.toLowerCase();
+  if (danger.some(d => lower.includes(d))) return 'cat-danger';
+  if (warning.some(w => lower.includes(w))) return 'cat-warning';
+  if (safe.some(s => lower === s)) return 'cat-safe';
+  return 'cat-info';
+}
+
+function translateCategory(cat: string): string {
+  const key = `categories.${cat}`;
+  const translated = t(key);
+  return translated !== key ? translated : cat.replace(/_/g, ' ');
+}
+
+function endpointDisplayName(endpoint: string): string {
+  if (endpoint.includes('judge')) return t('floating.epJudge');
+  if (endpoint.includes('jailbreak')) return t('floating.epJailbreak');
+  if (endpoint.includes('safety')) return t('floating.epSafety');
+  if (endpoint.includes('classify')) return t('floating.epClassify');
+  if (endpoint.includes('korean')) return t('floating.epKorean');
+  return endpoint.replace(/^\/v\d+\//, '');
+}
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ── Badge Position Persistence ──────────────────────────────────────
+
+async function loadPosition(): Promise<{ x: number; y: number }> {
+  try {
+    const stored = await chrome.storage.local.get(STORAGE_KEY_POS);
+    if (stored[STORAGE_KEY_POS]) return stored[STORAGE_KEY_POS];
+  } catch { /* ignore */ }
+  return { x: window.innerWidth - BADGE_SIZE - 16, y: window.innerHeight - BADGE_SIZE - 16 };
+}
+
+async function savePosition(x: number, y: number) {
+  try {
+    await chrome.storage.local.set({ [STORAGE_KEY_POS]: { x, y } });
+  } catch { /* ignore */ }
+}
+
+export async function isBadgeVisible(): Promise<boolean> {
+  try {
+    const stored = await chrome.storage.local.get(STORAGE_KEY_VIS);
+    return stored[STORAGE_KEY_VIS] !== false;
+  } catch { return true; }
+}
+
+export async function setBadgeVisible(visible: boolean) {
+  try {
+    await chrome.storage.local.set({ [STORAGE_KEY_VIS]: visible });
+  } catch { /* ignore */ }
+}
+
+// ── Adaptive Panel Positioning ──────────────────────────────────────
+// Determines which direction the panel should expand based on where
+// the badge sits relative to viewport center.
+
+function repositionPanel() {
+  if (!_shadow || !_host) return;
+  const panel = _shadow.querySelector('.aeginel-floating-panel') as HTMLElement | null;
+  if (!panel) return;
+
+  const bx = _host.offsetLeft;
+  const by = _host.offsetTop;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  const isRight = bx + BADGE_SIZE / 2 > vw / 2;
+  const isBottom = by + BADGE_SIZE / 2 > vh / 2;
+
+  // Reset
+  panel.style.position = 'absolute';
+  panel.style.top = '';
+  panel.style.bottom = '';
+  panel.style.left = '';
+  panel.style.right = '';
+
+  if (isBottom) {
+    // Panel above badge
+    panel.style.bottom = `${BADGE_SIZE + GAP}px`;
+  } else {
+    // Panel below badge
+    panel.style.top = `${BADGE_SIZE + GAP}px`;
+  }
+
+  if (isRight) {
+    // Panel to the left — align right edge with badge right edge
+    panel.style.right = '0';
+  } else {
+    // Panel to the right — align left edge with badge left edge
+    panel.style.left = '0';
+  }
+}
+
+// ── Build Panel HTML ────────────────────────────────────────────────
+
+function buildPanelContent(data: DashboardResponseMessage['payload']): string {
+  const status = getAegisStatus(data);
+  const statusColor = status === 'ok' ? '#3fb950' : status === 'degraded' ? '#d29922' : status === 'error' ? '#f85149' : '#484f58';
+  const statusLabel = status === 'ok' ? t('floating.connected')
+    : status === 'degraded' ? t('floating.degraded')
+    : status === 'error' ? t('floating.error')
+    : t('floating.localOnly');
+
+  let html = '';
+
+  // Header
+  html += `<div class="aeginel-panel-header">
+    <div class="aeginel-panel-header-left">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span class="aeginel-panel-title">${t('floating.title')}</span>
+      <div class="aeginel-panel-status" style="color:${statusColor}">
+        <span class="aeginel-panel-status-dot" style="background:${statusColor}"></span>
+        ${statusLabel}
+      </div>
+    </div>
+    <button class="aeginel-panel-close" data-action="close">&times;</button>
+  </div>`;
+
+  html += '<div class="aeginel-panel-body">';
+
+  // Stats
+  html += `<div class="aeginel-panel-section">
+    <div class="aeginel-panel-stats">
+      <div class="aeginel-panel-stat">
+        <div class="aeginel-panel-stat-value">${data.totalScans}</div>
+        <div class="aeginel-panel-stat-label">${t('floating.totalScans')}</div>
+      </div>
+      <div class="aeginel-panel-stat">
+        <div class="aeginel-panel-stat-value">${data.piiProtected}</div>
+        <div class="aeginel-panel-stat-label">${t('floating.piiProtected')}</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Last scan details
+  if (data.lastScan) {
+    const scan = data.lastScan;
+    html += `<div class="aeginel-panel-section">
+      <div class="aeginel-panel-section-title">${t('floating.scanDetails')}</div>`;
+
+    if (scan.serverAvailable) {
+      // Server verdict card (existing score flow + new details)
+      const action = scan.serverAction || 'approve';
+      const verdictKey = actionToVerdict(action);
+      const verdictLabel = t(`floating.${verdictKey}`) || action;
+      const latency = scan.serverLatencyMs ? `${Math.round(scan.serverLatencyMs)}ms` : '';
+
+      html += `<div class="aeginel-verdict-card">
+        <div class="aeginel-verdict-action">
+          <span class="aeginel-verdict-badge ${verdictClass(action)}">
+            ${verdictLabel}
+          </span>
+          ${scan.blocked ? `<span class="aeginel-verdict-badge verdict-block">${t('floating.blocked')}</span>` : ''}
+          ${latency ? `<span class="aeginel-verdict-latency">${latency}</span>` : ''}
+        </div>
+        <div class="aeginel-score-flow">
+          <div class="aeginel-score-item">
+            <div class="aeginel-score-item-value" style="color:${LEVEL_COLORS[scan.level] || '#e6edf3'}">${scan.localScore ?? 0}</div>
+            <div class="aeginel-score-item-label">${t('floating.localScore')}</div>
+          </div>
+          <span class="aeginel-score-arrow">\u2192</span>
+          <div class="aeginel-score-item">
+            <div class="aeginel-score-item-value" style="color:${LEVEL_COLORS[scan.level] || '#e6edf3'}">${scan.serverScore ?? 0}</div>
+            <div class="aeginel-score-item-label">${t('floating.serverScore')}</div>
+          </div>
+          <span class="aeginel-score-arrow">\u2192</span>
+          <div class="aeginel-score-item">
+            <div class="aeginel-score-item-value" style="color:${LEVEL_COLORS[scan.level] || '#e6edf3'}">${scan.score}</div>
+            <div class="aeginel-score-item-label">${t('floating.finalScore')}</div>
+          </div>
+        </div>`;
+    } else {
+      // Local-only scan card
+      const levelColor = LEVEL_COLORS[scan.level] || '#e6edf3';
+      const levelLabel = t(`risk.${scan.level}`) || scan.level;
+
+      html += `<div class="aeginel-local-card">
+        <div class="aeginel-local-score-row">
+          <span class="aeginel-local-score-num" style="color:${levelColor}">${scan.score}</span>
+          <span class="aeginel-local-level-badge level-${scan.level}">${levelLabel}</span>
+          ${scan.blocked ? `<span class="aeginel-verdict-badge verdict-block" style="margin-left:auto">${t('floating.blocked')}</span>` : ''}
+        </div>`;
+    }
+
+    // PII details
+    if (scan.piiDetected && scan.piiDetected.length > 0) {
+      const groups = groupPiiByType(scan.piiDetected);
+      html += `<div style="margin-top:8px">
+        <div class="aeginel-panel-section-title">${t('floating.piiDetected')}</div>
+        <div class="aeginel-pii-list">`;
+      for (const [piiType, count] of groups) {
+        const label = t(`piiTypes.${piiType}`) || piiType;
+        html += `<span class="aeginel-pii-chip">${label}${count > 1 ? `<span class="aeginel-pii-chip-count">\u00d7${count}</span>` : ''}</span>`;
+      }
+      html += '</div></div>';
+    }
+
+    // Risk categories
+    const allCats = [
+      ...(scan.categories || []),
+      ...(scan.serverCategories || []),
+    ].filter((c, i, arr) => arr.indexOf(c) === i);
+
+    if (allCats.length > 0) {
+      html += `<div style="margin-top:8px">
+        <div class="aeginel-panel-section-title">${t('floating.riskCategories')}</div>
+        <div class="aeginel-cat-list">`;
+      for (const cat of allCats) {
+        html += `<span class="aeginel-cat-chip ${categoryClass(cat)}">${translateCategory(cat)}</span>`;
+      }
+      html += '</div></div>';
+    }
+
+    // Server explanation (from individual endpoints, more informative)
+    if (scan.serverExplanation && scan.serverAvailable) {
+      html += `<div class="aeginel-explain">${escapeHtml(scan.serverExplanation)}</div>`;
+    } else if (scan.explanation && scan.score > 0) {
+      html += `<div class="aeginel-explain">${escapeHtml(scan.explanation)}</div>`;
+    }
+
+    // Close the card div (verdict-card or local-card)
+    html += '</div>';
+
+    // Endpoint breakdown (collapsible)
+    if (scan.endpointDetails && scan.endpointDetails.length > 0) {
+      html += `<div class="aeginel-collapsible" style="margin-top:6px">
+        <button class="aeginel-collapsible-toggle" data-action="toggle-analysis">
+          <span>${t('floating.serverAnalysis')}</span>
+          <svg class="aeginel-collapsible-arrow" width="8" height="8" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="aeginel-collapsible-body" style="display:none">
+          <div class="aeginel-ep-list">`;
+      for (const ep of scan.endpointDetails) {
+        const name = endpointDisplayName(ep.endpoint);
+        const vclass = epVerdictClass(ep.action);
+        const actionLabel = t(`floating.${actionToVerdict(ep.action)}`) || ep.action;
+        const epLatency = `${Math.round(ep.latencyMs)}ms`;
+        const fullExplanation = ep.explanation ? escapeHtml(ep.explanation) : '';
+
+        html += `<div class="aeginel-ep-row">
+          <span class="aeginel-ep-name">${name}</span>
+          <span class="aeginel-ep-verdict ${vclass}">${actionLabel}</span>
+          <span class="aeginel-ep-score">${ep.score}</span>
+          <span class="aeginel-ep-time">${epLatency}</span>
+        </div>`;
+        if (fullExplanation) {
+          html += `<div class="aeginel-ep-explain">${fullExplanation}</div>`;
+        }
+      }
+      html += '</div></div></div>';
+    }
+
+    html += '</div>';
+  } else if (data.aegisEnabled) {
+    html += `<div class="aeginel-panel-section">
+      <div class="aeginel-panel-section-title">${t('floating.lastVerdict')}</div>
+      <div class="aeginel-connect-prompt" style="padding:6px 0;font-size:9px">${t('floating.noVerdict')}</div>
+    </div>`;
+  }
+
+  // Server not connected prompt with connect button
+  if (!data.aegisEnabled) {
+    html += `<div class="aeginel-connect-prompt">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#484f58" stroke-width="1.5" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span style="flex:1">${t('floating.connectPrompt')}</span>
+      <button class="aeginel-connect-btn" data-action="open-settings">${t('floating.connectBtn')}</button>
+    </div>`;
+  }
+
+  // Recent scans (scrollable, max 5 visible rows)
+  if (data.recentScans.length > 0) {
+    html += `<div class="aeginel-panel-section">
+      <div class="aeginel-panel-section-title">${t('floating.recentScans')} <span style="color:#484f58;font-weight:400">(${data.recentScans.length})</span></div>
+      <div class="aeginel-scan-scroll">`;
+    for (const scan of data.recentScans) {
+      const color = LEVEL_COLORS[scan.level] || '#8b949e';
+      const piiCount = scan.piiDetected?.length || 0;
+      html += `<div class="aeginel-scan-item level-${scan.level}">
+        <span class="aeginel-scan-score" style="color:${color}">${scan.score}</span>
+        <span class="aeginel-scan-site">${scan.site}</span>
+        <span class="aeginel-scan-meta">
+          ${piiCount > 0 ? `<span class="aeginel-scan-pii">\u{1F512}${piiCount}</span>` : ''}
+          ${scan.blocked ? `<span class="aeginel-scan-blocked-tag">${t('floating.blocked')}</span>` : ''}
+        </span>
+        <span class="aeginel-scan-time">${formatTime(scan.timestamp)}</span>
+      </div>`;
+    }
+    html += '</div></div>';
+  } else {
+    html += `<div class="aeginel-panel-empty">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#30363d" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      ${t('floating.noScans')}
+    </div>`;
+  }
+
+  html += '</div>';
+  return html;
+}
+
+// ── Show / Update / Hide ────────────────────────────────────────────
+
+async function fetchDashboard(): Promise<DashboardResponseMessage['payload'] | null> {
+  try {
+    const res = await chrome.runtime.sendMessage({ type: 'GET_DASHBOARD' });
+    if (res?.type === 'DASHBOARD_RESPONSE' && res.payload) return res.payload;
+    if (res?.payload) return res.payload;
+    return res as DashboardResponseMessage['payload'];
+  } catch { return null; }
+}
+
+function renderPanel() {
+  if (!_shadow || !_panelOpen || !_dashboardData) return;
+  const panel = _shadow.querySelector('.aeginel-floating-panel') as HTMLElement | null;
+  if (panel) {
+    panel.innerHTML = buildPanelContent(_dashboardData);
+    panel.querySelector('[data-action="close"]')
+      ?.addEventListener('click', () => togglePanel());
+    panel.querySelector('[data-action="open-settings"]')
+      ?.addEventListener('click', () => {
+        chrome.runtime.sendMessage({ type: 'OPEN_AEGIS_SETTINGS' });
+      });
+    panel.querySelectorAll('[data-action="toggle-analysis"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const body = btn.closest('.aeginel-collapsible')?.querySelector('.aeginel-collapsible-body') as HTMLElement | null;
+        if (!body) return;
+        const expanded = body.style.display !== 'none';
+        body.style.display = expanded ? 'none' : 'block';
+        btn.classList.toggle('is-open', !expanded);
+      });
+    });
+  }
+  repositionPanel();
+}
+
+function togglePanel() {
+  if (!_shadow) return;
+  const panel = _shadow.querySelector('.aeginel-floating-panel') as HTMLElement | null;
+  if (!panel) return;
+
+  _panelOpen = !_panelOpen;
+  panel.style.display = _panelOpen ? 'block' : 'none';
+
+  if (_panelOpen) {
+    repositionPanel();
+    fetchDashboard().then((data) => {
+      if (data) {
+        _dashboardData = data;
+        renderPanel();
+      }
+    });
+  }
+}
+
+async function refreshDashboard() {
+  if (!_shadow) return;
+  const data = await fetchDashboard();
+  if (data) {
+    _dashboardData = data;
+    updateBadgeDot();
+    if (_panelOpen) renderPanel();
+  }
+}
+
+export function updateFloatingPanel(scanResult: ScanResult) {
+  if (!_dashboardData) return;
+  _dashboardData.lastScan = scanResult;
+  _dashboardData.recentScans = [scanResult, ..._dashboardData.recentScans.filter(s => s.id !== scanResult.id)].slice(0, 20);
+  _dashboardData.totalScans++;
+  if (_panelOpen) renderPanel();
+  updateBadgeDot();
+}
+
+function updateBadgeDot() {
+  if (!_shadow) return;
+  const dot = _shadow.querySelector('.aeginel-badge-dot') as HTMLElement | null;
+  const badge = _shadow.querySelector('.aeginel-floating-badge') as HTMLElement | null;
+  if (!dot || !badge) return;
+
+  const status = getAegisStatus(_dashboardData);
+  dot.className = `aeginel-badge-dot dot-${status}`;
+  badge.className = `aeginel-floating-badge status-${status}`;
+}
+
+// ── Main Entry ──────────────────────────────────────────────────────
+
+export async function showFloatingBadge() {
+  hideFloatingBadge();
+
+  const visible = await isBadgeVisible();
+  if (!visible) return;
+
+  const pos = await loadPosition();
+
+  const host = document.createElement('div');
+  host.id = FLOAT_HOST_ID;
+  host.style.cssText = `position:fixed;z-index:2147483646;left:${pos.x}px;top:${pos.y}px;margin:0;padding:0;width:auto;height:auto;pointer-events:auto;`;
+  _host = host;
+
+  const shadow = host.attachShadow({ mode: 'closed' });
+  _shadow = shadow;
+
+  const style = document.createElement('style');
+  style.textContent = styles;
+  shadow.appendChild(style);
+
+  // Container — position: relative so the panel can use absolute positioning
+  const container = document.createElement('div');
+  container.style.cssText = 'position:relative;display:inline-block;';
+
+  // Badge
+  const badge = document.createElement('div');
+  badge.className = 'aeginel-floating-badge status-off';
+  badge.innerHTML = `
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    <span class="aeginel-badge-dot dot-off"></span>
+  `;
+
+  // Panel (absolute positioned, direction set by repositionPanel)
+  const panel = document.createElement('div');
+  panel.className = 'aeginel-floating-panel';
+  panel.style.position = 'absolute';
+  _panelOpen = true;
+
+  container.appendChild(badge);
+  container.appendChild(panel);
+  shadow.appendChild(container);
+  document.body.appendChild(host);
+
+  // ── Drag logic ──
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let badgeStartX = pos.x;
+  let badgeStartY = pos.y;
+  let hasMoved = false;
+
+  badge.addEventListener('pointerdown', (e: PointerEvent) => {
+    isDragging = true;
+    hasMoved = false;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    badgeStartX = host.offsetLeft;
+    badgeStartY = host.offsetTop;
+    badge.setPointerCapture(e.pointerId);
+    badge.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+
+  badge.addEventListener('pointermove', (e: PointerEvent) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+
+    if (!hasMoved && Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+    hasMoved = true;
+
+    const newX = Math.max(-BADGE_SIZE / 2, Math.min(window.innerWidth - BADGE_SIZE / 2, badgeStartX + dx));
+    const newY = Math.max(-BADGE_SIZE / 2, Math.min(window.innerHeight - BADGE_SIZE / 2, badgeStartY + dy));
+    host.style.left = `${newX}px`;
+    host.style.top = `${newY}px`;
+  });
+
+  badge.addEventListener('pointerup', (e: PointerEvent) => {
+    if (!isDragging) return;
+    isDragging = false;
+    badge.style.cursor = 'grab';
+
+    if (hasMoved) {
+      savePosition(host.offsetLeft, host.offsetTop);
+      if (_panelOpen) repositionPanel();
+    } else {
+      togglePanel();
+    }
+
+    badge.releasePointerCapture(e.pointerId);
+  });
+
+  // Long press / right-click to hide badge entirely
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  badge.addEventListener('pointerdown', () => {
+    longPressTimer = setTimeout(() => {
+      setBadgeVisible(false);
+      hideFloatingBadge();
+    }, 1500);
+  });
+  badge.addEventListener('pointerup', () => {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+  });
+  badge.addEventListener('pointerleave', () => {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+  });
+
+  badge.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    setBadgeVisible(false);
+    hideFloatingBadge();
+  });
+
+  // Load initial data, render panel, and position it
+  const data = await fetchDashboard();
+  if (data) {
+    _dashboardData = data;
+    updateBadgeDot();
+    renderPanel();
+  } else {
+    repositionPanel();
+  }
+
+  // Auto-refresh when tab regains focus (e.g. after configuring AEGIS in another tab)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && _shadow) {
+      refreshDashboard();
+    }
+  });
+
+  // Survival monitor: re-inject badge if it gets removed from DOM
+  // (SPA frameworks like React may rebuild body children during navigation/hydration)
+  startSurvivalMonitor();
+}
+
+export function hideFloatingBadge() {
+  stopSurvivalMonitor();
+  _shadow = null;
+  _host = null;
+  _panelOpen = false;
+  document.getElementById(FLOAT_HOST_ID)?.remove();
+}
+
+export function isFloatingBadgeShown(): boolean {
+  return document.getElementById(FLOAT_HOST_ID) !== null;
+}
+
+// React to visibility toggle from popup
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local' || !changes[STORAGE_KEY_VIS]) return;
+  const visible = changes[STORAGE_KEY_VIS].newValue !== false;
+  if (visible && !isFloatingBadgeShown()) {
+    showFloatingBadge();
+  } else if (!visible && isFloatingBadgeShown()) {
+    hideFloatingBadge();
+  }
+});
+
+// ── Survival Monitor ─────────────────────────────────────────────────
+// SPA sites may rebuild document.body during hydration or navigation,
+// removing our injected host element. This observer detects that and
+// re-injects the badge automatically.
+
+function startSurvivalMonitor() {
+  stopSurvivalMonitor();
+
+  _survivalObserver = new MutationObserver(() => {
+    if (_host && !_host.isConnected) {
+      scheduleReinject();
+    }
+  });
+
+  _survivalObserver.observe(document.documentElement, {
+    childList: true,
+    subtree: false,
+  });
+
+  if (document.body) {
+    _survivalObserver.observe(document.body, {
+      childList: true,
+      subtree: false,
+    });
+  }
+}
+
+function stopSurvivalMonitor() {
+  _survivalObserver?.disconnect();
+  _survivalObserver = null;
+  if (_reinjectTimer) {
+    clearTimeout(_reinjectTimer);
+    _reinjectTimer = null;
+  }
+}
+
+let _reinjectAttempts = 0;
+const MAX_REINJECT = 10;
+
+function scheduleReinject() {
+  if (_reinjectTimer) return;
+  if (_reinjectAttempts >= MAX_REINJECT) return;
+
+  _reinjectTimer = setTimeout(() => {
+    _reinjectTimer = null;
+    _reinjectAttempts++;
+
+    if (!_host || _host.isConnected) return;
+    if (!document.body) return;
+
+    // Re-attach the same host element to the current body
+    try {
+      document.body.appendChild(_host);
+      if (_panelOpen) repositionPanel();
+    } catch {
+      // If re-attach fails, do a full re-init
+      showFloatingBadge();
+    }
+  }, 100);
+}

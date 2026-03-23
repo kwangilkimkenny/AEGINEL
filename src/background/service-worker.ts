@@ -5,7 +5,7 @@
 import { scan } from '../engine/detector';
 import { mergeConfig } from '../engine/config';
 import { DEFAULT_CONFIG } from '../engine/types';
-import type { AeginelConfig, ScanResult, AegisServerResult, DevLogEntry } from '../engine/types';
+import type { AeginelConfig, ScanResult, AegisServerResult, DevLogEntry, HealthEntry } from '../engine/types';
 import { PiiProxyEngine } from '../engine/pii-proxy';
 import { AegisClient, mergeHybridScore } from '../engine/aegis-client';
 import type { ExtensionMessage, ScanPhase } from '../shared/messages';
@@ -55,14 +55,6 @@ setupNetworkLogger(aegisClient);
 
 // ── Health Status Tracking ──────────────────────────────────────────────
 
-interface HealthEntry {
-  source: string;
-  status: 'ok' | 'degraded' | 'error';
-  details?: string;
-  brokenSelectors?: string[];
-  timestamp: number;
-}
-
 const healthStatus: Record<string, HealthEntry> = {};
 
 function recordHealth(entry: HealthEntry) {
@@ -109,6 +101,10 @@ async function initialize() {
   aegisClient.updateConfig(currentConfig.aegisServer);
   await restorePiiMappings();
   updateBadge(null);
+
+  if (aegisClient.isEnabled) {
+    aegisClient.probeVersionAccess().catch(() => {});
+  }
 }
 
 initialize();
@@ -207,6 +203,15 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
           blocked: hybridScore >= currentConfig.blockThreshold,
           categories: mergedCategories,
           explanation,
+          localScore,
+          serverAvailable: aegisResult.available,
+          serverScore: aegisResult.score,
+          serverAction: aegisResult.action || undefined,
+          serverEndpoint: aegisResult.endpoint || undefined,
+          serverLatencyMs: aegisResult.latencyMs || undefined,
+          serverCategories: aegisResult.categories.length > 0 ? aegisResult.categories : undefined,
+          serverExplanation: aegisResult.explanation || undefined,
+          endpointDetails: aegisResult.endpointDetails,
         };
         lastScan = result;
 
@@ -255,6 +260,11 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
         updateBadge(result);
 
         notifyProgress(tabId, 'done', result.blocked ? 'Blocked' : result.level === 'low' ? 'Safe' : `Risk: ${result.level}`);
+
+        // Push scan complete to content script for floating panel
+        if (tabId != null) {
+          chrome.tabs.sendMessage(tabId, { type: 'SCAN_COMPLETE', payload: result }).catch(() => {});
+        }
 
         return { type: 'SCAN_RESULT', payload: result };
       }
@@ -315,6 +325,9 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
         currentConfig = mergeConfig(message.payload);
         aegisClient.updateConfig(currentConfig.aegisServer);
         await setConfig(currentConfig);
+        if (aegisClient.isEnabled) {
+          aegisClient.probeVersionAccess().catch(() => {});
+        }
         return { type: 'CONFIG_RESPONSE', payload: currentConfig };
       }
 
@@ -338,6 +351,22 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
       case 'AEGIS_CHECK_ACCESS': {
         const access = await aegisClient.probeVersionAccess();
         return { type: 'AEGIS_ACCESS_RESPONSE', payload: access };
+      }
+
+      case 'GET_DASHBOARD': {
+        const dashStats = await getStats();
+        const dashHistory = await getScanHistory();
+        return {
+          type: 'DASHBOARD_RESPONSE',
+          payload: {
+            lastScan,
+            recentScans: dashHistory.slice(0, 20),
+            health: { ...healthStatus },
+            aegisEnabled: aegisClient.isEnabled,
+            totalScans: dashStats.totalScans,
+            piiProtected: totalPiiProtected,
+          },
+        };
       }
 
       case 'GET_HISTORY': {
@@ -372,6 +401,12 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
 
       case 'GET_HEALTH': {
         return { type: 'HEALTH_RESPONSE', payload: healthStatus };
+      }
+
+      case 'OPEN_AEGIS_SETTINGS': {
+        const url = chrome.runtime.getURL('src/popup/index.html#aegis');
+        chrome.tabs.create({ url });
+        return { ok: true };
       }
 
       case 'GET_WEEKLY_REPORT': {
