@@ -131,6 +131,50 @@ function generateFakeValue(type: PiiType, original: string): string {
       return `${letters}${randomDigits(digitLen)}`;
     }
 
+    case 'givenname':
+    case 'surname':
+      return `User_${randomHex(3)}`;
+
+    case 'username':
+      return `user_${randomHex(4)}`;
+
+    case 'dateofbirth': {
+      const yy = 1970 + (parseInt(randomDigits(2), 10) % 40);
+      const mm = String(1 + (parseInt(randomDigits(1), 10) % 12)).padStart(2, '0');
+      const dd = String(1 + (parseInt(randomDigits(1), 10) % 28)).padStart(2, '0');
+      return `${yy}-${mm}-${dd}`;
+    }
+
+    case 'idcard':
+      return `ID${randomDigits(8)}`;
+
+    case 'street':
+      return `${randomDigits(3)} Example St`;
+
+    case 'city':
+      return 'Sampleville';
+
+    case 'zipcode':
+      return randomDigits(5);
+
+    case 'buildingnum':
+      return randomDigits(3);
+
+    case 'ip_address':
+      return `10.${parseInt(randomDigits(3), 10) % 256}.${parseInt(randomDigits(3), 10) % 256}.${parseInt(randomDigits(3), 10) % 256}`;
+
+    case 'password':
+      return `P@ss${randomHex(4)}!`;
+
+    case 'accountnum':
+      return randomDigits(original.replace(/\D/g, '').length || 10);
+
+    case 'driverlicensenum':
+      return `${randomLetter()}${randomLetter()}${randomDigits(6)}`;
+
+    case 'company':
+      return `Corp_${randomHex(3)}`;
+
     default:
       return `[REDACTED_${type}]`;
   }
@@ -185,8 +229,8 @@ export class PiiProxyEngine {
   /**
    * Detect PII in text and replace with format-preserving pseudonyms.
    */
-  pseudonymize(text: string, config: AeginelConfig, sessionId: string): ProxyResult {
-    const piiMatches = scanPii(text, config);
+  async pseudonymize(text: string, config: AeginelConfig, sessionId: string): Promise<ProxyResult> {
+    const piiMatches = await scanPii(text, config);
 
     if (piiMatches.length === 0) {
       return { originalText: text, proxiedText: text, mappings: [], piiCount: 0 };

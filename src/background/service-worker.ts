@@ -8,6 +8,7 @@ import { DEFAULT_CONFIG } from '../engine/types';
 import type { AeginelConfig, ScanResult, AegisServerResult, DevLogEntry, HealthEntry } from '../engine/types';
 import { PiiProxyEngine } from '../engine/pii-proxy';
 import { AegisClient, mergeHybridScore } from '../engine/aegis-client';
+import { initPiiNer } from '../engine/pii-ner-client';
 import type { ExtensionMessage, ScanPhase } from '../shared/messages';
 import { MAX_HISTORY_ITEMS } from '../shared/constants';
 import { getConfig, setConfig, getScanHistory, setScanHistory, getStats, setStats, getWeeklyStats, updateWeeklyStats } from '../shared/storage';
@@ -102,6 +103,8 @@ async function initialize() {
   await restorePiiMappings();
   updateBadge(null);
 
+  await initPiiNer();
+
   if (aegisClient.isEnabled) {
     aegisClient.probeVersionAccess().catch(() => {});
   }
@@ -132,7 +135,7 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
 
         // ── Phase 1: Local PII scan ──
         notifyProgress(tabId, 'pii', 'Scanning for personal information...');
-        const piiResult = scan(input, site, currentConfig);
+        const piiResult = await scan(input, site, currentConfig);
 
         let localScore = piiResult.score;
         let localCategories = [...piiResult.categories];
@@ -272,7 +275,7 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
       case 'PROXY_INPUT': {
         try {
           const { text, site, sessionId } = message.payload;
-          const result = proxyEngine.pseudonymize(text, currentConfig, sessionId);
+          const result = await proxyEngine.pseudonymize(text, currentConfig, sessionId);
           totalPiiProtected += result.piiCount;
           if (result.piiCount > 0) {
             await updateWeeklyStats({ pii: result.piiCount });

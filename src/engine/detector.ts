@@ -8,7 +8,7 @@ import { scanPii } from './pii-scanner';
 
 let scanCounter = 0;
 
-export function scan(input: string, site: string, config: AeginelConfig = DEFAULT_CONFIG): ScanResult {
+export async function scan(input: string, site: string, config: AeginelConfig = DEFAULT_CONFIG): Promise<ScanResult> {
   const id = `scan-${Date.now()}-${++scanCounter}`;
   const t0 = performance.now();
 
@@ -16,7 +16,7 @@ export function scan(input: string, site: string, config: AeginelConfig = DEFAUL
     return emptyScanResult(id, input, site);
   }
 
-  const piiDetected = scanPii(input, config);
+  const piiDetected = await scanPii(input, config);
   const piiScore = Math.min(piiDetected.length * 15, 100);
   const categories: string[] = piiDetected.length > 0 ? ['pii_exposure'] : [];
   const level = scoreToLevel(piiScore);
