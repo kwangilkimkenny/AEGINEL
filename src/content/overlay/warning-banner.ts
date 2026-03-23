@@ -459,12 +459,21 @@ function stopShieldPositionTracking(): void {
 
 // ── Show / Hide Shield ───────────────────────────────────────────────────
 
+let _shieldShadow: ShadowRoot | null = null;
+
+export function updateShieldTooltip(tooltip: string): void {
+  if (!_shieldShadow) return;
+  const el = _shieldShadow.querySelector('.aeginel-shield-indicator') as HTMLElement | null;
+  if (el) el.title = tooltip;
+}
+
 export function showShieldIndicator(status: ShieldStatus, anchor: Element): void {
   hideShieldIndicator();
 
   const host = document.createElement('div');
   host.id = SHIELD_HOST_ID;
   const shadow = host.attachShadow({ mode: 'closed' });
+  _shieldShadow = shadow;
 
   const style = document.createElement('style');
   style.textContent = styles;
@@ -507,6 +516,7 @@ export function isShieldVisible(): boolean {
 export function hideShieldIndicator(): void {
   stopShieldPositionTracking();
   document.getElementById(SHIELD_HOST_ID)?.remove();
+  _shieldShadow = null;
 }
 
 // ── Show Health Status Banner ────────────────────────────────────────────

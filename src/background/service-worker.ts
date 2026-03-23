@@ -4,9 +4,10 @@
 import { scan } from '../engine/detector';
 import { mergeConfig } from '../engine/config';
 import { DEFAULT_CONFIG } from '../engine/types';
-import type { AeginelConfig, ScanResult } from '../engine/types';
+import type { AeginelConfig, ScanResult, AegisServerResult, DevLogEntry } from '../engine/types';
 import { PiiProxyEngine } from '../engine/pii-proxy';
-import type { ExtensionMessage } from '../shared/messages';
+import { AegisClient, mergeHybridScore } from '../engine/aegis-client';
+import type { ExtensionMessage, ScanPhase } from '../shared/messages';
 import { MAX_HISTORY_ITEMS } from '../shared/constants';
 import { getConfig, setConfig, getScanHistory, setScanHistory, getStats, setStats, getWeeklyStats, updateWeeklyStats } from '../shared/storage';
 import { mlClassify, mlStatus } from '../engine/ml-classifier';
@@ -17,6 +18,40 @@ let currentConfig: AeginelConfig = DEFAULT_CONFIG;
 let lastScan: ScanResult | null = null;
 const proxyEngine = new PiiProxyEngine();
 let totalPiiProtected = 0;
+let aegisClient = new AegisClient(DEFAULT_CONFIG.aegisServer);
+
+// ── Dev Logs ──────────────────────────────────────────────────────────
+
+const MAX_DEV_LOGS = 200;
+const devLogs: DevLogEntry[] = [];
+
+function pushLog(entry: Omit<DevLogEntry, 'timestamp'>) {
+  devLogs.push({ ...entry, timestamp: Date.now() });
+  if (devLogs.length > MAX_DEV_LOGS) devLogs.shift();
+}
+
+function setupNetworkLogger(client: AegisClient) {
+  client.onNetworkLog = (entry) => {
+    const statusStr = entry.status != null ? `${entry.status}` : 'ERR';
+    const summary = `${entry.method} ${entry.url} → ${statusStr} (${entry.latencyMs.toFixed(0)}ms)`;
+    pushLog({
+      type: entry.ok ? 'aegis' : 'error',
+      summary,
+      details: {
+        method: entry.method,
+        url: entry.url,
+        status: entry.status,
+        ok: entry.ok,
+        latencyMs: Math.round(entry.latencyMs),
+        ...(entry.error ? { error: entry.error } : {}),
+        ...(entry.requestBody ? { requestBody: JSON.stringify(entry.requestBody).slice(0, 200) } : {}),
+        ...(entry.responseBody ? { responseBody: JSON.stringify(entry.responseBody).slice(0, 500) } : {}),
+      },
+    });
+  };
+}
+
+setupNetworkLogger(aegisClient);
 
 // ── Conversation History Tracking ─────────────────────────────────────
 // Tracks recent inputs per site (keyed by tab URL hostname), last 5 per site.
@@ -97,6 +132,7 @@ async function initialize() {
   } else {
     await setConfig(DEFAULT_CONFIG);
   }
+  aegisClient.updateConfig(currentConfig.aegisServer);
   await restorePiiMappings();
   updateBadge(null);
 }
@@ -143,6 +179,11 @@ chrome.runtime.onMessage.addListener(
   }
 );
 
+function notifyProgress(tabId: number | undefined, phase: ScanPhase, detail: string) {
+  if (tabId == null) return;
+  chrome.tabs.sendMessage(tabId, { type: 'SCAN_PROGRESS', payload: { phase, detail } }).catch(() => {});
+}
+
 async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.MessageSender): Promise<unknown> {
   try {
     switch (message.type) {
@@ -169,10 +210,13 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
         // Add current input to conversation history
         addToConversationHistory(historyKey, input);
 
-        // ── Hybrid scan: rule-based (sync) + ML (async) ──
+        const tabId = sender?.tab?.id;
+
+        // ── Phase 1: Local scan (rule-based sync + ML async) ──
+        notifyProgress(tabId, 'rules', 'Running 9-layer rule engine...');
         const ruleResult = scan(input, site, currentConfig, convHistory.length > 0 ? convHistory : undefined);
 
-        // Augment with ML classification (non-blocking: falls back gracefully)
+        notifyProgress(tabId, 'ml', 'Analyzing with ML model...');
         let mlResult = { success: false, labels: [] as string[], mlScore: 0, isHarmful: false };
         try {
           mlResult = await mlClassify(input);
@@ -184,28 +228,109 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
             details: `ML classify error: ${String(err)}`,
             timestamp: Date.now(),
           });
+          pushLog({ type: 'error', summary: `ML classify failed: ${String(err)}` });
         }
 
-        const hybridScore = Math.min(ruleResult.score + mlResult.mlScore, 100);
-
-        // Merge ML-detected labels not already in rule results
-        const mergedCategories = [...new Set([
+        const localScore = Math.min(ruleResult.score + mlResult.mlScore, 100);
+        const localCategories = [...new Set([
           ...ruleResult.categories,
           ...mlResult.labels,
         ])];
 
+        // ── Phase 2: AEGIS Server scan (async, non-blocking) ──
+        let aegisResult: AegisServerResult = {
+          available: false, score: 0, action: '', categories: [],
+          explanation: '', latencyMs: 0, endpoint: '',
+        };
+
+        if (aegisClient.isEnabled) {
+          notifyProgress(tabId, 'aegis', 'Checking AEGIS server...');
+          try {
+            aegisResult = await aegisClient.scan(input, site, localScore, localCategories);
+            recordHealth({
+              source: 'aegis-server',
+              status: aegisResult.available ? 'ok' : 'degraded',
+              details: aegisResult.available
+                ? `${aegisResult.endpoint} (${aegisResult.latencyMs.toFixed(0)}ms)`
+                : aegisResult.explanation,
+              timestamp: Date.now(),
+            });
+            if (aegisResult.available) {
+              pushLog({
+                type: 'aegis',
+                summary: `${aegisResult.endpoint} → ${aegisResult.action} (score=${aegisResult.score}, ${aegisResult.latencyMs.toFixed(0)}ms)`,
+                details: {
+                  endpoint: aegisResult.endpoint,
+                  action: aegisResult.action,
+                  score: aegisResult.score,
+                  categories: aegisResult.categories,
+                  latencyMs: aegisResult.latencyMs,
+                },
+              });
+            }
+          } catch (err) {
+            console.warn('[Aegis] Server scan failed, using local-only result:', err);
+            recordHealth({
+              source: 'aegis-server',
+              status: 'error',
+              details: `Server scan error: ${String(err)}`,
+              timestamp: Date.now(),
+            });
+            pushLog({ type: 'error', summary: `AEGIS server scan failed: ${String(err)}` });
+          }
+        }
+
+        // ── Phase 3: Merge — server is authoritative when available ──
+        const { score: hybridScore, level: hybridLevel } = mergeHybridScore(
+          localScore,
+          aegisResult,
+        );
+
+        const mergedCategories = [...new Set([
+          ...localCategories,
+          ...aegisResult.categories,
+        ])];
+
+        let explanation = ruleResult.explanation;
+        if (mlResult.success && mlResult.isHarmful) {
+          explanation += ` ML: ${mlResult.labels.join(', ')} detected.`;
+        }
+        if (aegisResult.available && aegisResult.score > 0) {
+          explanation += ` Server(${aegisResult.endpoint}): ${aegisResult.action} (${aegisResult.score}).`;
+        }
+
         const result: ScanResult = {
           ...ruleResult,
           score: hybridScore,
-          level: hybridScore >= 60 ? 'critical' : hybridScore >= 40 ? 'high' : hybridScore >= 20 ? 'medium' : 'low',
+          level: hybridLevel,
           blocked: hybridScore >= currentConfig.blockThreshold,
           categories: mergedCategories,
-          explanation: ruleResult.explanation +
-            (mlResult.success && mlResult.isHarmful
-              ? ` ML: ${mlResult.labels.join(', ')} detected.`
-              : ''),
+          explanation,
         };
         lastScan = result;
+
+        // ── Dev log ──
+        pushLog({
+          type: 'scan',
+          summary: `[${site}] ${result.blocked ? 'BLOCKED' : result.level.toUpperCase()} score=${result.score}`,
+          details: {
+            input: input.slice(0, 80),
+            ruleScore: ruleResult.score,
+            mlScore: mlResult.mlScore,
+            mlLabels: mlResult.labels,
+            localScore,
+            serverAvailable: aegisResult.available,
+            serverAction: aegisResult.action || null,
+            serverScore: aegisResult.score,
+            serverEndpoint: aegisResult.endpoint || null,
+            serverLatencyMs: aegisResult.latencyMs,
+            finalScore: hybridScore,
+            finalLevel: hybridLevel,
+            blocked: result.blocked,
+            categories: mergedCategories,
+            totalLatencyMs: result.totalLatencyMs,
+          },
+        });
 
         // Update weekly stats
         await updateWeeklyStats({
@@ -229,6 +354,8 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
 
         // Update badge
         updateBadge(result);
+
+        notifyProgress(tabId, 'done', result.blocked ? 'Blocked' : result.level === 'low' ? 'Safe' : `Risk: ${result.level}`);
 
         return { type: 'SCAN_RESULT', payload: result };
       }
@@ -287,8 +414,26 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
 
       case 'UPDATE_CONFIG': {
         currentConfig = mergeConfig(message.payload);
+        aegisClient.updateConfig(currentConfig.aegisServer);
         await setConfig(currentConfig);
         return { type: 'CONFIG_RESPONSE', payload: currentConfig };
+      }
+
+      case 'AEGIS_HEALTH_CHECK': {
+        const usage = await aegisClient.fetchUsage();
+        return {
+          type: 'AEGIS_HEALTH_RESPONSE',
+          payload: {
+            enabled: aegisClient.isEnabled,
+            connected: usage !== null,
+            latencyMs: 0,
+          },
+        };
+      }
+
+      case 'AEGIS_GET_USAGE': {
+        const usage = await aegisClient.fetchUsage();
+        return { type: 'AEGIS_USAGE_RESPONSE', payload: usage };
       }
 
       case 'GET_HISTORY': {
@@ -305,6 +450,15 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
         lastScan = null;
         updateBadge(null);
         return { type: 'HISTORY_RESPONSE', payload: [] };
+      }
+
+      case 'GET_DEV_LOGS': {
+        return { type: 'DEV_LOGS_RESPONSE', payload: [...devLogs] };
+      }
+
+      case 'CLEAR_DEV_LOGS': {
+        devLogs.length = 0;
+        return { type: 'DEV_LOGS_RESPONSE', payload: [] };
       }
 
       case 'HEALTH_REPORT': {

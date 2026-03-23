@@ -20,7 +20,15 @@ export type MessageType =
   | 'ML_LOAD_ERROR'
   | 'GET_HEALTH'
   | 'GET_ML_STATUS'
-  | 'GET_WEEKLY_REPORT';
+  | 'GET_WEEKLY_REPORT'
+  | 'AEGIS_HEALTH_CHECK'
+  | 'AEGIS_HEALTH_RESPONSE'
+  | 'AEGIS_GET_USAGE'
+  | 'AEGIS_USAGE_RESPONSE'
+  | 'GET_DEV_LOGS'
+  | 'DEV_LOGS_RESPONSE'
+  | 'CLEAR_DEV_LOGS'
+  | 'SCAN_PROGRESS';
 
 export interface ScanInputMessage {
   type: 'SCAN_INPUT';
@@ -118,6 +126,48 @@ export interface GetWeeklyReportMessage {
   type: 'GET_WEEKLY_REPORT';
 }
 
+export interface AegisHealthCheckMessage {
+  type: 'AEGIS_HEALTH_CHECK';
+}
+
+export interface AegisHealthResponseMessage {
+  type: 'AEGIS_HEALTH_RESPONSE';
+  payload: {
+    enabled: boolean;
+    connected: boolean;
+    latencyMs: number;
+  };
+}
+
+export interface AegisGetUsageMessage {
+  type: 'AEGIS_GET_USAGE';
+}
+
+export interface AegisUsageResponseMessage {
+  type: 'AEGIS_USAGE_RESPONSE';
+  payload: import('../engine/types').AegisUsageInfo | null;
+}
+
+export interface GetDevLogsMessage {
+  type: 'GET_DEV_LOGS';
+}
+
+export interface DevLogsResponseMessage {
+  type: 'DEV_LOGS_RESPONSE';
+  payload: import('../engine/types').DevLogEntry[];
+}
+
+export interface ClearDevLogsMessage {
+  type: 'CLEAR_DEV_LOGS';
+}
+
+export type ScanPhase = 'rules' | 'ml' | 'aegis' | 'done';
+
+export interface ScanProgressMessage {
+  type: 'SCAN_PROGRESS';
+  payload: { phase: ScanPhase; detail: string };
+}
+
 export type ExtensionMessage =
   | ScanInputMessage
   | ScanResultMessage
@@ -136,4 +186,12 @@ export type ExtensionMessage =
   | MlLoadErrorMessage
   | GetHealthMessage
   | GetMlStatusMessage
-  | GetWeeklyReportMessage;
+  | GetWeeklyReportMessage
+  | AegisHealthCheckMessage
+  | AegisHealthResponseMessage
+  | AegisGetUsageMessage
+  | AegisUsageResponseMessage
+  | GetDevLogsMessage
+  | DevLogsResponseMessage
+  | ClearDevLogsMessage
+  | ScanProgressMessage;
