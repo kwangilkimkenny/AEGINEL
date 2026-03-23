@@ -20,8 +20,76 @@ let _shadow: ShadowRoot | null = null;
 let _host: HTMLElement | null = null;
 let _panelOpen = false;
 let _dashboardData: DashboardResponseMessage['payload'] | null = null;
+let _selectedScanIdx: number | null = null;
 let _survivalObserver: MutationObserver | null = null;
 let _reinjectTimer: ReturnType<typeof setTimeout> | null = null;
+
+// ── Shared drag state ───────────────────────────────────────────────
+
+let _isDragging = false;
+let _dragStartX = 0;
+let _dragStartY = 0;
+let _dragHostStartX = 0;
+let _dragHostStartY = 0;
+let _dragMoved = false;
+let _dragCaptureEl: HTMLElement | null = null;
+let _dragTapFn: (() => void) | null = null;
+
+function onDragStart(e: PointerEvent, tapFn?: () => void) {
+  if (!_host) return;
+  const target = e.target as HTMLElement;
+  if (target.closest('button')) return;
+
+  _isDragging = true;
+  _dragMoved = false;
+  _dragStartX = e.clientX;
+  _dragStartY = e.clientY;
+  _dragHostStartX = _host.offsetLeft;
+  _dragHostStartY = _host.offsetTop;
+  _dragCaptureEl = e.currentTarget as HTMLElement;
+  _dragTapFn = tapFn ?? null;
+  _dragCaptureEl.setPointerCapture(e.pointerId);
+  e.preventDefault();
+}
+
+function onDragMove(e: PointerEvent) {
+  if (!_isDragging || !_host) return;
+  const dx = e.clientX - _dragStartX;
+  const dy = e.clientY - _dragStartY;
+  if (!_dragMoved && Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+  _dragMoved = true;
+  const newX = Math.max(-BADGE_SIZE / 2, Math.min(window.innerWidth - BADGE_SIZE / 2, _dragHostStartX + dx));
+  const newY = Math.max(-BADGE_SIZE / 2, Math.min(window.innerHeight - BADGE_SIZE / 2, _dragHostStartY + dy));
+  _host.style.left = `${newX}px`;
+  _host.style.top = `${newY}px`;
+}
+
+function onDragEnd(e: PointerEvent) {
+  if (!_isDragging) return;
+  _isDragging = false;
+  if (_dragMoved) {
+    if (_host) savePosition(_host.offsetLeft, _host.offsetTop);
+    if (_panelOpen) repositionPanel();
+  } else if (_dragTapFn) {
+    _dragTapFn();
+  }
+  _dragCaptureEl?.releasePointerCapture(e.pointerId);
+  _dragCaptureEl = null;
+  _dragTapFn = null;
+}
+
+function attachDragBehavior(el: HTMLElement, onTap?: () => void) {
+  el.style.cursor = 'grab';
+  el.addEventListener('pointerdown', (e) => {
+    onDragStart(e, onTap);
+    if (_isDragging) el.style.cursor = 'grabbing';
+  });
+  el.addEventListener('pointermove', (e) => onDragMove(e));
+  el.addEventListener('pointerup', (e) => {
+    onDragEnd(e);
+    el.style.cursor = 'grab';
+  });
+}
 
 // ── Level color helpers ──────────────────────────────────────────────
 
@@ -170,6 +238,117 @@ function repositionPanel() {
   }
 }
 
+// ── Scan Detail HTML (reusable) ──────────────────────────────────────
+
+function buildScanDetailHtml(scan: ScanResult): string {
+  let html = '';
+
+  if (scan.serverAvailable) {
+    const action = scan.serverAction || 'approve';
+    const verdictKey = actionToVerdict(action);
+    const verdictLabel = t(`floating.${verdictKey}`) || action;
+    const latency = scan.serverLatencyMs ? `${Math.round(scan.serverLatencyMs)}ms` : '';
+
+    html += `<div class="aeginel-verdict-card">
+      <div class="aeginel-verdict-action">
+        <span class="aeginel-verdict-badge ${verdictClass(action)}">${verdictLabel}</span>
+        ${scan.blocked ? `<span class="aeginel-verdict-badge verdict-block">${t('floating.blocked')}</span>` : ''}
+        ${latency ? `<span class="aeginel-verdict-latency">${latency}</span>` : ''}
+      </div>
+      <div class="aeginel-score-flow">
+        <div class="aeginel-score-item">
+          <div class="aeginel-score-item-value" style="color:${LEVEL_COLORS[scan.level] || '#e6edf3'}">${scan.localScore ?? 0}</div>
+          <div class="aeginel-score-item-label">${t('floating.localScore')}</div>
+        </div>
+        <span class="aeginel-score-arrow">\u2192</span>
+        <div class="aeginel-score-item">
+          <div class="aeginel-score-item-value" style="color:${LEVEL_COLORS[scan.level] || '#e6edf3'}">${scan.serverScore ?? 0}</div>
+          <div class="aeginel-score-item-label">${t('floating.serverScore')}</div>
+        </div>
+        <span class="aeginel-score-arrow">\u2192</span>
+        <div class="aeginel-score-item">
+          <div class="aeginel-score-item-value" style="color:${LEVEL_COLORS[scan.level] || '#e6edf3'}">${scan.score}</div>
+          <div class="aeginel-score-item-label">${t('floating.finalScore')}</div>
+        </div>
+      </div>`;
+  } else {
+    const levelColor = LEVEL_COLORS[scan.level] || '#e6edf3';
+    const levelLabel = t(`risk.${scan.level}`) || scan.level;
+
+    html += `<div class="aeginel-local-card">
+      <div class="aeginel-local-score-row">
+        <span class="aeginel-local-score-num" style="color:${levelColor}">${scan.score}</span>
+        <span class="aeginel-local-level-badge level-${scan.level}">${levelLabel}</span>
+        ${scan.blocked ? `<span class="aeginel-verdict-badge verdict-block" style="margin-left:auto">${t('floating.blocked')}</span>` : ''}
+      </div>`;
+  }
+
+  if (scan.piiDetected && scan.piiDetected.length > 0) {
+    const groups = groupPiiByType(scan.piiDetected);
+    html += `<div style="margin-top:8px">
+      <div class="aeginel-panel-section-title">${t('floating.piiDetected')}</div>
+      <div class="aeginel-pii-list">`;
+    for (const [piiType, count] of groups) {
+      const label = t(`piiTypes.${piiType}`) || piiType;
+      html += `<span class="aeginel-pii-chip">${label}${count > 1 ? `<span class="aeginel-pii-chip-count">\u00d7${count}</span>` : ''}</span>`;
+    }
+    html += '</div></div>';
+  }
+
+  const allCats = [
+    ...(scan.categories || []),
+    ...(scan.serverCategories || []),
+  ].filter((c, i, arr) => arr.indexOf(c) === i);
+
+  if (allCats.length > 0) {
+    html += `<div style="margin-top:8px">
+      <div class="aeginel-panel-section-title">${t('floating.riskCategories')}</div>
+      <div class="aeginel-cat-list">`;
+    for (const cat of allCats) {
+      html += `<span class="aeginel-cat-chip ${categoryClass(cat)}">${translateCategory(cat)}</span>`;
+    }
+    html += '</div></div>';
+  }
+
+  if (scan.serverExplanation && scan.serverAvailable) {
+    html += `<div class="aeginel-explain">${escapeHtml(scan.serverExplanation)}</div>`;
+  } else if (scan.explanation && scan.score > 0) {
+    html += `<div class="aeginel-explain">${escapeHtml(scan.explanation)}</div>`;
+  }
+
+  html += '</div>';
+
+  if (scan.endpointDetails && scan.endpointDetails.length > 0) {
+    html += `<div class="aeginel-collapsible" style="margin-top:6px">
+      <button class="aeginel-collapsible-toggle" data-action="toggle-analysis">
+        <span>${t('floating.serverAnalysis')}</span>
+        <svg class="aeginel-collapsible-arrow" width="8" height="8" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="aeginel-collapsible-body" style="display:none">
+        <div class="aeginel-ep-list">`;
+    for (const ep of scan.endpointDetails) {
+      const name = endpointDisplayName(ep.endpoint);
+      const vclass = epVerdictClass(ep.action);
+      const actionLabel = t(`floating.${actionToVerdict(ep.action)}`) || ep.action;
+      const epLatency = `${Math.round(ep.latencyMs)}ms`;
+      const fullExplanation = ep.explanation ? escapeHtml(ep.explanation) : '';
+
+      html += `<div class="aeginel-ep-row">
+        <span class="aeginel-ep-name">${name}</span>
+        <span class="aeginel-ep-verdict ${vclass}">${actionLabel}</span>
+        <span class="aeginel-ep-score">${ep.score}</span>
+        <span class="aeginel-ep-time">${epLatency}</span>
+      </div>`;
+      if (fullExplanation) {
+        html += `<div class="aeginel-ep-explain">${fullExplanation}</div>`;
+      }
+    }
+    html += '</div></div></div>';
+  }
+
+  return html;
+}
+
 // ── Build Panel HTML ────────────────────────────────────────────────
 
 function buildPanelContent(data: DashboardResponseMessage['payload']): string {
@@ -211,125 +390,23 @@ function buildPanelContent(data: DashboardResponseMessage['payload']): string {
     </div>
   </div>`;
 
-  // Last scan details
-  if (data.lastScan) {
-    const scan = data.lastScan;
+  // Scan detail view (selected from history) or last scan
+  const detailScan = _selectedScanIdx !== null ? data.recentScans[_selectedScanIdx] : data.lastScan;
+
+  if (_selectedScanIdx !== null && detailScan) {
     html += `<div class="aeginel-panel-section">
-      <div class="aeginel-panel-section-title">${t('floating.scanDetails')}</div>`;
-
-    if (scan.serverAvailable) {
-      // Server verdict card (existing score flow + new details)
-      const action = scan.serverAction || 'approve';
-      const verdictKey = actionToVerdict(action);
-      const verdictLabel = t(`floating.${verdictKey}`) || action;
-      const latency = scan.serverLatencyMs ? `${Math.round(scan.serverLatencyMs)}ms` : '';
-
-      html += `<div class="aeginel-verdict-card">
-        <div class="aeginel-verdict-action">
-          <span class="aeginel-verdict-badge ${verdictClass(action)}">
-            ${verdictLabel}
-          </span>
-          ${scan.blocked ? `<span class="aeginel-verdict-badge verdict-block">${t('floating.blocked')}</span>` : ''}
-          ${latency ? `<span class="aeginel-verdict-latency">${latency}</span>` : ''}
-        </div>
-        <div class="aeginel-score-flow">
-          <div class="aeginel-score-item">
-            <div class="aeginel-score-item-value" style="color:${LEVEL_COLORS[scan.level] || '#e6edf3'}">${scan.localScore ?? 0}</div>
-            <div class="aeginel-score-item-label">${t('floating.localScore')}</div>
-          </div>
-          <span class="aeginel-score-arrow">\u2192</span>
-          <div class="aeginel-score-item">
-            <div class="aeginel-score-item-value" style="color:${LEVEL_COLORS[scan.level] || '#e6edf3'}">${scan.serverScore ?? 0}</div>
-            <div class="aeginel-score-item-label">${t('floating.serverScore')}</div>
-          </div>
-          <span class="aeginel-score-arrow">\u2192</span>
-          <div class="aeginel-score-item">
-            <div class="aeginel-score-item-value" style="color:${LEVEL_COLORS[scan.level] || '#e6edf3'}">${scan.score}</div>
-            <div class="aeginel-score-item-label">${t('floating.finalScore')}</div>
-          </div>
-        </div>`;
-    } else {
-      // Local-only scan card
-      const levelColor = LEVEL_COLORS[scan.level] || '#e6edf3';
-      const levelLabel = t(`risk.${scan.level}`) || scan.level;
-
-      html += `<div class="aeginel-local-card">
-        <div class="aeginel-local-score-row">
-          <span class="aeginel-local-score-num" style="color:${levelColor}">${scan.score}</span>
-          <span class="aeginel-local-level-badge level-${scan.level}">${levelLabel}</span>
-          ${scan.blocked ? `<span class="aeginel-verdict-badge verdict-block" style="margin-left:auto">${t('floating.blocked')}</span>` : ''}
-        </div>`;
-    }
-
-    // PII details
-    if (scan.piiDetected && scan.piiDetected.length > 0) {
-      const groups = groupPiiByType(scan.piiDetected);
-      html += `<div style="margin-top:8px">
-        <div class="aeginel-panel-section-title">${t('floating.piiDetected')}</div>
-        <div class="aeginel-pii-list">`;
-      for (const [piiType, count] of groups) {
-        const label = t(`piiTypes.${piiType}`) || piiType;
-        html += `<span class="aeginel-pii-chip">${label}${count > 1 ? `<span class="aeginel-pii-chip-count">\u00d7${count}</span>` : ''}</span>`;
-      }
-      html += '</div></div>';
-    }
-
-    // Risk categories
-    const allCats = [
-      ...(scan.categories || []),
-      ...(scan.serverCategories || []),
-    ].filter((c, i, arr) => arr.indexOf(c) === i);
-
-    if (allCats.length > 0) {
-      html += `<div style="margin-top:8px">
-        <div class="aeginel-panel-section-title">${t('floating.riskCategories')}</div>
-        <div class="aeginel-cat-list">`;
-      for (const cat of allCats) {
-        html += `<span class="aeginel-cat-chip ${categoryClass(cat)}">${translateCategory(cat)}</span>`;
-      }
-      html += '</div></div>';
-    }
-
-    // Server explanation (from individual endpoints, more informative)
-    if (scan.serverExplanation && scan.serverAvailable) {
-      html += `<div class="aeginel-explain">${escapeHtml(scan.serverExplanation)}</div>`;
-    } else if (scan.explanation && scan.score > 0) {
-      html += `<div class="aeginel-explain">${escapeHtml(scan.explanation)}</div>`;
-    }
-
-    // Close the card div (verdict-card or local-card)
-    html += '</div>';
-
-    // Endpoint breakdown (collapsible)
-    if (scan.endpointDetails && scan.endpointDetails.length > 0) {
-      html += `<div class="aeginel-collapsible" style="margin-top:6px">
-        <button class="aeginel-collapsible-toggle" data-action="toggle-analysis">
-          <span>${t('floating.serverAnalysis')}</span>
-          <svg class="aeginel-collapsible-arrow" width="8" height="8" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <div class="aeginel-collapsible-body" style="display:none">
-          <div class="aeginel-ep-list">`;
-      for (const ep of scan.endpointDetails) {
-        const name = endpointDisplayName(ep.endpoint);
-        const vclass = epVerdictClass(ep.action);
-        const actionLabel = t(`floating.${actionToVerdict(ep.action)}`) || ep.action;
-        const epLatency = `${Math.round(ep.latencyMs)}ms`;
-        const fullExplanation = ep.explanation ? escapeHtml(ep.explanation) : '';
-
-        html += `<div class="aeginel-ep-row">
-          <span class="aeginel-ep-name">${name}</span>
-          <span class="aeginel-ep-verdict ${vclass}">${actionLabel}</span>
-          <span class="aeginel-ep-score">${ep.score}</span>
-          <span class="aeginel-ep-time">${epLatency}</span>
-        </div>`;
-        if (fullExplanation) {
-          html += `<div class="aeginel-ep-explain">${fullExplanation}</div>`;
-        }
-      }
-      html += '</div></div></div>';
-    }
-
-    html += '</div>';
+      <button class="aeginel-detail-back" data-action="back-to-list">
+        <svg width="8" height="8" viewBox="0 0 10 10"><path d="M6.5 2L3.5 5L6.5 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        ${t('floating.backToList')}
+      </button>
+      <div class="aeginel-detail-meta">${detailScan.site} · ${formatTime(detailScan.timestamp)}</div>
+    </div>`;
+    html += buildScanDetailHtml(detailScan);
+  } else if (detailScan) {
+    html += `<div class="aeginel-panel-section">
+      <div class="aeginel-panel-section-title">${t('floating.scanDetails')}</div>
+    </div>`;
+    html += buildScanDetailHtml(detailScan);
   } else if (data.aegisEnabled) {
     html += `<div class="aeginel-panel-section">
       <div class="aeginel-panel-section-title">${t('floating.lastVerdict')}</div>
@@ -346,15 +423,18 @@ function buildPanelContent(data: DashboardResponseMessage['payload']): string {
     </div>`;
   }
 
-  // Recent scans (scrollable, max 5 visible rows)
-  if (data.recentScans.length > 0) {
+  // Recent scans (scrollable, max 5 visible rows) — hidden when viewing detail
+  if (_selectedScanIdx !== null) {
+    // detail view is showing, skip list
+  } else if (data.recentScans.length > 0) {
     html += `<div class="aeginel-panel-section">
       <div class="aeginel-panel-section-title">${t('floating.recentScans')} <span style="color:#484f58;font-weight:400">(${data.recentScans.length})</span></div>
       <div class="aeginel-scan-scroll">`;
-    for (const scan of data.recentScans) {
+    for (let i = 0; i < data.recentScans.length; i++) {
+      const scan = data.recentScans[i];
       const color = LEVEL_COLORS[scan.level] || '#8b949e';
       const piiCount = scan.piiDetected?.length || 0;
-      html += `<div class="aeginel-scan-item level-${scan.level}">
+      html += `<div class="aeginel-scan-item level-${scan.level}" data-scan-idx="${i}">
         <span class="aeginel-scan-score" style="color:${color}">${scan.score}</span>
         <span class="aeginel-scan-site">${scan.site}</span>
         <span class="aeginel-scan-meta">
@@ -398,6 +478,8 @@ function renderPanel() {
       ?.addEventListener('click', () => {
         chrome.runtime.sendMessage({ type: 'OPEN_AEGIS_SETTINGS' });
       });
+    const header = panel.querySelector('.aeginel-panel-header') as HTMLElement | null;
+    if (header) attachDragBehavior(header);
     panel.querySelectorAll('[data-action="toggle-analysis"]').forEach(btn => {
       btn.addEventListener('click', () => {
         const body = btn.closest('.aeginel-collapsible')?.querySelector('.aeginel-collapsible-body') as HTMLElement | null;
@@ -407,6 +489,20 @@ function renderPanel() {
         btn.classList.toggle('is-open', !expanded);
       });
     });
+    panel.querySelectorAll('[data-scan-idx]').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = parseInt((el as HTMLElement).dataset.scanIdx ?? '', 10);
+        if (!isNaN(idx)) {
+          _selectedScanIdx = idx;
+          renderPanel();
+        }
+      });
+    });
+    panel.querySelector('[data-action="back-to-list"]')
+      ?.addEventListener('click', () => {
+        _selectedScanIdx = null;
+        renderPanel();
+      });
   }
   repositionPanel();
 }
@@ -505,54 +601,8 @@ export async function showFloatingBadge() {
   shadow.appendChild(container);
   document.body.appendChild(host);
 
-  // ── Drag logic ──
-  let isDragging = false;
-  let dragStartX = 0;
-  let dragStartY = 0;
-  let badgeStartX = pos.x;
-  let badgeStartY = pos.y;
-  let hasMoved = false;
-
-  badge.addEventListener('pointerdown', (e: PointerEvent) => {
-    isDragging = true;
-    hasMoved = false;
-    dragStartX = e.clientX;
-    dragStartY = e.clientY;
-    badgeStartX = host.offsetLeft;
-    badgeStartY = host.offsetTop;
-    badge.setPointerCapture(e.pointerId);
-    badge.style.cursor = 'grabbing';
-    e.preventDefault();
-  });
-
-  badge.addEventListener('pointermove', (e: PointerEvent) => {
-    if (!isDragging) return;
-    const dx = e.clientX - dragStartX;
-    const dy = e.clientY - dragStartY;
-
-    if (!hasMoved && Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
-    hasMoved = true;
-
-    const newX = Math.max(-BADGE_SIZE / 2, Math.min(window.innerWidth - BADGE_SIZE / 2, badgeStartX + dx));
-    const newY = Math.max(-BADGE_SIZE / 2, Math.min(window.innerHeight - BADGE_SIZE / 2, badgeStartY + dy));
-    host.style.left = `${newX}px`;
-    host.style.top = `${newY}px`;
-  });
-
-  badge.addEventListener('pointerup', (e: PointerEvent) => {
-    if (!isDragging) return;
-    isDragging = false;
-    badge.style.cursor = 'grab';
-
-    if (hasMoved) {
-      savePosition(host.offsetLeft, host.offsetTop);
-      if (_panelOpen) repositionPanel();
-    } else {
-      togglePanel();
-    }
-
-    badge.releasePointerCapture(e.pointerId);
-  });
+  // ── Drag logic (badge tap toggles panel) ──
+  attachDragBehavior(badge, togglePanel);
 
   // Long press / right-click to hide badge entirely
   let longPressTimer: ReturnType<typeof setTimeout> | null = null;

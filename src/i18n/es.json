@@ -182,6 +182,7 @@
     "activeEndpoints": "{{count}} activos",
     "recentScans": "Escaneos Recientes",
     "noScans": "Sin escaneos aún",
+    "backToList": "Volver a la lista",
     "connectPrompt": "Conecte el servidor AEGIS para protección avanzada",
     "connectBtn": "Conectar",
     "totalScans": "Escaneos Totales",
