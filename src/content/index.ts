@@ -219,23 +219,6 @@ function initContentScript(adapter: SiteAdapter) {
     showShieldIndicator(shieldStatus, anchor);
   }
 
-  // ── PII Proxy: Quick check if text likely has PII ───────────────────
-  // Fast heuristic to avoid unnecessary submit interception
-  function textMayContainPii(text: string): boolean {
-    // Quick checks for common PII patterns
-    // 6+ consecutive digits (RRN, card, phone, SSN)
-    if (/\d{6,}/.test(text)) return true;
-    // Digit groups with dashes (RRN, SSN, phone)
-    if (/\d{2,4}[-–.]\d{2,4}/.test(text)) return true;
-    // Email pattern
-    if (/@[a-zA-Z0-9]/.test(text)) return true;
-    // + prefix for international phone
-    if (/\+\d{1,3}/.test(text)) return true;
-    // Passport-like: letter(s) + 7+ digits
-    if (/[A-Z]{1,2}\d{7}/.test(text)) return true;
-    return false;
-  }
-
   // ── PII Proxy: Pseudonymize before submit ─────────────────────────────
 
   function hideInputText(el: Element): void {
@@ -330,9 +313,6 @@ function initContentScript(adapter: SiteAdapter) {
 
     const text = adapter.getInputText(inputEl);
     if (text.length < INPUT_MIN_LENGTH) return;
-
-    // Quick heuristic: skip interception if text unlikely to contain PII (synchronous)
-    if (!textMayContainPii(text)) return;
 
     // All synchronous checks passed — prevent default NOW before any async work
     e.preventDefault();
