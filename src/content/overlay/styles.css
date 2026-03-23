@@ -660,6 +660,34 @@
   margin-bottom: 2px;
   border-left: 2px solid;
   background: rgba(255,255,255,0.02);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.aeginel-scan-item:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+/* Scan detail back button */
+.aeginel-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  color: #58a6ff;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 4px;
+  transition: opacity 0.15s;
+}
+.aeginel-detail-back:hover { opacity: 0.8; }
+
+.aeginel-detail-meta {
+  font-size: 10px;
+  color: #8b949e;
+  margin-bottom: 2px;
 }
 
 .aeginel-scan-item:last-child { margin-bottom: 0; }
