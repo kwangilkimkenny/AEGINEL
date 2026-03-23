@@ -3,7 +3,7 @@
 // authoritative — local scan only serves as a fallback when the server is
 // unreachable. Network failures gracefully degrade to local-only results.
 
-import type { AegisServerConfig, AegisServerResult, AegisUsageInfo, AegisVersionMap } from './types';
+import type { AegisServerConfig, AegisServerResult, AegisEndpointDetail, AegisUsageInfo, AegisVersionMap } from './types';
 
 // ── /v1/judge ───────────────────────────────────────────────────────────────
 
@@ -119,9 +119,19 @@ export type NetworkLogEntry = {
   responseBody?: unknown;
 };
 
+// Endpoint → API version mapping
+const ENDPOINT_VERSION: Record<string, string> = {
+  judge: 'v1',
+  jailbreakDetect: 'v2',
+  safetyCheck: 'v2',
+  classify: 'v2',
+  koreanAnalyze: 'v3',
+};
+
 export class AegisClient {
   private config: AegisServerConfig;
   private abortController: AbortController | null = null;
+  private _versionAccess: AegisVersionMap = {};
   onNetworkLog?: (entry: NetworkLogEntry) => void;
 
   constructor(config: AegisServerConfig) {
@@ -129,7 +139,9 @@ export class AegisClient {
   }
 
   updateConfig(config: AegisServerConfig) {
+    const keyChanged = config.apiKey !== this.config.apiKey || config.baseUrl !== this.config.baseUrl;
     this.config = config;
+    if (keyChanged) this._versionAccess = {};
   }
 
   get isEnabled(): boolean {
@@ -157,36 +169,42 @@ export class AegisClient {
 
     const results: AegisServerResult[] = [];
     const promises: Promise<void>[] = [];
+    const va = this._versionAccess;
 
-    if (this.config.endpoints.judge) {
+    const canCall = (endpoint: string): boolean => {
+      const version = ENDPOINT_VERSION[endpoint];
+      return !version || va[version] !== 'denied';
+    };
+
+    if (this.config.endpoints.judge && canCall('judge')) {
       promises.push(
         this.callJudge(content, site, localScore, localCategories, signal)
           .then(r => { results.push(r); }),
       );
     }
 
-    if (this.config.endpoints.jailbreakDetect) {
+    if (this.config.endpoints.jailbreakDetect && canCall('jailbreakDetect')) {
       promises.push(
         this.callJailbreakDetect(content, signal)
           .then(r => { results.push(r); }),
       );
     }
 
-    if (this.config.endpoints.safetyCheck) {
+    if (this.config.endpoints.safetyCheck && canCall('safetyCheck')) {
       promises.push(
         this.callSafetyCheck(content, signal)
           .then(r => { results.push(r); }),
       );
     }
 
-    if (this.config.endpoints.classify) {
+    if (this.config.endpoints.classify && canCall('classify')) {
       promises.push(
         this.callClassify(content, signal)
           .then(r => { results.push(r); }),
       );
     }
 
-    if (this.config.endpoints.koreanAnalyze) {
+    if (this.config.endpoints.koreanAnalyze && canCall('koreanAnalyze')) {
       promises.push(
         this.callKoreanAnalyze(content, signal)
           .then(r => { results.push(r); }),
@@ -212,6 +230,15 @@ export class AegisClient {
     const allCategories = [...new Set(available.flatMap(r => r.categories))];
     const totalLatency = available.reduce((sum, r) => Math.max(sum, r.latencyMs), 0);
 
+    const endpointDetails: AegisEndpointDetail[] = available.map(r => ({
+      endpoint: r.endpoint,
+      action: r.action,
+      score: r.score,
+      categories: r.categories,
+      explanation: r.explanation,
+      latencyMs: r.latencyMs,
+    }));
+
     return {
       available: true,
       score: merged.score,
@@ -220,6 +247,7 @@ export class AegisClient {
       explanation: available.map(r => r.explanation).filter(Boolean).join(' | '),
       latencyMs: totalLatency,
       endpoint: available.map(r => r.endpoint).join('+'),
+      endpointDetails,
     };
   }
 
@@ -464,6 +492,7 @@ export class AegisClient {
       access.v3 = 'denied';
     }
 
+    this._versionAccess = access;
     return access;
   }
 
