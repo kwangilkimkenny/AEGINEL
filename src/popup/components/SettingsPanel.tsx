@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import type { AeginelConfig, AegisServerConfig, AegisUsageInfo } from '../../engine/types';
 import { LANGUAGE_OPTIONS, UI_LANGUAGE_OPTIONS, useI18n } from '../../i18n';
 
@@ -119,7 +120,10 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                 {config.piiProxy.enabled && (
                   <>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-aeginel-muted">{t('settings.proxyMode')}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-aeginel-muted">{t('settings.proxyMode')}</span>
+                        <InfoTip text={t('settings.proxyModeInfo')} />
+                      </div>
                       <select
                         value={config.piiProxy.mode}
                         onChange={(e) => onUpdate({ piiProxy: { ...config.piiProxy, mode: e.target.value as 'auto' | 'confirm' } })}
@@ -145,9 +149,12 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                 {/* Block Threshold */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <div>
-                      <p className="text-[10px] font-medium text-aeginel-text">{t('settings.blockThreshold')}</p>
-                      <p className="text-[8px] text-aeginel-muted">{t('settings.blockThresholdDesc')}</p>
+                    <div className="flex items-center gap-1">
+                      <div>
+                        <p className="text-[10px] font-medium text-aeginel-text">{t('settings.blockThreshold')}</p>
+                        <p className="text-[8px] text-aeginel-muted">{t('settings.blockThresholdDesc')}</p>
+                      </div>
+                      <InfoTip text={t('settings.blockThresholdInfo')} />
                     </div>
                     <span
                       className="text-[13px] font-bold number-hero"
@@ -268,6 +275,86 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
 }
 
 /* ── Sub-components ── */
+
+function InfoTip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (!open || !btnRef.current) return;
+
+    // Measure after a frame so the popover is in the DOM
+    requestAnimationFrame(() => {
+      const btn = btnRef.current!.getBoundingClientRect();
+      const popH = popRef.current?.offsetHeight ?? 120;
+      const popW = 300;
+      const winH = window.innerHeight;
+      const winW = window.innerWidth;
+      const margin = 8;
+
+      // Horizontal: center on button, clamp to viewport
+      let left = btn.left + btn.width / 2 - popW / 2;
+      left = Math.max(margin, Math.min(left, winW - popW - margin));
+
+      // Vertical: prefer below, flip above if clipped
+      let top = btn.bottom + 6;
+      if (top + popH > winH - margin) {
+        top = btn.top - popH - 6;
+      }
+      // If still clipped at the top, just pin to top
+      if (top < margin) top = margin;
+
+      setPos({ top, left });
+    });
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        className="rounded-full flex items-center justify-center flex-shrink-0 transition-all"
+        style={{
+          width: '13px',
+          height: '13px',
+          fontSize: '8px',
+          fontWeight: 700,
+          fontStyle: 'italic',
+          lineHeight: 1,
+          color: open ? '#58a6ff' : '#8b949e',
+          background: open ? 'rgba(88,166,255,0.15)' : 'transparent',
+          border: `1px solid ${open ? 'rgba(88,166,255,0.3)' : '#484f58'}`,
+        }}
+      >
+        i
+      </button>
+      {open && createPortal(
+        <>
+          <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
+          <div
+            ref={popRef}
+            className="fixed z-[9999] rounded-lg p-3 shadow-lg animate-fade-in"
+            style={{
+              top: pos.top,
+              left: pos.left,
+              width: '300px',
+              maxHeight: `${window.innerHeight - 16}px`,
+              overflowY: 'auto',
+              background: '#161b22',
+              border: '1px solid #30363d',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+            }}
+          >
+            <p className="text-[9px] text-aeginel-text/90 whitespace-pre-line" style={{ lineHeight: '1.6' }}>{text}</p>
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
+  );
+}
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
