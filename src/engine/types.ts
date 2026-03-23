@@ -63,6 +63,49 @@ export interface PiiProxyConfig {
   showNotification: boolean;
 }
 
+export interface AegisServerConfig {
+  enabled: boolean;
+  baseUrl: string;
+  apiKey: string;
+  /** Timeout in ms for AEGIS API calls */
+  timeoutMs: number;
+  /** Which AEGIS endpoints to call */
+  endpoints: {
+    judge: boolean;
+    jailbreakDetect: boolean;
+    safetyCheck: boolean;
+    classify: boolean;
+    koreanAnalyze: boolean;
+  };
+}
+
+export interface AegisServerResult {
+  available: boolean;
+  score: number;
+  action: string;
+  categories: string[];
+  explanation: string;
+  latencyMs: number;
+  endpoint: string;
+}
+
+export interface DevLogEntry {
+  timestamp: number;
+  type: 'scan' | 'aegis' | 'ml' | 'health' | 'error';
+  summary: string;
+  details?: Record<string, unknown>;
+}
+
+export interface AegisUsageInfo {
+  allocated: number;
+  used: number;
+  remaining: number;
+  percentUsed: number;
+  overageAllowed: boolean;
+  period: { start: string; end: string };
+  byEndpoint: Array<{ endpoint: string; calls: number }>;
+}
+
 export interface AeginelConfig {
   enabled: boolean;
   layers: {
@@ -85,7 +128,23 @@ export interface AeginelConfig {
   blockThreshold: number; // 0-100, default 60
   language: string; // 'auto' | SupportedLocale code
   allowlist: string[]; // domains to skip scanning
+  aegisServer: AegisServerConfig;
+  devMode: boolean;
 }
+
+export const DEFAULT_AEGIS_SERVER_CONFIG: AegisServerConfig = {
+  enabled: false,
+  baseUrl: 'https://api.aiaegis.io',
+  apiKey: '',
+  timeoutMs: 5000,
+  endpoints: {
+    judge: true,
+    jailbreakDetect: false,
+    safetyCheck: false,
+    classify: false,
+    koreanAnalyze: false,
+  },
+};
 
 export const DEFAULT_CONFIG: AeginelConfig = {
   enabled: true,
@@ -121,4 +180,6 @@ export const DEFAULT_CONFIG: AeginelConfig = {
   blockThreshold: 60,
   language: 'auto',
   allowlist: [],
+  aegisServer: DEFAULT_AEGIS_SERVER_CONFIG,
+  devMode: false,
 };

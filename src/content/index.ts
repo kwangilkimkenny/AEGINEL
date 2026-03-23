@@ -7,7 +7,7 @@ import { claudeAdapter } from './sites/claude';
 import { geminiAdapter } from './sites/gemini';
 import { createGenericAdapter } from './sites/generic';
 import { siteRegistry } from './sites/registry';
-import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner, showShieldIndicator, hideShieldIndicator, isShieldVisible, showDisconnectedBanner } from './overlay/warning-banner';
+import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner, showShieldIndicator, hideShieldIndicator, isShieldVisible, showDisconnectedBanner, updateShieldTooltip } from './overlay/warning-banner';
 import type { ShieldStatus } from './overlay/warning-banner';
 import type { ScanResult, AeginelConfig, ProxyResult, PiiMapping } from '../engine/types';
 import { DEFAULT_CONFIG } from '../engine/types';
@@ -984,6 +984,22 @@ function initContentScript(adapter: SiteAdapter) {
   // Periodic health check every 5 minutes to detect site layout changes
   const HEALTH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
   setInterval(checkAdapterHealth, HEALTH_CHECK_INTERVAL_MS);
+
+  // ── Scan Progress Updates ──────────────────────────────────────────
+  const PHASE_TOOLTIPS: Record<string, string> = {
+    rules: 'Aegis: Running rule engine...',
+    ml: 'Aegis: ML model analyzing...',
+    aegis: 'Aegis: Checking AEGIS server...',
+    done: 'Aegis: Done',
+  };
+
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg?.type === 'SCAN_PROGRESS' && msg.payload) {
+      const { phase, detail } = msg.payload as { phase: string; detail: string };
+      const tooltip = PHASE_TOOLTIPS[phase] ?? `Aegis: ${detail}`;
+      updateShieldTooltip(tooltip);
+    }
+  });
 
   // ── Disconnection Detection ──────────────────────────────────────────
   // Show a non-intrusive banner when the extension context is lost
