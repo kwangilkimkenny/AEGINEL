@@ -421,6 +421,8 @@
   justify-content: space-between;
   padding: 10px 12px;
   border-bottom: 1px solid #21262d;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .aeginel-panel-header-left {
