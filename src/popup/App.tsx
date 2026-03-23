@@ -3,7 +3,6 @@ import StatusCard from './components/StatusCard';
 import RiskMeter from './components/RiskMeter';
 import RecentScans from './components/RecentScans';
 import WeeklyReport from './components/WeeklyReport';
-import MlStatus from './components/MlStatus';
 import SettingsPanel from './components/SettingsPanel';
 import type { AeginelConfig, ScanResult } from '../engine/types';
 import { DEFAULT_CONFIG } from '../engine/types';
@@ -74,7 +73,6 @@ export default function App() {
 
   const handleUpdateConfig = (partial: Partial<AeginelConfig>) => {
     const newConfig = { ...config, ...partial };
-    if (partial.layers) newConfig.layers = { ...config.layers, ...partial.layers };
     if (partial.pii) newConfig.pii = { ...config.pii, ...partial.pii };
     if (partial.piiProxy) newConfig.piiProxy = { ...config.piiProxy, ...partial.piiProxy };
     setConfig(newConfig);
@@ -96,7 +94,6 @@ export default function App() {
       {/* ── Header ── */}
       <div className="pl-3 pr-5 pt-4 pb-3 flex items-center justify-between border-b border-aeginel-border gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          {/* Brand logo */}
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300"
             style={config.enabled
@@ -112,13 +109,11 @@ export default function App() {
           </div>
           <div className="min-w-0">
             <h1 className="text-[13px] font-bold text-aeginel-text tracking-tight leading-none">Aegis Personal</h1>
-            <p className="text-[9px] text-aeginel-muted leading-none mt-0.5 tracking-wide uppercase">AI Prompt Guard</p>
+            <p className="text-[9px] text-aeginel-muted leading-none mt-0.5 tracking-wide uppercase">AI Privacy Guard</p>
           </div>
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <MlStatus />
-          {/* Power toggle */}
           <button
             onClick={handleToggle}
             className="relative w-10 h-[22px] rounded-full transition-all duration-300 flex-shrink-0 p-0 border-0"

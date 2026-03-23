@@ -43,7 +43,7 @@ export default function StatusCard({
       </div>
 
       {/* Stats bento grid */}
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
         <StatBox
           label="Scans"
           value={totalScans}
@@ -56,17 +56,7 @@ export default function StatusCard({
           }
         />
         <StatBox
-          label="Blocked"
-          value={threatsBlocked}
-          color="#f85149"
-          icon={
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f85149" strokeWidth="2" strokeLinecap="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-          }
-        />
-        <StatBox
-          label="PII Safe"
+          label="PII Protected"
           value={piiProtected}
           color="#58a6ff"
           icon={

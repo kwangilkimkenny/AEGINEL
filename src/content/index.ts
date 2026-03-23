@@ -987,8 +987,7 @@ function initContentScript(adapter: SiteAdapter) {
 
   // ── Scan Progress Updates ──────────────────────────────────────────
   const PHASE_TOOLTIPS: Record<string, string> = {
-    rules: 'Aegis: Running rule engine...',
-    ml: 'Aegis: ML model analyzing...',
+    pii: 'Aegis: Scanning for personal information...',
     aegis: 'Aegis: Checking AEGIS server...',
     done: 'Aegis: Done',
   };

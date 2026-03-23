@@ -6,7 +6,6 @@ export function mergeConfig(partial: Partial<AeginelConfig>): AeginelConfig {
   return {
     ...DEFAULT_CONFIG,
     ...partial,
-    layers: { ...DEFAULT_CONFIG.layers, ...partial.layers },
     pii: {
       ...DEFAULT_CONFIG.pii,
       ...partial.pii,

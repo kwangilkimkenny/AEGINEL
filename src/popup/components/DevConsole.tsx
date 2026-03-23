@@ -4,7 +4,6 @@ import type { DevLogEntry } from '../../engine/types';
 const TYPE_COLORS: Record<DevLogEntry['type'], string> = {
   scan: '#58a6ff',
   aegis: '#d2a8ff',
-  ml: '#79c0ff',
   health: '#3fb950',
   error: '#f85149',
 };
@@ -12,7 +11,6 @@ const TYPE_COLORS: Record<DevLogEntry['type'], string> = {
 const TYPE_LABELS: Record<DevLogEntry['type'], string> = {
   scan: 'SCAN',
   aegis: 'AEGIS',
-  ml: 'ML',
   health: 'HEALTH',
   error: 'ERROR',
 };
@@ -65,7 +63,6 @@ export default function DevConsole() {
           <option value="all">All</option>
           <option value="scan">Scan</option>
           <option value="aegis">Aegis</option>
-          <option value="ml">ML</option>
           <option value="health">Health</option>
           <option value="error">Error</option>
         </select>

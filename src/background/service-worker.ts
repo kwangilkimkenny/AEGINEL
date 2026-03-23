@@ -1,5 +1,6 @@
 // ── Aegis Personal Service Worker ─────────────────────────────────────────────────
-// Hosts the detection engine, handles messages, manages badge + history.
+// Hosts the PII detection engine, handles messages, manages badge + history.
+// Attack defense is delegated to the AEGIS server (enterprise only).
 
 import { scan } from '../engine/detector';
 import { mergeConfig } from '../engine/config';
@@ -10,7 +11,6 @@ import { AegisClient, mergeHybridScore } from '../engine/aegis-client';
 import type { ExtensionMessage, ScanPhase } from '../shared/messages';
 import { MAX_HISTORY_ITEMS } from '../shared/constants';
 import { getConfig, setConfig, getScanHistory, setScanHistory, getStats, setStats, getWeeklyStats, updateWeeklyStats } from '../shared/storage';
-import { mlClassify, mlStatus } from '../engine/ml-classifier';
 
 // ── State ────────────────────────────────────────────────────────────────
 
@@ -52,32 +52,6 @@ function setupNetworkLogger(client: AegisClient) {
 }
 
 setupNetworkLogger(aegisClient);
-
-// ── Conversation History Tracking ─────────────────────────────────────
-// Tracks recent inputs per site (keyed by tab URL hostname), last 5 per site.
-
-const MAX_CONVERSATION_HISTORY = 5;
-const conversationHistory = new Map<string, string[]>();
-
-function addToConversationHistory(hostname: string, input: string) {
-  let history = conversationHistory.get(hostname);
-  if (!history) {
-    history = [];
-    conversationHistory.set(hostname, history);
-  }
-  history.push(input);
-  if (history.length > MAX_CONVERSATION_HISTORY) {
-    history.shift();
-  }
-}
-
-function getConversationHistory(hostname: string): string[] {
-  return conversationHistory.get(hostname) ?? [];
-}
-
-function clearConversationHistoryForHost(hostname: string) {
-  conversationHistory.delete(hostname);
-}
 
 // ── Health Status Tracking ──────────────────────────────────────────────
 
@@ -139,37 +113,6 @@ async function initialize() {
 
 initialize();
 
-// ── Tab Cleanup: Clear conversation history on tab close / navigation ──
-
-// Map tabId -> hostname for cleanup on tab removal
-const tabHostnames = new Map<number, string>();
-
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.url) {
-    try {
-      const newHostname = new URL(changeInfo.url).hostname;
-      const previousHostname = tabHostnames.get(tabId);
-
-      // If navigated to a different hostname, clear history for the old one
-      if (previousHostname && previousHostname !== newHostname) {
-        clearConversationHistoryForHost(previousHostname);
-      }
-
-      tabHostnames.set(tabId, newHostname);
-    } catch {
-      // Invalid URL, ignore
-    }
-  }
-});
-
-chrome.tabs.onRemoved.addListener((tabId) => {
-  const hostname = tabHostnames.get(tabId);
-  if (hostname) {
-    clearConversationHistoryForHost(hostname);
-    tabHostnames.delete(tabId);
-  }
-});
-
 // ── Message Handler ──────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener(
@@ -189,55 +132,16 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
     switch (message.type) {
       case 'SCAN_INPUT': {
         const { input, site } = message.payload;
-
-        // Derive history key from sender URL hostname (aligns with tab cleanup),
-        // falling back to site adapter name
-        let historyKey = site.toLowerCase().replace(/\s+/g, '_');
-        if (sender?.url) {
-          try {
-            historyKey = new URL(sender.url).hostname;
-          } catch { /* use fallback */ }
-        }
-
-        // Track tabId -> hostname for cleanup on tab close/navigation
-        if (sender?.tab?.id != null) {
-          tabHostnames.set(sender.tab.id, historyKey);
-        }
-
-        // Get prior conversation history (before adding current input)
-        const convHistory = getConversationHistory(historyKey);
-
-        // Add current input to conversation history
-        addToConversationHistory(historyKey, input);
-
         const tabId = sender?.tab?.id;
 
-        // ── Phase 1: Local scan (rule-based sync + ML async) ──
-        notifyProgress(tabId, 'rules', 'Running 9-layer rule engine...');
-        const ruleResult = scan(input, site, currentConfig, convHistory.length > 0 ? convHistory : undefined);
+        // ── Phase 1: Local PII scan ──
+        notifyProgress(tabId, 'pii', 'Scanning for personal information...');
+        const piiResult = scan(input, site, currentConfig);
 
-        notifyProgress(tabId, 'ml', 'Analyzing with ML model...');
-        let mlResult = { success: false, labels: [] as string[], mlScore: 0, isHarmful: false };
-        try {
-          mlResult = await mlClassify(input);
-        } catch (err) {
-          console.warn('[Aegis] ML classify failed, using rule-only result:', err);
-          recordHealth({
-            source: 'ml-classifier',
-            status: 'degraded',
-            details: `ML classify error: ${String(err)}`,
-            timestamp: Date.now(),
-          });
-          pushLog({ type: 'error', summary: `ML classify failed: ${String(err)}` });
-        }
+        let localScore = piiResult.score;
+        let localCategories = [...piiResult.categories];
 
-        const localScore = Math.min(ruleResult.score + mlResult.mlScore, 100);
-        const localCategories = [...new Set([
-          ...ruleResult.categories,
-          ...mlResult.labels,
-        ])];
-
-        // ── Phase 2: AEGIS Server scan (async, non-blocking) ──
+        // ── Phase 2: AEGIS Server scan (enterprise — attack defense) ──
         let aegisResult: AegisServerResult = {
           available: false, score: 0, action: '', categories: [],
           explanation: '', latencyMs: 0, endpoint: '',
@@ -291,16 +195,13 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
           ...aegisResult.categories,
         ])];
 
-        let explanation = ruleResult.explanation;
-        if (mlResult.success && mlResult.isHarmful) {
-          explanation += ` ML: ${mlResult.labels.join(', ')} detected.`;
-        }
+        let explanation = piiResult.explanation;
         if (aegisResult.available && aegisResult.score > 0) {
           explanation += ` Server(${aegisResult.endpoint}): ${aegisResult.action} (${aegisResult.score}).`;
         }
 
         const result: ScanResult = {
-          ...ruleResult,
+          ...piiResult,
           score: hybridScore,
           level: hybridLevel,
           blocked: hybridScore >= currentConfig.blockThreshold,
@@ -315,10 +216,8 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
           summary: `[${site}] ${result.blocked ? 'BLOCKED' : result.level.toUpperCase()} score=${result.score}`,
           details: {
             input: input.slice(0, 80),
-            ruleScore: ruleResult.score,
-            mlScore: mlResult.mlScore,
-            mlLabels: mlResult.labels,
-            localScore,
+            piiScore: piiResult.score,
+            piiCount: piiResult.piiDetected.length,
             serverAvailable: aegisResult.available,
             serverAction: aegisResult.action || null,
             serverScore: aegisResult.score,
@@ -466,36 +365,8 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
         return { received: true };
       }
 
-      case 'ML_LOAD_ERROR': {
-        const { error, retryCount } = message.payload;
-        recordHealth({
-          source: 'ml-model',
-          status: 'error',
-          details: `Load failed (attempt ${retryCount}): ${error}`,
-          timestamp: Date.now(),
-        });
-        // Notify user via notification API on final failure
-        if (retryCount >= 2) {
-          try {
-            await chrome.notifications.create('ml-load-error', {
-              type: 'basic',
-              iconUrl: chrome.runtime.getURL('icons/icon-48.png'),
-              title: 'Aegis: ML Model Error',
-              message: 'The ML detection model failed to load. Rule-based detection is still active.',
-            });
-          } catch {
-            // Notifications API may not be available
-          }
-        }
-        return { received: true };
-      }
-
       case 'GET_HEALTH': {
         return { type: 'HEALTH_RESPONSE', payload: healthStatus };
-      }
-
-      case 'GET_ML_STATUS': {
-        return mlStatus();
       }
 
       case 'GET_WEEKLY_REPORT': {
@@ -517,12 +388,10 @@ async function generateWeeklyReport() {
   const weekly = await getWeeklyStats();
   const stats = await getStats();
 
-  // Sort categories by count
   const sortedCategories = Object.entries(weekly.topCategories)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5);
 
-  // Sort sites by scan count
   const sortedSites = Object.entries(weekly.siteBreakdown)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5);

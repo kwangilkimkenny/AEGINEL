@@ -16,16 +16,14 @@ interface WeeklyReportData {
 }
 
 const CAT_LABELS: Record<string, string> = {
-  harmful_content:    'Harmful',
-  jailbreak:          'Jailbreak',
-  prompt_injection:   'Injection',
-  data_extraction:    'Extraction',
-  social_engineering: 'Social Eng.',
-  script_evasion:     'Evasion',
-  encoding_attack:    'Encoding',
-  multi_turn:         'Multi-turn',
-  self_harm:          'Self Harm',
-  pii_exposure:       'PII',
+  pii_exposure:       'PII Detected',
+  korean_rrn:         'Korean RRN',
+  credit_card:        'Credit Card',
+  email:              'Email',
+  phone_kr:           'Phone (KR)',
+  phone_intl:         'Phone (Intl)',
+  ssn:                'SSN',
+  passport:           'Passport',
 };
 
 export default function WeeklyReport() {
@@ -46,9 +44,9 @@ export default function WeeklyReport() {
 
   const shareText = [
     `AEGINEL Weekly Report (${period.start} ~ ${period.end})`,
-    `Scans: ${thisWeek.totalScans} | Threats: ${thisWeek.threatsBlocked} | PII: ${thisWeek.piiProtected}`,
+    `Scans: ${thisWeek.totalScans} | PII Protected: ${thisWeek.piiProtected}`,
     thisWeek.topCategories.length > 0
-      ? `Top: ${thisWeek.topCategories.map(([c, n]) => `${CAT_LABELS[c] ?? c}(${n})`).join(', ')}`
+      ? `Categories: ${thisWeek.topCategories.map(([c, n]) => `${CAT_LABELS[c] ?? c}(${n})`).join(', ')}`
       : '',
     `Protected by Aegis Personal`,
   ].filter(Boolean).join('\n');
@@ -109,22 +107,21 @@ export default function WeeklyReport() {
           ) : (
             <>
               {/* Stats row */}
-              <div className="grid grid-cols-3 gap-1.5">
-                <MiniStat label="Scans"   value={thisWeek.totalScans}    color="#e6edf3" />
-                <MiniStat label="Blocked" value={thisWeek.threatsBlocked} color="#f85149" />
-                <MiniStat label="PII"     value={thisWeek.piiProtected}   color="#58a6ff" />
+              <div className="grid grid-cols-2 gap-1.5">
+                <MiniStat label="Scans"         value={thisWeek.totalScans}    color="#e6edf3" />
+                <MiniStat label="PII Protected"  value={thisWeek.piiProtected}  color="#58a6ff" />
               </div>
 
-              {/* Top threats */}
+              {/* Top categories */}
               {thisWeek.topCategories.length > 0 && (
                 <div>
-                  <p className="text-[9px] font-semibold text-aeginel-muted mb-1.5 uppercase tracking-wide">Top Threats</p>
+                  <p className="text-[9px] font-semibold text-aeginel-muted mb-1.5 uppercase tracking-wide">Categories</p>
                   <div className="flex flex-wrap gap-1">
                     {thisWeek.topCategories.map(([cat, count]) => (
                       <span
                         key={cat}
                         className="text-[8px] font-medium px-1.5 py-0.5 rounded-md"
-                        style={{ background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.2)', color: '#f85149' }}
+                        style={{ background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.2)', color: '#58a6ff' }}
                       >
                         {CAT_LABELS[cat] ?? cat} · {count}
                       </span>
