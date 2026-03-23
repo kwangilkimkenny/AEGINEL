@@ -75,7 +75,7 @@ export default function WeeklyReport() {
         className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-aeginel-surface2 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8b949e" strokeWidth="2" strokeLinecap="round">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--aeginel-muted)" strokeWidth="2" strokeLinecap="round">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
             <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
             <line x1="3" y1="10" x2="21" y2="10"/>
@@ -108,7 +108,7 @@ export default function WeeklyReport() {
           ) : (
             <>
               <div className="grid grid-cols-2 gap-1.5">
-                <MiniStat label={t('stats.scans')}        value={thisWeek.totalScans}    color="#e6edf3" />
+                <MiniStat label={t('stats.scans')}        value={thisWeek.totalScans}    color="var(--aeginel-text)" />
                 <MiniStat label={t('stats.piiProtected')}  value={thisWeek.piiProtected}  color="#58a6ff" />
               </div>
 
@@ -159,7 +159,7 @@ export default function WeeklyReport() {
                 className="w-full text-[10px] py-1.5 rounded-lg border font-medium transition-all"
                 style={copied
                   ? { background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.3)', color: '#3fb950' }
-                  : { background: '#21262d', border: '1px solid #30363d', color: '#8b949e' }
+                  : { background: 'var(--aeginel-surface2)', border: '1px solid var(--aeginel-border)', color: 'var(--aeginel-muted)' }
                 }
               >
                 {copied ? `✓ ${t('weekly.copied')}` : t('weekly.copyReport')}

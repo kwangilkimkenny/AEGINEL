@@ -10,6 +10,7 @@ import styles from './styles.css?inline';
 const FLOAT_HOST_ID = 'aeginel-float-host';
 const STORAGE_KEY_POS = 'aeginel_badge_pos';
 const STORAGE_KEY_VIS = 'aeginel_badge_visible';
+const STORAGE_KEY_THEME = 'aeginel_theme';
 
 const BADGE_SIZE = 36;
 const PANEL_WIDTH = 340;
@@ -23,6 +24,7 @@ let _dashboardData: DashboardResponseMessage['payload'] | null = null;
 let _selectedScanIdx: number | null = null;
 let _survivalObserver: MutationObserver | null = null;
 let _reinjectTimer: ReturnType<typeof setTimeout> | null = null;
+let _theme: 'light' | 'dark' = 'light';
 
 // ── Shared drag state ───────────────────────────────────────────────
 
@@ -197,6 +199,39 @@ export async function setBadgeVisible(visible: boolean) {
   } catch { /* ignore */ }
 }
 
+async function loadTheme(): Promise<'light' | 'dark'> {
+  try {
+    const stored = await chrome.storage.local.get(STORAGE_KEY_THEME);
+    return stored[STORAGE_KEY_THEME] === 'dark' ? 'dark' : 'light';
+  } catch { return 'light'; }
+}
+
+async function saveTheme(theme: 'light' | 'dark') {
+  try {
+    await chrome.storage.local.set({ [STORAGE_KEY_THEME]: theme });
+  } catch { /* ignore */ }
+}
+
+function applyTheme(theme: 'light' | 'dark') {
+  _theme = theme;
+  if (!_shadow) return;
+  const container = _shadow.querySelector('.aeginel-theme-root') as HTMLElement | null;
+  if (container) {
+    container.dataset.theme = theme;
+  }
+  const badge = _shadow.querySelector('.aeginel-floating-badge') as HTMLElement | null;
+  if (badge) {
+    badge.dataset.theme = theme;
+  }
+}
+
+function toggleTheme() {
+  const next = _theme === 'light' ? 'dark' : 'light';
+  applyTheme(next);
+  saveTheme(next);
+  renderPanel();
+}
+
 // ── Adaptive Panel Positioning ──────────────────────────────────────
 // Determines which direction the panel should expand based on where
 // the badge sits relative to viewport center.
@@ -362,6 +397,9 @@ function buildPanelContent(data: DashboardResponseMessage['payload']): string {
   let html = '';
 
   // Header
+  const sunIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+  const moonIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+
   html += `<div class="aeginel-panel-header">
     <div class="aeginel-panel-header-left">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -371,7 +409,10 @@ function buildPanelContent(data: DashboardResponseMessage['payload']): string {
         ${statusLabel}
       </div>
     </div>
-    <button class="aeginel-panel-close" data-action="close">&times;</button>
+    <div class="aeginel-panel-header-actions">
+      <button class="aeginel-theme-toggle" data-action="toggle-theme" title="${_theme === 'light' ? 'Dark mode' : 'Light mode'}">${_theme === 'light' ? moonIcon : sunIcon}</button>
+      <button class="aeginel-panel-close" data-action="close">&times;</button>
+    </div>
   </div>`;
 
   html += '<div class="aeginel-panel-body">';
@@ -410,14 +451,14 @@ function buildPanelContent(data: DashboardResponseMessage['payload']): string {
   } else if (data.aegisEnabled) {
     html += `<div class="aeginel-panel-section">
       <div class="aeginel-panel-section-title">${t('floating.lastVerdict')}</div>
-      <div class="aeginel-connect-prompt" style="padding:6px 0;font-size:9px">${t('floating.noVerdict')}</div>
+      <div style="padding:6px 0;font-size:10px;color:var(--text-tertiary)">${t('floating.noVerdict')}</div>
     </div>`;
   }
 
   // Server not connected prompt with connect button
   if (!data.aegisEnabled) {
     html += `<div class="aeginel-connect-prompt">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#484f58" stroke-width="1.5" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       <span style="flex:1">${t('floating.connectPrompt')}</span>
       <button class="aeginel-connect-btn" data-action="open-settings">${t('floating.connectBtn')}</button>
     </div>`;
@@ -428,7 +469,7 @@ function buildPanelContent(data: DashboardResponseMessage['payload']): string {
     // detail view is showing, skip list
   } else if (data.recentScans.length > 0) {
     html += `<div class="aeginel-panel-section">
-      <div class="aeginel-panel-section-title">${t('floating.recentScans')} <span style="color:#484f58;font-weight:400">(${data.recentScans.length})</span></div>
+      <div class="aeginel-panel-section-title">${t('floating.recentScans')} <span style="font-weight:400;opacity:0.7">(${data.recentScans.length})</span></div>
       <div class="aeginel-scan-scroll">`;
     for (let i = 0; i < data.recentScans.length; i++) {
       const scan = data.recentScans[i];
@@ -447,7 +488,7 @@ function buildPanelContent(data: DashboardResponseMessage['payload']): string {
     html += '</div></div>';
   } else {
     html += `<div class="aeginel-panel-empty">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#30363d" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       ${t('floating.noScans')}
     </div>`;
   }
@@ -474,6 +515,8 @@ function renderPanel() {
     panel.innerHTML = buildPanelContent(_dashboardData);
     panel.querySelector('[data-action="close"]')
       ?.addEventListener('click', () => togglePanel());
+    panel.querySelector('[data-action="toggle-theme"]')
+      ?.addEventListener('click', () => toggleTheme());
     panel.querySelector('[data-action="open-settings"]')
       ?.addEventListener('click', () => {
         chrome.runtime.sendMessage({ type: 'OPEN_AEGIS_SETTINGS' });
@@ -554,6 +597,7 @@ function updateBadgeDot() {
   const status = getAegisStatus(_dashboardData);
   dot.className = `aeginel-badge-dot dot-${status}`;
   badge.className = `aeginel-floating-badge status-${status}`;
+  badge.dataset.theme = _theme;
 }
 
 // ── Main Entry ──────────────────────────────────────────────────────
@@ -574,17 +618,22 @@ export async function showFloatingBadge() {
   const shadow = host.attachShadow({ mode: 'closed' });
   _shadow = shadow;
 
+  _theme = await loadTheme();
+
   const style = document.createElement('style');
   style.textContent = styles;
   shadow.appendChild(style);
 
-  // Container — position: relative so the panel can use absolute positioning
-  const container = document.createElement('div');
-  container.style.cssText = 'position:relative;display:inline-block;';
+  // Theme root — wraps everything for CSS variable scoping
+  const themeRoot = document.createElement('div');
+  themeRoot.className = 'aeginel-theme-root';
+  themeRoot.dataset.theme = _theme;
+  themeRoot.style.cssText = 'position:relative;display:inline-block;';
 
   // Badge
   const badge = document.createElement('div');
   badge.className = 'aeginel-floating-badge status-off';
+  badge.dataset.theme = _theme;
   badge.innerHTML = `
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
     <span class="aeginel-badge-dot dot-off"></span>
@@ -594,11 +643,12 @@ export async function showFloatingBadge() {
   const panel = document.createElement('div');
   panel.className = 'aeginel-floating-panel';
   panel.style.position = 'absolute';
-  _panelOpen = true;
+  panel.style.display = 'none';
+  _panelOpen = false;
 
-  container.appendChild(badge);
-  container.appendChild(panel);
-  shadow.appendChild(container);
+  themeRoot.appendChild(badge);
+  themeRoot.appendChild(panel);
+  shadow.appendChild(themeRoot);
   document.body.appendChild(host);
 
   // ── Drag logic (badge tap toggles panel) ──

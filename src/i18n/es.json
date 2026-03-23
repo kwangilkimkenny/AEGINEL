@@ -33,7 +33,7 @@
       "privacy": "Privacidad",
       "advanced": "Avanzado"
     },
-    "piiTypesCount": "{{count}}/7 tipos",
+    "piiTypesCount": "{{count}}/{{total}} tipos",
     "pii": "Detección de Datos Personales",
     "piiDesc": "Detectar información personal en mensajes",
     "autoPseudonymize": "Enmascaramiento Automático",
