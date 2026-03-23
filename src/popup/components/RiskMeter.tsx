@@ -6,11 +6,11 @@ interface Props {
   lastScan: ScanResult | null;
 }
 
-const CX = 80, CY = 72, R = 58;
+const CX = 90, CY = 78, R = 62;
 const ARC_LEN = Math.PI * R;
 
 function arcPath(): string {
-  return `M ${CX - R} ${CY} A ${R} ${R} 0 0 0 ${CX + R} ${CY}`;
+  return `M ${CX - R} ${CY} A ${R} ${R} 0 0 1 ${CX + R} ${CY}`;
 }
 
 function thumbPos(score: number): { x: number; y: number } {
@@ -52,16 +52,16 @@ export default function RiskMeter({ lastScan }: Props) {
       </div>
 
       <div className="flex flex-col items-center">
-        <svg viewBox="0 0 160 82" className="w-full" style={{ maxHeight: '88px' }}>
+        <svg viewBox="0 0 180 90" overflow="visible" className="w-full" style={{ maxHeight: '100px' }}>
           <defs>
-            <filter id="aeginel-glow" x="-20%" y="-20%" width="140%" height="140%">
+            <filter id="aeginel-glow" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation="2" result="blur" />
               <feMerge>
                 <feMergeNode in="blur" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
-            <filter id="aeginel-glow-strong" x="-30%" y="-30%" width="160%" height="160%">
+            <filter id="aeginel-glow-strong" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation="3.5" result="blur" />
               <feMerge>
                 <feMergeNode in="blur" />
@@ -70,21 +70,24 @@ export default function RiskMeter({ lastScan }: Props) {
             </filter>
           </defs>
 
-          <path d={path} fill="none" stroke="#21262d" strokeWidth="9" strokeLinecap="round" />
+          {/* Track */}
+          <path d={path} fill="none" stroke="#21262d" strokeWidth="8" strokeLinecap="round" />
 
+          {/* Progress fill */}
           {score > 0 && (
             <path
               d={path}
               fill="none"
               stroke={cfg.color}
-              strokeWidth="9"
+              strokeWidth="8"
               strokeLinecap="round"
-              strokeDasharray={`${fillLen} ${ARC_LEN + 4}`}
+              strokeDasharray={`${fillLen} ${ARC_LEN + 10}`}
               filter="url(#aeginel-glow)"
               style={{ transition: 'stroke-dasharray 0.65s cubic-bezier(0.4, 0, 0.2, 1)' }}
             />
           )}
 
+          {/* Thumb dot */}
           {score > 0 && score < 100 && (
             <circle
               cx={thumb.x} cy={thumb.y} r="5"
@@ -94,16 +97,17 @@ export default function RiskMeter({ lastScan }: Props) {
             />
           )}
 
+          {/* Score number */}
           <text
-            x="80" y="65" textAnchor="middle"
+            x={CX} y={CY - 10} textAnchor="middle"
             fill={lastScan ? cfg.color : '#30363d'}
-            fontSize="24" fontWeight="800"
+            fontSize="26" fontWeight="800"
             fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
             style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '-1px' }}
           >
             {score}
           </text>
-          <text x="80" y="76" textAnchor="middle" fill="#8b949e" fontSize="9"
+          <text x={CX} y={CY + 1} textAnchor="middle" fill="#8b949e" fontSize="9"
             fontFamily="-apple-system, sans-serif">
             / 100
           </text>
