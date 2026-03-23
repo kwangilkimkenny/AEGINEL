@@ -83,6 +83,7 @@
     "activeTab"
   ],
   "host_permissions": [
+    "https://api.aiaegis.io/*",
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
     "https://claude.ai/*",

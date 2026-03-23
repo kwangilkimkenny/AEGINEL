@@ -391,6 +391,23 @@ function ToggleRow({
   );
 }
 
+function EndpointRow({
+  label, desc, info, checked, onChange,
+}: { label: string; desc: string; info: string; checked: boolean; onChange: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1">
+          <p className="text-[10px] font-medium text-aeginel-text">{label}</p>
+          <InfoTip text={info} />
+        </div>
+        <p className="text-[8px] text-aeginel-muted">{desc}</p>
+      </div>
+      <Toggle checked={checked} onChange={onChange} />
+    </div>
+  );
+}
+
 /* ── AEGIS Server Panel ── */
 
 type KeyStatus = 'idle' | 'validating' | 'valid' | 'invalid';
@@ -613,41 +630,46 @@ function AegisServerPanel({
               </span>
             </div>
             <div className="space-y-1.5">
-              <ToggleRow
-                label="/v1/judge"
-                desc="Primary judgment (recommended)"
+              <EndpointRow
+                label={t('aegis.endpointJudge')}
+                desc={t('aegis.endpointJudgeDesc')}
+                info={t('aegis.endpointJudgeInfo')}
                 checked={config.endpoints.judge}
                 onChange={() => onUpdate({
                   endpoints: { ...config.endpoints, judge: !config.endpoints.judge },
                 })}
               />
-              <ToggleRow
-                label="/v2/jailbreak/detect"
-                desc="Dedicated jailbreak detection"
+              <EndpointRow
+                label={t('aegis.endpointJailbreak')}
+                desc={t('aegis.endpointJailbreakDesc')}
+                info={t('aegis.endpointJailbreakInfo')}
                 checked={config.endpoints.jailbreakDetect}
                 onChange={() => onUpdate({
                   endpoints: { ...config.endpoints, jailbreakDetect: !config.endpoints.jailbreakDetect },
                 })}
               />
-              <ToggleRow
-                label="/v2/safety/check"
-                desc="General safety analysis"
+              <EndpointRow
+                label={t('aegis.endpointSafety')}
+                desc={t('aegis.endpointSafetyDesc')}
+                info={t('aegis.endpointSafetyInfo')}
                 checked={config.endpoints.safetyCheck}
                 onChange={() => onUpdate({
                   endpoints: { ...config.endpoints, safetyCheck: !config.endpoints.safetyCheck },
                 })}
               />
-              <ToggleRow
-                label="/v2/classify"
-                desc="Content risk classification"
+              <EndpointRow
+                label={t('aegis.endpointClassify')}
+                desc={t('aegis.endpointClassifyDesc')}
+                info={t('aegis.endpointClassifyInfo')}
                 checked={config.endpoints.classify}
                 onChange={() => onUpdate({
                   endpoints: { ...config.endpoints, classify: !config.endpoints.classify },
                 })}
               />
-              <ToggleRow
-                label="/v3/korean/analyze"
-                desc="Korean language analysis"
+              <EndpointRow
+                label={t('aegis.endpointKorean')}
+                desc={t('aegis.endpointKoreanDesc')}
+                info={t('aegis.endpointKoreanInfo')}
                 checked={config.endpoints.koreanAnalyze}
                 onChange={() => onUpdate({
                   endpoints: { ...config.endpoints, koreanAnalyze: !config.endpoints.koreanAnalyze },
@@ -751,7 +773,7 @@ function UsageBar({
 
       <div className="flex items-center justify-between">
         <span className="text-[9px] text-aeginel-muted">
-          {usage.used.toLocaleString()} / {usage.allocated.toLocaleString()} calls
+          {usage.used.toLocaleString()} / {usage.allocated.toLocaleString()} {t('aegis.usageCalls')}
         </span>
         <span className="text-[9px] font-semibold" style={{ color: barColor }}>
           {t('aegis.remaining', { count: usage.remaining.toLocaleString() })}
