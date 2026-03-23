@@ -10,40 +10,17 @@ interface Props {
   onClearHistory: () => void;
 }
 
-const LAYER_KEYS: (keyof AeginelConfig['layers'])[] = [
-  'basicKeywords', 'jailbreak', 'injection', 'extraction',
-  'socialEngineering', 'koreanEvasion', 'encodingAttacks',
-  'multiTurn', 'semanticRisk',
-];
-
-const LAYER_LABELS: Record<string, string> = {
-  basicKeywords:    'Keywords',
-  jailbreak:        'Jailbreak',
-  injection:        'Injection',
-  extraction:       'Extraction',
-  socialEngineering:'Social Eng.',
-  koreanEvasion:    'CJK Evasion',
-  encodingAttacks:  'Encoding',
-  multiTurn:        'Multi-turn',
-  semanticRisk:     'Semantic',
-};
-
-type Tab = 'detection' | 'privacy' | 'advanced';
+type Tab = 'privacy' | 'advanced';
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'detection', label: 'Detection' },
   { key: 'privacy',   label: 'Privacy' },
   { key: 'advanced',  label: 'Advanced' },
 ];
 
 export default function SettingsPanel({ config, onUpdate, onClearHistory }: Props) {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>('detection');
+  const [activeTab, setActiveTab] = useState<Tab>('privacy');
 
-  const toggleLayer = (key: keyof AeginelConfig['layers']) => {
-    onUpdate({ layers: { ...config.layers, [key]: !config.layers[key] } });
-  };
-
-  const activeLayerCount = Object.values(config.layers).filter(Boolean).length;
+  const piiTypeCount = Object.values(config.pii.types).filter(Boolean).length;
 
   return (
     <div className="rounded-xl border border-aeginel-border bg-aeginel-surface overflow-hidden">
@@ -60,7 +37,7 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
           <span className="text-[11px] font-semibold text-aeginel-text">Settings</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-aeginel-muted">{activeLayerCount}/9 layers</span>
+          <span className="text-[9px] text-aeginel-muted">{piiTypeCount}/7 PII types</span>
           <svg
             width="9" height="9" viewBox="0 0 10 10"
             className={`text-aeginel-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
@@ -96,78 +73,6 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
           </div>
 
           <div className="p-3 space-y-3">
-            {/* ── DETECTION TAB ── */}
-            {activeTab === 'detection' && (
-              <>
-                {/* Layer toggles as chip grid */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-medium text-aeginel-text">Detection Layers</span>
-                    <span className="text-[9px] text-aeginel-muted">{activeLayerCount} active</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1">
-                    {LAYER_KEYS.map((key) => (
-                      <button
-                        key={key}
-                        onClick={() => toggleLayer(key)}
-                        className="text-[9px] px-2 py-1.5 rounded-lg border font-medium transition-all text-left truncate"
-                        style={config.layers[key]
-                          ? { background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.3)', color: '#3fb950' }
-                          : { background: '#21262d', border: '1px solid #30363d', color: '#8b949e' }
-                        }
-                      >
-                        {LAYER_LABELS[key]}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="h-px bg-aeginel-border" />
-
-                {/* Block Threshold */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div>
-                      <p className="text-[10px] font-medium text-aeginel-text">Block Threshold</p>
-                      <p className="text-[8px] text-aeginel-muted">Score ≥ this value gets blocked</p>
-                    </div>
-                    <span
-                      className="text-[13px] font-bold number-hero"
-                      style={{ color: '#f85149' }}
-                    >
-                      {config.blockThreshold}
-                    </span>
-                  </div>
-                  <input
-                    type="range" min="20" max="100" step="5"
-                    value={config.blockThreshold}
-                    onChange={(e) => onUpdate({ blockThreshold: Number(e.target.value) })}
-                  />
-                </div>
-
-                {/* Sensitivity */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div>
-                      <p className="text-[10px] font-medium text-aeginel-text">Sensitivity</p>
-                      <p className="text-[8px] text-aeginel-muted">Score multiplier</p>
-                    </div>
-                    <span
-                      className="text-[13px] font-bold number-hero"
-                      style={{ color: '#3fb950' }}
-                    >
-                      {config.sensitivity.toFixed(1)}×
-                    </span>
-                  </div>
-                  <input
-                    type="range" min="0.5" max="2.0" step="0.1"
-                    value={config.sensitivity}
-                    onChange={(e) => onUpdate({ sensitivity: Number(e.target.value) })}
-                  />
-                </div>
-              </>
-            )}
-
             {/* ── PRIVACY TAB ── */}
             {activeTab === 'privacy' && (
               <>
@@ -210,6 +115,29 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                     />
                   </>
                 )}
+
+                <div className="h-px bg-aeginel-border" />
+
+                {/* Block Threshold */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div>
+                      <p className="text-[10px] font-medium text-aeginel-text">Block Threshold</p>
+                      <p className="text-[8px] text-aeginel-muted">Score at which input is blocked</p>
+                    </div>
+                    <span
+                      className="text-[13px] font-bold number-hero"
+                      style={{ color: '#f85149' }}
+                    >
+                      {config.blockThreshold}
+                    </span>
+                  </div>
+                  <input
+                    type="range" min="20" max="100" step="5"
+                    value={config.blockThreshold}
+                    onChange={(e) => onUpdate({ blockThreshold: Number(e.target.value) })}
+                  />
+                </div>
               </>
             )}
 
@@ -382,10 +310,8 @@ function AegisServerPanel({
     if (!urlDraft.trim() || !keyDraft.trim()) return;
 
     setKeyStatus('validating');
-    // Persist drafts so the service worker can use them for the API call
     onUpdate({ baseUrl: urlDraft.trim(), apiKey: keyDraft.trim(), enabled: true });
 
-    // Wait a tick for config to propagate to service worker
     await new Promise(r => setTimeout(r, 100));
 
     try {
@@ -403,7 +329,6 @@ function AegisServerPanel({
     }
   }, [urlDraft, keyDraft, onUpdate]);
 
-  // Auto-validate on mount if config already has credentials
   useEffect(() => {
     if (config.enabled && config.baseUrl && config.apiKey && keyStatus === 'idle') {
       setUrlDraft(config.baseUrl);
@@ -420,7 +345,6 @@ function AegisServerPanel({
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reset validation when credentials change
   const onUrlChange = (val: string) => {
     setUrlDraft(val);
     if (keyStatus !== 'idle') setKeyStatus('idle');
@@ -443,7 +367,6 @@ function AegisServerPanel({
 
   return (
     <>
-      {/* Header */}
       <div className="flex items-center gap-2 mb-1">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 2L2 7l10 5 10-5-10-5z" />
@@ -451,15 +374,19 @@ function AegisServerPanel({
           <path d="M2 12l10 5 10-5" />
         </svg>
         <span className="text-[10px] font-semibold text-aeginel-text">AEGIS Server</span>
+        <span className="ml-auto text-[8px] px-1.5 py-0.5 rounded-full font-medium"
+          style={{ background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.2)', color: '#58a6ff' }}>
+          Enterprise
+        </span>
         {keyStatus !== 'idle' && (
-          <span className="ml-auto text-[8px] font-medium" style={{ color: statusConfig[keyStatus].color }}>
+          <span className="text-[8px] font-medium" style={{ color: statusConfig[keyStatus].color }}>
             {statusConfig[keyStatus].label}
           </span>
         )}
       </div>
       <div className="flex items-center justify-between mb-2">
         <p className="text-[8px] text-aeginel-muted">
-          Enter your AEGIS API key to enable server-side scanning
+          Connect to AEGIS server for attack defense
         </p>
         <a
           href="https://aiaegis.io"
@@ -477,7 +404,6 @@ function AegisServerPanel({
         </a>
       </div>
 
-      {/* ── Step 1: Credentials ── */}
       <div>
         <p className="text-[10px] font-medium text-aeginel-text mb-1">Server URL</p>
         <input
@@ -527,7 +453,6 @@ function AegisServerPanel({
         </div>
       </div>
 
-      {/* Verify button */}
       <button
         onClick={validateKey}
         disabled={!canVerify}
@@ -546,7 +471,6 @@ function AegisServerPanel({
           : 'Verify API Key'}
       </button>
 
-      {/* Invalid key message */}
       {keyStatus === 'invalid' && (
         <div className="rounded-lg p-2" style={{ background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.2)' }}>
           <p className="text-[9px]" style={{ color: '#f85149' }}>
@@ -555,17 +479,14 @@ function AegisServerPanel({
         </div>
       )}
 
-      {/* ── Step 2: Unlocked settings (only when key is valid) ── */}
       {isKeyValid && (
         <>
           <div className="h-px bg-aeginel-border" />
 
-          {/* Usage / Quota */}
           {usage && <UsageBar usage={usage} loading={usageLoading} onRefresh={fetchUsage} />}
 
           <div className="h-px bg-aeginel-border" />
 
-          {/* Endpoints */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-[10px] font-medium text-aeginel-text">API Endpoints</p>
@@ -621,11 +542,10 @@ function AegisServerPanel({
 
           <div className="rounded-lg p-2" style={{ background: 'rgba(88,166,255,0.08)', border: '1px solid rgba(88,166,255,0.2)' }}>
             <p className="text-[9px] text-aeginel-muted">
-              All prompts are sent to AEGIS server. Server verdict is authoritative and overrides local scan.
+              AEGIS server provides attack defense (jailbreak, injection, etc.). Server verdict is authoritative.
             </p>
           </div>
 
-          {/* Timeout */}
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-aeginel-muted">Timeout</span>
             <select
@@ -641,7 +561,6 @@ function AegisServerPanel({
             </select>
           </div>
 
-          {/* Disconnect */}
           <button
             onClick={() => {
               onUpdate({ enabled: false, apiKey: '', baseUrl: '' });
@@ -704,7 +623,6 @@ function UsageBar({
         </button>
       </div>
 
-      {/* Progress bar */}
       <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: '#21262d' }}>
         <div
           className="h-full rounded-full transition-all duration-500"
@@ -712,7 +630,6 @@ function UsageBar({
         />
       </div>
 
-      {/* Numbers */}
       <div className="flex items-center justify-between">
         <span className="text-[9px] text-aeginel-muted">
           {usage.used.toLocaleString()} / {usage.allocated.toLocaleString()} calls
@@ -722,7 +639,6 @@ function UsageBar({
         </span>
       </div>
 
-      {/* Per-endpoint breakdown */}
       {usage.byEndpoint.length > 0 && (
         <div className="pt-1 space-y-0.5">
           {usage.byEndpoint.map(({ endpoint, calls }) => (
@@ -734,12 +650,10 @@ function UsageBar({
         </div>
       )}
 
-      {/* Period */}
       <div className="text-[8px] text-aeginel-muted text-right">
         {usage.period.start.slice(0, 10)} ~ {usage.period.end.slice(0, 10)}
       </div>
 
-      {/* Warning */}
       {isCritical && (
         <div className="flex items-center gap-1.5 pt-0.5">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#f85149" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

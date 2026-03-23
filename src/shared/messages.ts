@@ -17,9 +17,7 @@ export type MessageType =
   | 'RESTORE_RESPONSE'
   | 'GET_PROXY_STATS'
   | 'HEALTH_REPORT'
-  | 'ML_LOAD_ERROR'
   | 'GET_HEALTH'
-  | 'GET_ML_STATUS'
   | 'GET_WEEKLY_REPORT'
   | 'AEGIS_HEALTH_CHECK'
   | 'AEGIS_HEALTH_RESPONSE'
@@ -106,20 +104,8 @@ export interface HealthReportMessage {
   };
 }
 
-export interface MlLoadErrorMessage {
-  type: 'ML_LOAD_ERROR';
-  payload: {
-    error: string;
-    retryCount: number;
-  };
-}
-
 export interface GetHealthMessage {
   type: 'GET_HEALTH';
-}
-
-export interface GetMlStatusMessage {
-  type: 'GET_ML_STATUS';
 }
 
 export interface GetWeeklyReportMessage {
@@ -161,7 +147,7 @@ export interface ClearDevLogsMessage {
   type: 'CLEAR_DEV_LOGS';
 }
 
-export type ScanPhase = 'rules' | 'ml' | 'aegis' | 'done';
+export type ScanPhase = 'pii' | 'aegis' | 'done';
 
 export interface ScanProgressMessage {
   type: 'SCAN_PROGRESS';
@@ -183,9 +169,7 @@ export type ExtensionMessage =
   | RestoreResponseMessage
   | GetProxyStatsMessage
   | HealthReportMessage
-  | MlLoadErrorMessage
   | GetHealthMessage
-  | GetMlStatusMessage
   | GetWeeklyReportMessage
   | AegisHealthCheckMessage
   | AegisHealthResponseMessage

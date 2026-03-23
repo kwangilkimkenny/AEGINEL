@@ -41,7 +41,7 @@ export default function RiskMeter({ lastScan }: Props) {
   return (
     <div className="rounded-xl border border-aeginel-border bg-aeginel-surface p-3">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[11px] font-semibold text-aeginel-text">Risk Score</span>
+        <span className="text-[11px] font-semibold text-aeginel-text">PII Exposure</span>
         {lastScan && (
           <span className="text-[9px] text-aeginel-muted">
             {lastScan.totalLatencyMs.toFixed(0)}ms
