@@ -335,6 +335,11 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
         return { type: 'AEGIS_USAGE_RESPONSE', payload: usage };
       }
 
+      case 'AEGIS_CHECK_ACCESS': {
+        const access = await aegisClient.probeVersionAccess();
+        return { type: 'AEGIS_ACCESS_RESPONSE', payload: access };
+      }
+
       case 'GET_HISTORY': {
         const history = await getScanHistory();
         return { type: 'HISTORY_RESPONSE', payload: history };
