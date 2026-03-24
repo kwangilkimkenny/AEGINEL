@@ -2,7 +2,7 @@
 // Pseudonymizes PII before sending to LLM, restores originals in responses.
 
 import { scanPii } from './pii-scanner';
-import type { AeginelConfig, PiiMapping, PiiType, ProxyResult } from './types';
+import type { AeginelConfig, PiiMapping, PiiMatch, PiiType, ProxyResult } from './types';
 
 // ── Fake Value Generators ───────────────────────────────────────────────
 
@@ -180,6 +180,32 @@ function generateFakeValue(type: PiiType, original: string): string {
   }
 }
 
+// ── Overlapping Entity Resolution ───────────────────────────────────────
+// NER models may produce overlapping spans of different types
+// (e.g. "test" as USERNAME overlapping with "test@gmail.com" as EMAIL).
+// Replacing overlapping spans corrupts indices, so we keep only
+// non-overlapping entities, preferring longer (more specific) spans.
+
+function removeOverlappingMatches(matches: PiiMatch[]): PiiMatch[] {
+  if (matches.length <= 1) return matches;
+
+  // Sort by start ascending, break ties by span length descending (longer wins)
+  const sorted = [...matches].sort((a, b) => {
+    if (a.startIndex !== b.startIndex) return a.startIndex - b.startIndex;
+    return (b.endIndex - b.startIndex) - (a.endIndex - a.startIndex);
+  });
+
+  const result: PiiMatch[] = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    const last = result[result.length - 1];
+    const curr = sorted[i];
+    // Skip entities whose range overlaps with the last accepted entity
+    if (curr.startIndex < last.endIndex) continue;
+    result.push(curr);
+  }
+  return result;
+}
+
 // ── PiiProxyEngine ──────────────────────────────────────────────────────
 
 const MAX_SESSIONS = 50;
@@ -236,8 +262,11 @@ export class PiiProxyEngine {
       return { originalText: text, proxiedText: text, mappings: [], piiCount: 0 };
     }
 
+    // Remove overlapping spans BEFORE replacement to prevent index corruption
+    const deduped = removeOverlappingMatches(piiMatches);
+
     // Sort by position descending so we can replace from the end
-    const sorted = [...piiMatches].sort((a, b) => b.startIndex - a.startIndex);
+    const sorted = [...deduped].sort((a, b) => b.startIndex - a.startIndex);
 
     const mappings: PiiMapping[] = [];
     let proxied = text;

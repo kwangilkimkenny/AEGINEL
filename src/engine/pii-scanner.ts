@@ -60,6 +60,42 @@ function maskValue(value: string, piiType: PiiType): string {
   }
 }
 
+/**
+ * Compute character offsets for NER entities by aligning token words
+ * against the original text. The HuggingFace JS transformers pipeline
+ * for token-classification may omit `start`/`end` character offsets,
+ * returning only `entity`, `score`, and `word` (with wordpiece `##` prefixes).
+ */
+function computeCharOffsets(entities: NerEntity[], text: string): NerEntity[] {
+  let cursor = 0;
+  const lowerText = text.toLowerCase();
+
+  return entities.map((e) => {
+    if (typeof e.start === 'number' && typeof e.end === 'number') return e;
+
+    const word = e.word.replace(/^##/, '');
+    const lowerWord = word.toLowerCase();
+
+    // Allow small gaps (whitespace / special chars the tokenizer may skip)
+    let idx = lowerText.indexOf(lowerWord, cursor);
+    if (idx === -1 && cursor > 0) {
+      // Retry from a slightly earlier position to handle tokenizer quirks
+      idx = lowerText.indexOf(lowerWord, Math.max(0, cursor - 2));
+    }
+
+    if (idx !== -1) {
+      cursor = idx + word.length;
+      return { ...e, start: idx, end: idx + word.length };
+    }
+
+    // Fallback: place right after previous token
+    const start = cursor;
+    const end = cursor + word.length;
+    cursor = end;
+    return { ...e, start, end };
+  });
+}
+
 export async function scanPii(input: string, config: AeginelConfig): Promise<PiiMatch[]> {
   if (!config.pii?.enabled || !input.trim()) return [];
 
@@ -69,7 +105,8 @@ export async function scanPii(input: string, config: AeginelConfig): Promise<Pii
   const enabledTypes = config.pii.types;
   const matches: PiiMatch[] = [];
 
-  const merged = mergeEntities(entities, input);
+  const withOffsets = computeCharOffsets(entities, input);
+  const merged = mergeEntities(withOffsets, input);
 
   for (const entity of merged) {
     const piiType = nerLabelToPiiType(entity.entity);
