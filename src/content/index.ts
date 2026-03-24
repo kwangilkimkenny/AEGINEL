@@ -659,17 +659,28 @@ function initContentScript(adapter: SiteAdapter) {
 
   function watchResponses(): MutationObserver {
     const responseSelector = adapter.getResponseSelector();
+    const userMsgSelector = adapter.getUserMessageSelector?.();
     let restoreTimer: ReturnType<typeof setTimeout> | null = null;
     const restoredElements = new WeakSet<Element>();
-    // Track content snapshots to detect changes after initial restoration
     const restoredSnapshots = new WeakMap<Element, string>();
-    // Track consecutive empty selector results (for Gemini fallback)
     let emptyResultCount = 0;
 
     async function tryRestoreAll() {
       if (adapter.isStreaming()) return;
 
       let responseEls = document.querySelectorAll(responseSelector);
+
+      // Also include user messages for restoration (needed after page refresh)
+      if (userMsgSelector) {
+        const userMsgEls = document.querySelectorAll(userMsgSelector);
+        if (userMsgEls.length > 0) {
+          const combined = Array.from(responseEls);
+          for (const el of userMsgEls) {
+            if (!combined.includes(el)) combined.push(el);
+          }
+          responseEls = combined as unknown as NodeListOf<Element>;
+        }
+      }
 
       // Gemini fallback: if selectors don't match, try broader patterns
       if (responseEls.length === 0) {
@@ -714,6 +725,8 @@ function initContentScript(adapter: SiteAdapter) {
           }
         }
 
+      const beforeText = currentText;
+
         // Try enhanced deep restoration first (for Gemini shadow DOM)
         if (adapter.id === 'gemini' && lastProxyResult && lastProxyResult.piiCount > 0) {
           if (deepRestoreInElement(el, lastProxyResult.mappings)) {
@@ -725,8 +738,11 @@ function initContentScript(adapter: SiteAdapter) {
         }
 
         await restoreInDom(el);
-        restoredSnapshots.set(el, el.textContent ?? '');
-        restoredElements.add(el);
+        const afterText = el.textContent ?? '';
+        if (afterText !== beforeText) {
+          restoredSnapshots.set(el, afterText);
+          restoredElements.add(el);
+        }
       }
     }
 
@@ -748,6 +764,13 @@ function initContentScript(adapter: SiteAdapter) {
     // For Gemini, check more frequently
     const checkInterval = adapter.id === 'gemini' ? 1500 : 2000;
     setInterval(tryRestoreAll, checkInterval);
+
+    // Initial restoration on load: catch already-rendered messages after page
+    // refresh. Stagger attempts to allow the service worker to fully initialize
+    // and load persisted PII mappings from chrome.storage.session.
+    setTimeout(tryRestoreAll, 500);
+    setTimeout(tryRestoreAll, 1500);
+    setTimeout(tryRestoreAll, 3000);
 
     return responseObserver;
   }

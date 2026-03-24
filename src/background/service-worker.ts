@@ -110,13 +110,13 @@ async function initialize() {
   }
 }
 
-initialize();
+const initPromise = initialize();
 
 // ── Message Handler ──────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener(
   (message: ExtensionMessage, sender, sendResponse) => {
-    handleMessage(message, sender).then(sendResponse);
+    initPromise.then(() => handleMessage(message, sender)).then(sendResponse);
     return true; // async response
   }
 );
