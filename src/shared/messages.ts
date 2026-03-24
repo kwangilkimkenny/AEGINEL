@@ -31,7 +31,9 @@ export type MessageType =
   | 'SCAN_PROGRESS'
   | 'GET_DASHBOARD'
   | 'DASHBOARD_RESPONSE'
-  | 'SCAN_COMPLETE';
+  | 'SCAN_COMPLETE'
+  | 'GET_HF_MODEL_INFO'
+  | 'HF_MODEL_INFO_RESPONSE';
 
 export interface ScanInputMessage {
   type: 'SCAN_INPUT';
@@ -183,6 +185,19 @@ export interface ScanCompleteMessage {
   payload: ScanResult;
 }
 
+export interface GetHfModelInfoMessage {
+  type: 'GET_HF_MODEL_INFO';
+}
+
+export interface HfModelInfoResponseMessage {
+  type: 'HF_MODEL_INFO_RESPONSE';
+  payload: {
+    modelId: string;
+    lastModified: string | null;
+    error?: string;
+  };
+}
+
 export type ScanPhase = 'pii' | 'aegis' | 'done';
 
 export interface ScanProgressMessage {
@@ -220,4 +235,6 @@ export type ExtensionMessage =
   | GetDashboardMessage
   | DashboardResponseMessage
   | ScanCompleteMessage
-  | { type: 'OPEN_AEGIS_SETTINGS' };
+  | { type: 'OPEN_AEGIS_SETTINGS' }
+  | GetHfModelInfoMessage
+  | HfModelInfoResponseMessage;

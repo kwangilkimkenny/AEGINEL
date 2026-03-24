@@ -407,6 +407,31 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
         return { type: 'HEALTH_RESPONSE', payload: healthStatus };
       }
 
+      case 'GET_HF_MODEL_INFO': {
+        try {
+          const HF_MODEL_ID = 'YATAV-ENT/aegis-personal-pii-ner';
+          const res = await fetch(`https://huggingface.co/api/models/${HF_MODEL_ID}`);
+          if (!res.ok) throw new Error(`HF API ${res.status}`);
+          const data = await res.json();
+          return {
+            type: 'HF_MODEL_INFO_RESPONSE',
+            payload: {
+              modelId: HF_MODEL_ID,
+              lastModified: data.lastModified ?? null,
+            },
+          };
+        } catch (err) {
+          return {
+            type: 'HF_MODEL_INFO_RESPONSE',
+            payload: {
+              modelId: 'YATAV-ENT/aegis-personal-pii-ner',
+              lastModified: null,
+              error: String(err),
+            },
+          };
+        }
+      }
+
       case 'OPEN_AEGIS_SETTINGS': {
         const url = chrome.runtime.getURL('src/popup/index.html#aegis');
         chrome.tabs.create({ url });
