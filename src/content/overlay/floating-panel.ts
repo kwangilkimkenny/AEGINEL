@@ -2,7 +2,7 @@
 // Draggable badge + expandable mini dashboard injected into web pages.
 // Panel direction adapts based on badge position (4-quadrant).
 
-import type { ScanResult, HealthEntry, PiiMatch, AegisEndpointDetail } from '../../engine/types';
+import type { ScanResult, HealthEntry, PiiMatch, AegisEndpointDetail, DevLogEntry } from '../../engine/types';
 import type { DashboardResponseMessage } from '../../shared/messages';
 import { t } from '../../i18n';
 import styles from './styles.css?inline';
@@ -25,6 +25,14 @@ let _selectedScanIdx: number | null = null;
 let _survivalObserver: MutationObserver | null = null;
 let _reinjectTimer: ReturnType<typeof setTimeout> | null = null;
 let _theme: 'light' | 'dark' = 'light';
+
+// ── Dev Logs state ───────────────────────────────────────────────────
+let _activeTab: 'dashboard' | 'logs' = 'dashboard';
+let _devLogs: DevLogEntry[] = [];
+let _logFilter: DevLogEntry['type'] | 'all' = 'all';
+let _logAutoRefresh = true;
+let _logRefreshInterval: ReturnType<typeof setInterval> | null = null;
+let _logExpandedIdx: number | null = null;
 
 // ── Shared drag state ───────────────────────────────────────────────
 
@@ -384,6 +392,116 @@ function buildScanDetailHtml(scan: ScanResult): string {
   return html;
 }
 
+// ── Dev Log Helpers ─────────────────────────────────────────────────
+
+const LOG_TYPE_COLORS: Record<DevLogEntry['type'], string> = {
+  scan: '#58a6ff', aegis: '#d2a8ff', health: '#3fb950', error: '#f85149',
+};
+
+const LOG_TYPE_LABELS: Record<DevLogEntry['type'], string> = {
+  scan: 'SCAN', aegis: 'AEGIS', health: 'HEALTH', error: 'ERROR',
+};
+
+function formatLogTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+async function fetchDevLogs(): Promise<DevLogEntry[]> {
+  try {
+    const res = await chrome.runtime.sendMessage({ type: 'GET_DEV_LOGS' });
+    if (res?.payload) return res.payload;
+  } catch { /* ignore */ }
+  return [];
+}
+
+async function clearDevLogs() {
+  try {
+    await chrome.runtime.sendMessage({ type: 'CLEAR_DEV_LOGS' });
+  } catch { /* ignore */ }
+  _devLogs = [];
+  _logExpandedIdx = null;
+  renderPanel();
+}
+
+function startLogAutoRefresh() {
+  stopLogAutoRefresh();
+  if (!_logAutoRefresh) return;
+  _logRefreshInterval = setInterval(async () => {
+    if (!_panelOpen || _activeTab !== 'logs') { stopLogAutoRefresh(); return; }
+    _devLogs = await fetchDevLogs();
+    renderPanel();
+  }, 2000);
+}
+
+function stopLogAutoRefresh() {
+  if (_logRefreshInterval) { clearInterval(_logRefreshInterval); _logRefreshInterval = null; }
+}
+
+function buildDevLogContent(): string {
+  const filtered = _logFilter === 'all' ? _devLogs : _devLogs.filter(l => l.type === _logFilter);
+  const filterTypes: Array<DevLogEntry['type'] | 'all'> = ['all', 'scan', 'aegis', 'health', 'error'];
+  const filterLabels: Record<string, string> = {
+    all: t('floating.logFilterAll'), scan: t('floating.logFilterScan'),
+    aegis: t('floating.logFilterAegis'), health: t('floating.logFilterHealth'), error: t('floating.logFilterError'),
+  };
+
+  let html = '<div class="aeginel-devlog-toolbar">';
+
+  // Filter chips
+  html += '<div class="aeginel-devlog-filters">';
+  for (const ft of filterTypes) {
+    const active = _logFilter === ft;
+    html += `<button class="aeginel-devlog-filter-chip${active ? ' active' : ''}" data-log-filter="${ft}">${filterLabels[ft]}</button>`;
+  }
+  html += '</div>';
+
+  // Right side: live toggle, count, clear
+  html += '<div class="aeginel-devlog-actions">';
+  html += `<button class="aeginel-devlog-live-btn${_logAutoRefresh ? ' active' : ''}" data-action="toggle-log-live">${_logAutoRefresh ? t('floating.logLive') : t('floating.logPaused')}</button>`;
+  html += `<span class="aeginel-devlog-count">${t('floating.logEntries').replace('{{count}}', String(filtered.length))}</span>`;
+  html += `<button class="aeginel-devlog-clear-btn" data-action="clear-logs">${t('floating.logClear')}</button>`;
+  html += '</div></div>';
+
+  // Log list
+  html += '<div class="aeginel-devlog-list">';
+  if (filtered.length === 0) {
+    html += `<div class="aeginel-devlog-empty">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      <div>${t('floating.logEmpty')}</div>
+      <div class="aeginel-devlog-empty-hint">${t('floating.logEmptyHint')}</div>
+    </div>`;
+  } else {
+    for (let i = filtered.length - 1; i >= 0; i--) {
+      const log = filtered[i];
+      const color = LOG_TYPE_COLORS[log.type];
+      const isExpanded = _logExpandedIdx === i;
+      html += `<div class="aeginel-devlog-entry${isExpanded ? ' expanded' : ''}" data-log-idx="${i}">
+        <div class="aeginel-devlog-row">
+          <span class="aeginel-devlog-time">${formatLogTime(log.timestamp)}</span>
+          <span class="aeginel-devlog-type" style="color:${color};background:${color}15">${LOG_TYPE_LABELS[log.type]}</span>
+          <span class="aeginel-devlog-summary">${escapeHtml(log.summary)}</span>
+        </div>`;
+      if (isExpanded && log.details) {
+        html += '<div class="aeginel-devlog-details">';
+        for (const [key, value] of Object.entries(log.details)) {
+          const isBlockedRed = key === 'blocked' && value === true;
+          const isHighScore = key === 'finalScore' && typeof value === 'number' && value >= 70;
+          const valColor = isBlockedRed ? '#f85149' : isHighScore ? '#f0883e' : '';
+          const valStr = typeof value === 'object' ? JSON.stringify(value) : String(value ?? '-');
+          html += `<div class="aeginel-devlog-detail-row">
+            <span class="aeginel-devlog-detail-key">${escapeHtml(key)}:</span>
+            <span class="aeginel-devlog-detail-val"${valColor ? ` style="color:${valColor}"` : ''}>${escapeHtml(valStr)}</span>
+          </div>`;
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+  }
+  html += '</div>';
+  return html;
+}
+
 // ── Build Panel HTML ────────────────────────────────────────────────
 
 function buildPanelContent(data: DashboardResponseMessage['payload']): string {
@@ -414,6 +532,22 @@ function buildPanelContent(data: DashboardResponseMessage['payload']): string {
       <button class="aeginel-panel-close" data-action="close">&times;</button>
     </div>
   </div>`;
+
+  // Tabs (only when devMode is enabled)
+  if (data.devMode) {
+    html += `<div class="aeginel-panel-tabs">
+      <button class="aeginel-panel-tab${_activeTab === 'dashboard' ? ' active' : ''}" data-tab="dashboard">${t('floating.tabDashboard')}</button>
+      <button class="aeginel-panel-tab${_activeTab === 'logs' ? ' active' : ''}" data-tab="logs">${t('floating.tabLogs')}</button>
+    </div>`;
+  }
+
+  // Dev Logs tab view
+  if (data.devMode && _activeTab === 'logs') {
+    html += '<div class="aeginel-panel-body">';
+    html += buildDevLogContent();
+    html += '</div>';
+    return html;
+  }
 
   html += '<div class="aeginel-panel-body">';
 
@@ -523,6 +657,50 @@ function renderPanel() {
       });
     const header = panel.querySelector('.aeginel-panel-header') as HTMLElement | null;
     if (header) attachDragBehavior(header);
+
+    // Tab switching
+    panel.querySelectorAll('[data-tab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = (btn as HTMLElement).dataset.tab as 'dashboard' | 'logs';
+        if (tab === _activeTab) return;
+        _activeTab = tab;
+        _logExpandedIdx = null;
+        if (tab === 'logs') {
+          fetchDevLogs().then(logs => { _devLogs = logs; renderPanel(); startLogAutoRefresh(); });
+        } else {
+          stopLogAutoRefresh();
+          renderPanel();
+        }
+      });
+    });
+
+    // Dev log event handlers
+    if (_activeTab === 'logs') {
+      panel.querySelectorAll('[data-log-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          _logFilter = (btn as HTMLElement).dataset.logFilter as DevLogEntry['type'] | 'all';
+          _logExpandedIdx = null;
+          renderPanel();
+        });
+      });
+      panel.querySelector('[data-action="toggle-log-live"]')?.addEventListener('click', () => {
+        _logAutoRefresh = !_logAutoRefresh;
+        if (_logAutoRefresh) startLogAutoRefresh(); else stopLogAutoRefresh();
+        renderPanel();
+      });
+      panel.querySelector('[data-action="clear-logs"]')?.addEventListener('click', () => clearDevLogs());
+      panel.querySelectorAll('[data-log-idx]').forEach(el => {
+        el.addEventListener('click', () => {
+          const idx = parseInt((el as HTMLElement).dataset.logIdx ?? '', 10);
+          if (!isNaN(idx)) {
+            _logExpandedIdx = _logExpandedIdx === idx ? null : idx;
+            renderPanel();
+          }
+        });
+      });
+    }
+
+    // Dashboard tab event handlers
     panel.querySelectorAll('[data-action="toggle-analysis"]').forEach(btn => {
       btn.addEventListener('click', () => {
         const body = btn.closest('.aeginel-collapsible')?.querySelector('.aeginel-collapsible-body') as HTMLElement | null;
@@ -560,12 +738,18 @@ function togglePanel() {
 
   if (_panelOpen) {
     repositionPanel();
-    fetchDashboard().then((data) => {
+    fetchDashboard().then(async (data) => {
       if (data) {
         _dashboardData = data;
+        if (_activeTab === 'logs' && data.devMode) {
+          _devLogs = await fetchDevLogs();
+          startLogAutoRefresh();
+        }
         renderPanel();
       }
     });
+  } else {
+    stopLogAutoRefresh();
   }
 }
 
@@ -699,6 +883,7 @@ export async function showFloatingBadge() {
 
 export function hideFloatingBadge() {
   stopSurvivalMonitor();
+  stopLogAutoRefresh();
   _shadow = null;
   _host = null;
   _panelOpen = false;

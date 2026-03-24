@@ -61,8 +61,9 @@
     "domainsCount": "{{count}} domains",
     "clearHistory": "Clear All History",
     "devMode": "Developer Mode",
-    "devModeDesc": "Show real-time scan logs & debug info",
-    "loadingConsole": "Loading console..."
+    "devModeDesc": "Show Dev Logs tab in floating badge panel",
+    "loadingConsole": "Loading console...",
+    "devModeHint": "Open the floating badge to view logs"
   },
   "aegis": {
     "title": "AEGIS Server",
@@ -220,7 +221,20 @@
     "epClassify": "Classify",
     "epKorean": "Korean",
     "blocked": "Blocked",
-    "safe": "Safe"
+    "safe": "Safe",
+    "tabDashboard": "Dashboard",
+    "tabLogs": "Dev Logs",
+    "logFilterAll": "All",
+    "logFilterScan": "Scan",
+    "logFilterAegis": "Aegis",
+    "logFilterHealth": "Health",
+    "logFilterError": "Error",
+    "logLive": "Live",
+    "logPaused": "Paused",
+    "logClear": "Clear",
+    "logEmpty": "No logs yet",
+    "logEmptyHint": "Logs appear when scans are performed.",
+    "logEntries": "{{count}} entries"
   },
   "health": {
     "degraded": "Aegis Personal: Some features unavailable",

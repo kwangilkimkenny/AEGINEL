@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { AeginelConfig, AegisServerConfig, AegisUsageInfo, AegisVersionMap, PiiType } from '../../engine/types';
 import { DEFAULT_AEGIS_SERVER_CONFIG } from '../../engine/types';
@@ -28,8 +28,6 @@ const PII_TYPE_GROUPS: { label: string; types: PiiType[] }[] = [
 ];
 
 const ALL_PII_TYPES: PiiType[] = PII_TYPE_GROUPS.flatMap(g => g.types);
-
-const DevConsole = lazy(() => import('./DevConsole'));
 
 interface Props {
   config: AeginelConfig;
@@ -312,10 +310,12 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                   </div>
 
                   {config.devMode && (
-                    <div className="mt-2">
-                      <Suspense fallback={<p className="text-[9px] text-aeginel-muted">{t('settings.loadingConsole')}</p>}>
-                        <DevConsole />
-                      </Suspense>
+                    <div
+                      className="mt-2 flex items-center gap-1.5 rounded-md px-2.5 py-2"
+                      style={{ background: 'rgba(88,166,255,0.06)', border: '1px solid rgba(88,166,255,0.15)' }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                      <span className="text-[9px] text-[#58a6ff]">{t('settings.devModeHint')}</span>
                     </div>
                   )}
                 </div>
