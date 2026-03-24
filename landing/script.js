@@ -1,3 +1,42 @@
+// ── i18n Engine ─────────────────────────────────────────────────────────
+const I18N_LANGS = ['ko', 'en', 'es'];
+const I18N_LABELS = { ko: 'KO', en: 'EN', es: 'ES' };
+const i18nCache = {};
+let currentLang = localStorage.getItem('aegis-lang') || 'ko';
+
+async function loadLang(lang) {
+  if (i18nCache[lang]) return i18nCache[lang];
+  const res = await fetch(`i18n/${lang}.json`);
+  const data = await res.json();
+  i18nCache[lang] = data;
+  return data;
+}
+
+function applyTranslations(dict) {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key] !== undefined) el.textContent = dict[key];
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const key = el.getAttribute('data-i18n-html');
+    if (dict[key] !== undefined) el.innerHTML = dict[key];
+  });
+  document.documentElement.lang = currentLang;
+  const label = document.getElementById('langLabel');
+  if (label) label.textContent = I18N_LABELS[currentLang] || currentLang.toUpperCase();
+}
+
+async function setLang(lang) {
+  if (!I18N_LANGS.includes(lang)) return;
+  currentLang = lang;
+  localStorage.setItem('aegis-lang', lang);
+  const dict = await loadLang(lang);
+  applyTranslations(dict);
+  const dropdown = document.getElementById('langDropdown');
+  if (dropdown) dropdown.classList.remove('open');
+  if (mobileMenu) mobileMenu.classList.remove('open');
+}
+
 // ── Mobile Menu Toggle ──────────────────────────────────────────────────
 const menuBtn = document.getElementById('menuBtn');
 const mobileMenu = document.getElementById('mobileMenu');
@@ -7,13 +46,42 @@ if (menuBtn && mobileMenu) {
     mobileMenu.classList.toggle('open');
   });
 
-  // Close on link click
   mobileMenu.querySelectorAll('a').forEach(link => {
     link.addEventListener('click', () => {
       mobileMenu.classList.remove('open');
     });
   });
 }
+
+// ── Language Switcher ───────────────────────────────────────────────────
+const langBtn = document.getElementById('langBtn');
+const langDropdown = document.getElementById('langDropdown');
+
+if (langBtn && langDropdown) {
+  langBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    langDropdown.classList.toggle('open');
+  });
+
+  document.addEventListener('click', () => {
+    langDropdown.classList.remove('open');
+  });
+
+  langDropdown.querySelectorAll('.lang-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setLang(btn.dataset.lang);
+    });
+  });
+}
+
+document.querySelectorAll('.lang-option-mobile').forEach(btn => {
+  btn.addEventListener('click', () => {
+    setLang(btn.dataset.lang);
+  });
+});
+
+// Init i18n on load
+loadLang(currentLang).then(applyTranslations);
 
 // ── Navbar background on scroll ─────────────────────────────────────────
 const nav = document.getElementById('nav');
