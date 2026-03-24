@@ -49,6 +49,10 @@ let _resizeStartX = 0;
 let _resizeStartY = 0;
 let _resizeStartW = 0;
 let _resizeStartH = 0;
+let _resizeAnchorLeft = true;
+let _resizeAnchorTop = true;
+let _resizeStartPosX = 0;
+let _resizeStartPosY = 0;
 
 // ── Shared drag state ───────────────────────────────────────────────
 
@@ -533,22 +537,13 @@ function buildDevLogContent(): string {
 }
 
 // ── Panel Resize ────────────────────────────────────────────────────
-// Adds invisible drag handles on the panel's free edges (opposite to the
-// badge anchor) so the user can resize width/height by dragging.
+// Adds invisible drag handles on all edges and corners so the user can
+// resize width/height by dragging any side of the panel.
 
 function attachResizeHandles(panel: HTMLElement) {
-  const hasRight = panel.style.right !== '';
-  const hasBottom = panel.style.bottom !== '';
+  const dirs = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
 
-  const handles: string[] = [];
-  handles.push(hasRight ? 'w' : 'e');
-  handles.push(hasBottom ? 'n' : 's');
-  if (hasRight && hasBottom) handles.push('nw');
-  else if (hasRight && !hasBottom) handles.push('sw');
-  else if (!hasRight && hasBottom) handles.push('ne');
-  else handles.push('se');
-
-  for (const dir of handles) {
+  for (const dir of dirs) {
     const handle = document.createElement('div');
     handle.className = `aeginel-resize-handle aeginel-resize-${dir}`;
     handle.addEventListener('pointerdown', (e) => {
@@ -560,6 +555,10 @@ function attachResizeHandles(panel: HTMLElement) {
       _resizeStartY = e.clientY;
       _resizeStartW = panel.offsetWidth;
       _resizeStartH = panel.offsetHeight;
+      _resizeAnchorLeft = panel.style.left !== '';
+      _resizeAnchorTop = panel.style.top !== '';
+      _resizeStartPosX = parseFloat((_resizeAnchorLeft ? panel.style.left : panel.style.right) || '0');
+      _resizeStartPosY = parseFloat((_resizeAnchorTop ? panel.style.top : panel.style.bottom) || '0');
       handle.setPointerCapture(e.pointerId);
     });
     handle.addEventListener('pointermove', (e) => {
@@ -569,10 +568,22 @@ function attachResizeHandles(panel: HTMLElement) {
       let newW = _resizeStartW;
       let newH = _resizeStartH;
 
-      if (_resizeDir.includes('e')) newW = _resizeStartW + dx;
-      if (_resizeDir.includes('w')) newW = _resizeStartW - dx;
-      if (_resizeDir.includes('s')) newH = _resizeStartH + dy;
-      if (_resizeDir.includes('n')) newH = _resizeStartH - dy;
+      if (_resizeDir.includes('e')) {
+        newW = _resizeStartW + dx;
+        if (!_resizeAnchorLeft) panel.style.right = `${_resizeStartPosX - dx}px`;
+      }
+      if (_resizeDir.includes('w')) {
+        newW = _resizeStartW - dx;
+        if (_resizeAnchorLeft) panel.style.left = `${_resizeStartPosX + dx}px`;
+      }
+      if (_resizeDir.includes('s')) {
+        newH = _resizeStartH + dy;
+        if (!_resizeAnchorTop) panel.style.bottom = `${_resizeStartPosY - dy}px`;
+      }
+      if (_resizeDir.includes('n')) {
+        newH = _resizeStartH - dy;
+        if (_resizeAnchorTop) panel.style.top = `${_resizeStartPosY + dy}px`;
+      }
 
       newW = Math.max(MIN_PANEL_W, Math.min(MAX_PANEL_W, newW));
       newH = Math.max(MIN_PANEL_H, Math.min(MAX_PANEL_H, newH));
