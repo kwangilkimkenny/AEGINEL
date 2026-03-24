@@ -17,6 +17,12 @@ const PANEL_WIDTH = 340;
 const PANEL_MAX_H = 440;
 const GAP = 8;
 
+const STORAGE_KEY_SIZE = 'aeginel_panel_size';
+const MIN_PANEL_W = 200;
+const MAX_PANEL_W = 9999;
+const MIN_PANEL_H = 150;
+const MAX_PANEL_H = 9999;
+
 let _shadow: ShadowRoot | null = null;
 let _host: HTMLElement | null = null;
 let _panelOpen = false;
@@ -33,6 +39,16 @@ let _logFilter: DevLogEntry['type'] | 'all' = 'all';
 let _logAutoRefresh = true;
 let _logRefreshInterval: ReturnType<typeof setInterval> | null = null;
 let _logExpandedIdx: number | null = null;
+
+// ── Panel resize state ──────────────────────────────────────────────
+let _panelWidth = PANEL_WIDTH;
+let _panelHeight = PANEL_MAX_H;
+let _isResizing = false;
+let _resizeDir = '';
+let _resizeStartX = 0;
+let _resizeStartY = 0;
+let _resizeStartW = 0;
+let _resizeStartH = 0;
 
 // ── Shared drag state ───────────────────────────────────────────────
 
@@ -204,6 +220,20 @@ export async function isBadgeVisible(): Promise<boolean> {
 export async function setBadgeVisible(visible: boolean) {
   try {
     await chrome.storage.local.set({ [STORAGE_KEY_VIS]: visible });
+  } catch { /* ignore */ }
+}
+
+async function loadPanelSize(): Promise<{ w: number; h: number }> {
+  try {
+    const stored = await chrome.storage.local.get(STORAGE_KEY_SIZE);
+    if (stored[STORAGE_KEY_SIZE]) return stored[STORAGE_KEY_SIZE];
+  } catch { /* ignore */ }
+  return { w: PANEL_WIDTH, h: PANEL_MAX_H };
+}
+
+async function savePanelSize(w: number, h: number) {
+  try {
+    await chrome.storage.local.set({ [STORAGE_KEY_SIZE]: { w, h } });
   } catch { /* ignore */ }
 }
 
@@ -502,6 +532,85 @@ function buildDevLogContent(): string {
   return html;
 }
 
+// ── Panel Resize ────────────────────────────────────────────────────
+// Adds invisible drag handles on the panel's free edges (opposite to the
+// badge anchor) so the user can resize width/height by dragging.
+
+function attachResizeHandles(panel: HTMLElement) {
+  const hasRight = panel.style.right !== '';
+  const hasBottom = panel.style.bottom !== '';
+
+  const handles: string[] = [];
+  handles.push(hasRight ? 'w' : 'e');
+  handles.push(hasBottom ? 'n' : 's');
+  if (hasRight && hasBottom) handles.push('nw');
+  else if (hasRight && !hasBottom) handles.push('sw');
+  else if (!hasRight && hasBottom) handles.push('ne');
+  else handles.push('se');
+
+  for (const dir of handles) {
+    const handle = document.createElement('div');
+    handle.className = `aeginel-resize-handle aeginel-resize-${dir}`;
+    handle.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      _isResizing = true;
+      _resizeDir = dir;
+      _resizeStartX = e.clientX;
+      _resizeStartY = e.clientY;
+      _resizeStartW = panel.offsetWidth;
+      _resizeStartH = panel.offsetHeight;
+      handle.setPointerCapture(e.pointerId);
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!_isResizing) return;
+      const dx = e.clientX - _resizeStartX;
+      const dy = e.clientY - _resizeStartY;
+      let newW = _resizeStartW;
+      let newH = _resizeStartH;
+
+      if (_resizeDir.includes('e')) newW = _resizeStartW + dx;
+      if (_resizeDir.includes('w')) newW = _resizeStartW - dx;
+      if (_resizeDir.includes('s')) newH = _resizeStartH + dy;
+      if (_resizeDir.includes('n')) newH = _resizeStartH - dy;
+
+      newW = Math.max(MIN_PANEL_W, Math.min(MAX_PANEL_W, newW));
+      newH = Math.max(MIN_PANEL_H, Math.min(MAX_PANEL_H, newH));
+
+      panel.style.width = `${newW}px`;
+      panel.style.height = `${newH}px`;
+      panel.style.maxHeight = 'none';
+      _panelWidth = newW;
+      _panelHeight = newH;
+
+      applyBodyHeight(panel);
+    });
+    handle.addEventListener('pointerup', (e) => {
+      if (!_isResizing) return;
+      _isResizing = false;
+      handle.releasePointerCapture(e.pointerId);
+      savePanelSize(_panelWidth, _panelHeight);
+    });
+    panel.appendChild(handle);
+  }
+}
+
+function applyBodyHeight(panel: HTMLElement) {
+  const body = panel.querySelector('.aeginel-panel-body') as HTMLElement;
+  if (!body) return;
+  const headerEl = panel.querySelector('.aeginel-panel-header') as HTMLElement;
+  const tabsEl = panel.querySelector('.aeginel-panel-tabs') as HTMLElement;
+  const fixedH = (headerEl?.offsetHeight || 46) + (tabsEl?.offsetHeight || 0);
+  const userResized = _panelWidth !== PANEL_WIDTH || _panelHeight !== PANEL_MAX_H;
+  if (userResized) {
+    body.style.height = `${_panelHeight - fixedH}px`;
+    body.style.maxHeight = 'none';
+  } else {
+    body.style.height = '';
+    body.style.maxHeight = `${_panelHeight - fixedH}px`;
+  }
+}
+
 // ── Build Panel HTML ────────────────────────────────────────────────
 
 function buildPanelContent(data: DashboardResponseMessage['payload']): string {
@@ -644,6 +753,7 @@ async function fetchDashboard(): Promise<DashboardResponseMessage['payload'] | n
 
 function renderPanel() {
   if (!_shadow || !_panelOpen || !_dashboardData) return;
+  if (_isResizing) return;
   const panel = _shadow.querySelector('.aeginel-floating-panel') as HTMLElement | null;
   if (panel) {
     panel.innerHTML = buildPanelContent(_dashboardData);
@@ -726,6 +836,20 @@ function renderPanel() {
       });
   }
   repositionPanel();
+
+  if (panel) {
+    const userResized = _panelWidth !== PANEL_WIDTH || _panelHeight !== PANEL_MAX_H;
+    panel.style.width = `${_panelWidth}px`;
+    if (userResized) {
+      panel.style.height = `${_panelHeight}px`;
+      panel.style.maxHeight = 'none';
+    } else {
+      panel.style.height = '';
+      panel.style.maxHeight = `${_panelHeight}px`;
+    }
+    applyBodyHeight(panel);
+    attachResizeHandles(panel);
+  }
 }
 
 function togglePanel() {
@@ -793,6 +917,9 @@ export async function showFloatingBadge() {
   if (!visible) return;
 
   const pos = await loadPosition();
+  const size = await loadPanelSize();
+  _panelWidth = size.w;
+  _panelHeight = size.h;
 
   const host = document.createElement('div');
   host.id = FLOAT_HOST_ID;
@@ -838,25 +965,10 @@ export async function showFloatingBadge() {
   // ── Drag logic (badge tap toggles panel) ──
   attachDragBehavior(badge, togglePanel);
 
-  // Long press / right-click to hide badge entirely
-  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-  badge.addEventListener('pointerdown', () => {
-    longPressTimer = setTimeout(() => {
-      setBadgeVisible(false);
-      hideFloatingBadge();
-    }, 1500);
-  });
-  badge.addEventListener('pointerup', () => {
-    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
-  });
-  badge.addEventListener('pointerleave', () => {
-    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
-  });
-
+  // Right-click: just suppress browser context menu, do NOT hide badge.
+  // Badge visibility is controlled exclusively via the popup toggle.
   badge.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    setBadgeVisible(false);
-    hideFloatingBadge();
   });
 
   // Load initial data, render panel, and position it
