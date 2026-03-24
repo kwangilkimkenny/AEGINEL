@@ -11,7 +11,7 @@
   "hero.cta.chrome": "Chrome에 추가 — 무료",
   "hero.cta.github": "GitHub에서 보기",
 
-  "demo.textBefore": "제 주민번호는 <span class=\"pii-highlight\">920724-1020411</span>이고 이메일은 <span class=\"pii-highlight\">hong@company.com</span>입니다",
+  "demo.textBefore": "제 주민번호는 <span class=\"pii-highlight\">880315-1234567</span>이고 이메일은 <span class=\"pii-highlight\">hong@company.com</span>입니다",
   "demo.arrowLabel": "Aegis Personal이 보호합니다",
   "demo.textAfter": "제 주민번호는 <span class=\"pseudo-highlight\">851203-2493817</span>이고 이메일은 <span class=\"pseudo-highlight\">user_k7x2@example.com</span>입니다",
 
