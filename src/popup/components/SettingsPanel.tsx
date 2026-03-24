@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import type { AeginelConfig, AegisServerConfig, AegisUsageInfo, AegisVersionMap, PiiType } from '../../engine/types';
+import { DEFAULT_AEGIS_SERVER_CONFIG } from '../../engine/types';
 import { LANGUAGE_OPTIONS, UI_LANGUAGE_OPTIONS, useI18n } from '../../i18n';
 
 const PII_TYPE_GROUPS: { label: string; types: PiiType[] }[] = [
@@ -229,10 +230,11 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
               <>
                 {/* AEGIS Server */}
                 <AegisServerPanel
-                  config={config.aegisServer}
+                  config={config.aegisServer ?? DEFAULT_AEGIS_SERVER_CONFIG}
                   onUpdate={(partial) => {
+                    const current = config.aegisServer ?? DEFAULT_AEGIS_SERVER_CONFIG;
                     onUpdate({
-                      aegisServer: { ...config.aegisServer, ...partial },
+                      aegisServer: { ...current, ...partial },
                     });
                   }}
                 />
