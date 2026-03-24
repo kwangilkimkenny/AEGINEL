@@ -4,9 +4,9 @@
 
 import { env, pipeline } from '@huggingface/transformers';
 
-env.allowRemoteModels = false;
-env.allowLocalModels = true;
-env.useBrowserCache = false;
+env.allowRemoteModels = true;
+env.allowLocalModels = false;
+env.useBrowserCache = true;
 env.useFSCache = false;
 
 const ortEnv = env.backends.onnx as Record<string, Record<string, unknown>>;
@@ -41,13 +41,11 @@ async function loadModel(): Promise<NerPipeline> {
   if (loading) return loading;
 
   loading = (async () => {
-    const modelUrl = chrome.runtime.getURL('models/pii-ner/');
-
-    const pipe = await pipeline('token-classification', modelUrl, {
-      local_files_only: true,
-      device: 'wasm',
-      dtype: 'fp32',
-    });
+    const pipe = await pipeline(
+      'token-classification',
+      'YATAV-ENT/aegis-personal-pii-ner',
+      { device: 'wasm', dtype: 'fp32' },
+    );
 
     nerPipeline = pipe as unknown as NerPipeline;
     return nerPipeline;

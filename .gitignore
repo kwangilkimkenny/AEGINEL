@@ -14,7 +14,6 @@ docs/businessPlan.md
 
 # Large model/training files (use Git LFS or external hosting)
 data/
-public/models/
 *.onnx
 *.safetensors
 *.pt
