@@ -18,7 +18,7 @@ const PII_TYPE_GROUPS: { label: string; types: PiiType[] }[] = [
   },
   {
     label: 'Personal Info',
-    types: ['givenname', 'surname', 'dateofbirth', 'company'],
+    types: ['givenname', 'surname', 'dateofbirth', 'company', 'time'],
   },
   {
     label: 'Address',

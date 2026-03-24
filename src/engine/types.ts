@@ -54,7 +54,8 @@ export type PiiType =
   | 'password'         // 비밀번호
   | 'accountnum'       // 계좌번호
   | 'driverlicensenum' // 운전면허번호
-  | 'company';         // 회사명
+  | 'company'          // 회사명
+  | 'time';            // 시간
 
 export interface PiiMapping {
   original: string;
@@ -198,6 +199,7 @@ export const DEFAULT_CONFIG: AeginelConfig = {
       accountnum: true,
       driverlicensenum: true,
       company: false,
+      time: false,
     },
   },
   piiProxy: {

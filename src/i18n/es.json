@@ -157,7 +157,8 @@
     "phone_kr": "Teléfono (KR)",
     "phone_intl": "Teléfono (Intl)",
     "ssn": "SSN",
-    "passport": "Pasaporte"
+    "passport": "Pasaporte",
+    "time": "Hora"
   },
   "floating": {
     "title": "Aegis Personal",

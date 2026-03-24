@@ -23,6 +23,7 @@ const NER_LABEL_TO_PII_TYPE: Record<string, PiiType> = {
   ACCOUNTNUM: 'accountnum',
   DRIVERLICENSENUM: 'driverlicensenum',
   COMPANY: 'company',
+  TIME: 'time',
 };
 
 function nerLabelToPiiType(nerLabel: string): PiiType | null {

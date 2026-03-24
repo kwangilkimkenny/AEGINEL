@@ -82,6 +82,7 @@
     "phone_kr": "电话 (韩国)",
     "phone_intl": "电话 (国际)",
     "ssn": "SSN",
-    "passport": "护照"
+    "passport": "护照",
+    "time": "时间"
   }
 }

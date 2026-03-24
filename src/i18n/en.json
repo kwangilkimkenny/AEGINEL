@@ -175,7 +175,8 @@
     "password": "Password",
     "accountnum": "Account Number",
     "driverlicensenum": "Driver's License",
-    "company": "Company Name"
+    "company": "Company Name",
+    "time": "Time"
   },
   "floating": {
     "title": "Aegis Personal",
