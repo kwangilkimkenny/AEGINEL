@@ -54,7 +54,7 @@ export default function RecentScans({ scans }: Props) {
 
       {recent.length === 0 ? (
         <div className="flex flex-col items-center gap-1 py-4">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#30363d" strokeWidth="1.5" strokeLinecap="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--aeginel-border)" strokeWidth="1.5" strokeLinecap="round">
             <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
           </svg>
           <p className="text-[9px] text-aeginel-muted">{t('history.empty')}</p>

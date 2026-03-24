@@ -184,6 +184,15 @@ function initContentScript(adapter: SiteAdapter) {
     }
   }
 
+  const THREAT_CATEGORIES = new Set([
+    'jailbreak', 'prompt_injection', 'harmful', 'violence',
+    'dangerous', 'self_harm', 'hate_speech',
+  ]);
+
+  function hasThreatCategory(categories: string[]): boolean {
+    return categories.some(c => THREAT_CATEGORIES.has(c.toLowerCase()));
+  }
+
   // Handle scan result — silent-by-default
   // Only show full warning banner for high/critical risk.
   // For low/medium, show a non-intrusive shield icon.
@@ -194,6 +203,17 @@ function initContentScript(adapter: SiteAdapter) {
       hideWarningBanner();
       lastShieldStatus = 'safe';
       if (anchor) showShieldIndicator('safe', anchor);
+      return;
+    }
+
+    // PII-only + proxy enabled → lock shield only, no banner
+    const isPiiOnly = result.piiDetected.length > 0
+      && !hasThreatCategory(result.categories);
+
+    if (isPiiOnly && currentConfig.piiProxy.enabled) {
+      hideWarningBanner();
+      lastShieldStatus = 'pii';
+      if (anchor) showShieldIndicator('pii', anchor);
       return;
     }
 
@@ -217,23 +237,6 @@ function initContentScript(adapter: SiteAdapter) {
     // High/critical → full warning banner + shield
     showWarningBanner(result, anchor);
     showShieldIndicator(shieldStatus, anchor);
-  }
-
-  // ── PII Proxy: Quick check if text likely has PII ───────────────────
-  // Fast heuristic to avoid unnecessary submit interception
-  function textMayContainPii(text: string): boolean {
-    // Quick checks for common PII patterns
-    // 6+ consecutive digits (RRN, card, phone, SSN)
-    if (/\d{6,}/.test(text)) return true;
-    // Digit groups with dashes (RRN, SSN, phone)
-    if (/\d{2,4}[-–.]\d{2,4}/.test(text)) return true;
-    // Email pattern
-    if (/@[a-zA-Z0-9]/.test(text)) return true;
-    // + prefix for international phone
-    if (/\+\d{1,3}/.test(text)) return true;
-    // Passport-like: letter(s) + 7+ digits
-    if (/[A-Z]{1,2}\d{7}/.test(text)) return true;
-    return false;
   }
 
   // ── PII Proxy: Pseudonymize before submit ─────────────────────────────
@@ -306,19 +309,30 @@ function initContentScript(adapter: SiteAdapter) {
 
     // Check if blocked by threat detection (synchronous)
     if (currentResult?.blocked) {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
+      const isPiiOnlyBlock = !hasThreatCategory(currentResult.categories)
+        && currentResult.piiDetected.length > 0;
 
-      const anchor = adapter.getWarningAnchor();
-      if (anchor) {
-        showBlockModal(currentResult, anchor, () => {
-          // User chose to override — allow submission
-          currentResult = { ...currentResult!, blocked: false };
-          triggerSubmit();
-        });
+      if (isPiiOnlyBlock && currentConfig.piiProxy.enabled) {
+        // PII-only block with proxy enabled — skip modal, let proxy handle it.
+        // Clear blocked so the proxy flow proceeds normally.
+        currentResult = { ...currentResult, blocked: false };
+        const anchor = adapter.getWarningAnchor();
+        if (anchor) showShieldIndicator('pii', anchor);
+      } else {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        const anchor = adapter.getWarningAnchor();
+        if (anchor) {
+          showBlockModal(currentResult, anchor, () => {
+            // User chose to override — allow submission
+            currentResult = { ...currentResult!, blocked: false };
+            triggerSubmit();
+          });
+        }
+        return;
       }
-      return;
     }
 
     // PII Proxy: check if enabled (synchronous)
@@ -330,9 +344,6 @@ function initContentScript(adapter: SiteAdapter) {
 
     const text = adapter.getInputText(inputEl);
     if (text.length < INPUT_MIN_LENGTH) return;
-
-    // Quick heuristic: skip interception if text unlikely to contain PII (synchronous)
-    if (!textMayContainPii(text)) return;
 
     // All synchronous checks passed — prevent default NOW before any async work
     e.preventDefault();
@@ -648,17 +659,28 @@ function initContentScript(adapter: SiteAdapter) {
 
   function watchResponses(): MutationObserver {
     const responseSelector = adapter.getResponseSelector();
+    const userMsgSelector = adapter.getUserMessageSelector?.();
     let restoreTimer: ReturnType<typeof setTimeout> | null = null;
     const restoredElements = new WeakSet<Element>();
-    // Track content snapshots to detect changes after initial restoration
     const restoredSnapshots = new WeakMap<Element, string>();
-    // Track consecutive empty selector results (for Gemini fallback)
     let emptyResultCount = 0;
 
     async function tryRestoreAll() {
       if (adapter.isStreaming()) return;
 
       let responseEls = document.querySelectorAll(responseSelector);
+
+      // Also include user messages for restoration (needed after page refresh)
+      if (userMsgSelector) {
+        const userMsgEls = document.querySelectorAll(userMsgSelector);
+        if (userMsgEls.length > 0) {
+          const combined = Array.from(responseEls);
+          for (const el of userMsgEls) {
+            if (!combined.includes(el)) combined.push(el);
+          }
+          responseEls = combined as unknown as NodeListOf<Element>;
+        }
+      }
 
       // Gemini fallback: if selectors don't match, try broader patterns
       if (responseEls.length === 0) {
@@ -703,6 +725,8 @@ function initContentScript(adapter: SiteAdapter) {
           }
         }
 
+      const beforeText = currentText;
+
         // Try enhanced deep restoration first (for Gemini shadow DOM)
         if (adapter.id === 'gemini' && lastProxyResult && lastProxyResult.piiCount > 0) {
           if (deepRestoreInElement(el, lastProxyResult.mappings)) {
@@ -714,8 +738,11 @@ function initContentScript(adapter: SiteAdapter) {
         }
 
         await restoreInDom(el);
-        restoredSnapshots.set(el, el.textContent ?? '');
-        restoredElements.add(el);
+        const afterText = el.textContent ?? '';
+        if (afterText !== beforeText) {
+          restoredSnapshots.set(el, afterText);
+          restoredElements.add(el);
+        }
       }
     }
 
@@ -737,6 +764,13 @@ function initContentScript(adapter: SiteAdapter) {
     // For Gemini, check more frequently
     const checkInterval = adapter.id === 'gemini' ? 1500 : 2000;
     setInterval(tryRestoreAll, checkInterval);
+
+    // Initial restoration on load: catch already-rendered messages after page
+    // refresh. Stagger attempts to allow the service worker to fully initialize
+    // and load persisted PII mappings from chrome.storage.session.
+    setTimeout(tryRestoreAll, 500);
+    setTimeout(tryRestoreAll, 1500);
+    setTimeout(tryRestoreAll, 3000);
 
     return responseObserver;
   }

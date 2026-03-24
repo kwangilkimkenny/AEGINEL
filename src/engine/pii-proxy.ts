@@ -2,7 +2,7 @@
 // Pseudonymizes PII before sending to LLM, restores originals in responses.
 
 import { scanPii } from './pii-scanner';
-import type { AeginelConfig, PiiMapping, PiiType, ProxyResult } from './types';
+import type { AeginelConfig, PiiMapping, PiiMatch, PiiType, ProxyResult } from './types';
 
 // ── Fake Value Generators ───────────────────────────────────────────────
 
@@ -131,9 +131,79 @@ function generateFakeValue(type: PiiType, original: string): string {
       return `${letters}${randomDigits(digitLen)}`;
     }
 
+    case 'givenname':
+    case 'surname':
+      return `User_${randomHex(3)}`;
+
+    case 'username':
+      return `user_${randomHex(4)}`;
+
+    case 'dateofbirth': {
+      const yy = 1970 + (parseInt(randomDigits(2), 10) % 40);
+      const mm = String(1 + (parseInt(randomDigits(1), 10) % 12)).padStart(2, '0');
+      const dd = String(1 + (parseInt(randomDigits(1), 10) % 28)).padStart(2, '0');
+      return `${yy}-${mm}-${dd}`;
+    }
+
+    case 'idcard':
+      return `ID${randomDigits(8)}`;
+
+    case 'street':
+      return `${randomDigits(3)} Example St`;
+
+    case 'city':
+      return 'Sampleville';
+
+    case 'zipcode':
+      return randomDigits(5);
+
+    case 'buildingnum':
+      return randomDigits(3);
+
+    case 'ip_address':
+      return `10.${parseInt(randomDigits(3), 10) % 256}.${parseInt(randomDigits(3), 10) % 256}.${parseInt(randomDigits(3), 10) % 256}`;
+
+    case 'password':
+      return `P@ss${randomHex(4)}!`;
+
+    case 'accountnum':
+      return randomDigits(original.replace(/\D/g, '').length || 10);
+
+    case 'driverlicensenum':
+      return `${randomLetter()}${randomLetter()}${randomDigits(6)}`;
+
+    case 'company':
+      return `Corp_${randomHex(3)}`;
+
     default:
       return `[REDACTED_${type}]`;
   }
+}
+
+// ── Overlapping Entity Resolution ───────────────────────────────────────
+// NER models may produce overlapping spans of different types
+// (e.g. "test" as USERNAME overlapping with "test@gmail.com" as EMAIL).
+// Replacing overlapping spans corrupts indices, so we keep only
+// non-overlapping entities, preferring longer (more specific) spans.
+
+function removeOverlappingMatches(matches: PiiMatch[]): PiiMatch[] {
+  if (matches.length <= 1) return matches;
+
+  // Sort by start ascending, break ties by span length descending (longer wins)
+  const sorted = [...matches].sort((a, b) => {
+    if (a.startIndex !== b.startIndex) return a.startIndex - b.startIndex;
+    return (b.endIndex - b.startIndex) - (a.endIndex - a.startIndex);
+  });
+
+  const result: PiiMatch[] = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    const last = result[result.length - 1];
+    const curr = sorted[i];
+    // Skip entities whose range overlaps with the last accepted entity
+    if (curr.startIndex < last.endIndex) continue;
+    result.push(curr);
+  }
+  return result;
 }
 
 // ── PiiProxyEngine ──────────────────────────────────────────────────────
@@ -185,15 +255,18 @@ export class PiiProxyEngine {
   /**
    * Detect PII in text and replace with format-preserving pseudonyms.
    */
-  pseudonymize(text: string, config: AeginelConfig, sessionId: string): ProxyResult {
-    const piiMatches = scanPii(text, config);
+  async pseudonymize(text: string, config: AeginelConfig, sessionId: string): Promise<ProxyResult> {
+    const piiMatches = await scanPii(text, config);
 
     if (piiMatches.length === 0) {
       return { originalText: text, proxiedText: text, mappings: [], piiCount: 0 };
     }
 
+    // Remove overlapping spans BEFORE replacement to prevent index corruption
+    const deduped = removeOverlappingMatches(piiMatches);
+
     // Sort by position descending so we can replace from the end
-    const sorted = [...piiMatches].sort((a, b) => b.startIndex - a.startIndex);
+    const sorted = [...deduped].sort((a, b) => b.startIndex - a.startIndex);
 
     const mappings: PiiMapping[] = [];
     let proxied = text;

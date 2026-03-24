@@ -8,6 +8,13 @@ import { setLocale, useI18n } from '../i18n';
 import type { StatusResponseMessage, ConfigResponseMessage, HistoryResponseMessage } from '../shared/messages';
 
 const BADGE_VIS_KEY = 'aeginel_badge_visible';
+const THEME_KEY = 'aeginel_theme';
+
+type Theme = 'light' | 'dark';
+
+function applyThemeToDOM(theme: Theme) {
+  document.documentElement.dataset.theme = theme;
+}
 
 export default function App() {
   const { t } = useI18n();
@@ -19,6 +26,14 @@ export default function App() {
   const [history, setHistory] = useState<ScanResult[]>([]);
   const [siteName, setSiteName] = useState('');
   const [badgeVisible, setBadgeVisible] = useState(true);
+  const [theme, setTheme] = useState<Theme>('light');
+
+  const toggleTheme = useCallback(() => {
+    const next: Theme = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    applyThemeToDOM(next);
+    chrome.storage.local.set({ [THEME_KEY]: next });
+  }, [theme]);
 
   const toggleBadge = useCallback(() => {
     const next = !badgeVisible;
@@ -27,8 +42,11 @@ export default function App() {
   }, [badgeVisible]);
 
   useEffect(() => {
-    chrome.storage.local.get(BADGE_VIS_KEY).then((stored) => {
+    chrome.storage.local.get([BADGE_VIS_KEY, THEME_KEY]).then((stored) => {
       setBadgeVisible(stored[BADGE_VIS_KEY] !== false);
+      const savedTheme: Theme = stored[THEME_KEY] === 'dark' ? 'dark' : 'light';
+      setTheme(savedTheme);
+      applyThemeToDOM(savedTheme);
     }).catch(() => {});
   }, []);
 
@@ -114,11 +132,11 @@ export default function App() {
             className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300"
             style={config.enabled
               ? { background: '#3fb950', boxShadow: '0 0 12px rgba(63,185,80,0.45)' }
-              : { background: '#21262d', border: '1px solid #30363d' }
+              : { background: 'var(--aeginel-surface2)', border: '1px solid var(--aeginel-border)' }
             }
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke={config.enabled ? '#0d1117' : '#8b949e'}
+              stroke={config.enabled ? 'white' : 'var(--aeginel-muted)'}
               strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
@@ -129,13 +147,29 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={toggleTheme}
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+            style={{
+              background: 'var(--aeginel-surface2)',
+              border: '1px solid var(--aeginel-border)',
+              color: 'var(--aeginel-muted)',
+            }}
+            title={theme === 'light' ? 'Dark mode' : 'Light mode'}
+          >
+            {theme === 'light' ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            )}
+          </button>
           <button
             onClick={handleToggle}
             className="relative w-10 h-[22px] rounded-full transition-all duration-300 flex-shrink-0 p-0 border-0"
             style={config.enabled
               ? { background: '#3fb950', boxShadow: '0 0 8px rgba(63,185,80,0.4)' }
-              : { background: '#21262d', border: '1px solid #30363d' }
+              : { background: 'var(--aeginel-toggle-off-bg)', border: `1px solid var(--aeginel-toggle-off-border)` }
             }
           >
             <span
@@ -162,7 +196,7 @@ export default function App() {
         {/* Floating badge toggle */}
         <div className="flex items-center justify-between px-2.5 py-2 rounded-lg bg-aeginel-surface2 border border-aeginel-border/40">
           <div className="flex items-center gap-1.5 min-w-0">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={badgeVisible ? '#3fb950' : '#8b949e'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={badgeVisible ? '#3fb950' : 'var(--aeginel-muted)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
             <div className="min-w-0">
@@ -177,7 +211,7 @@ export default function App() {
               width: '32px', height: '18px',
               ...(badgeVisible
                 ? { background: '#3fb950', boxShadow: '0 0 6px rgba(63,185,80,0.4)' }
-                : { background: '#21262d', border: '1px solid #30363d' }
+                : { background: 'var(--aeginel-toggle-off-bg)', border: '1px solid var(--aeginel-toggle-off-border)' }
               ),
             }}
           >

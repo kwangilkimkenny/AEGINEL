@@ -34,7 +34,7 @@ export default function RiskMeter({ lastScan }: Props) {
 
   const score = lastScan?.score ?? 0;
   const level = lastScan?.level ?? 'low';
-  const cfg = lastScan ? LEVEL_CFG[level] : { color: '#30363d', bg: 'transparent', label: t('risk.noScans') };
+  const cfg = lastScan ? LEVEL_CFG[level] : { color: 'var(--aeginel-border)', bg: 'transparent', label: t('risk.noScans') };
   const pct = Math.min(score, 100) / 100;
   const fillLen = ARC_LEN * pct;
   const thumb = thumbPos(score);
@@ -71,7 +71,7 @@ export default function RiskMeter({ lastScan }: Props) {
           </defs>
 
           {/* Track */}
-          <path d={path} fill="none" stroke="#21262d" strokeWidth="8" strokeLinecap="round" />
+          <path d={path} fill="none" stroke="var(--aeginel-surface2)" strokeWidth="8" strokeLinecap="round" />
 
           {/* Progress fill */}
           {score > 0 && (
@@ -100,14 +100,14 @@ export default function RiskMeter({ lastScan }: Props) {
           {/* Score number */}
           <text
             x={CX} y={CY - 10} textAnchor="middle"
-            fill={lastScan ? cfg.color : '#30363d'}
+            fill={lastScan ? cfg.color : 'var(--aeginel-border)'}
             fontSize="26" fontWeight="800"
             fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
             style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '-1px' }}
           >
             {score}
           </text>
-          <text x={CX} y={CY + 1} textAnchor="middle" fill="#8b949e" fontSize="9"
+          <text x={CX} y={CY + 1} textAnchor="middle" fill="var(--aeginel-muted)" fontSize="9"
             fontFamily="-apple-system, sans-serif">
             / 100
           </text>

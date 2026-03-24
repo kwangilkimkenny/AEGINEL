@@ -39,7 +39,22 @@ export type PiiType =
   | 'phone_kr'         // 한국 전화번호
   | 'phone_intl'       // 국제 전화번호
   | 'ssn'              // US SSN
-  | 'passport';        // 여권번호
+  | 'passport'         // 여권번호
+  // NER model entity types
+  | 'givenname'        // 이름
+  | 'surname'          // 성
+  | 'username'         // 사용자명
+  | 'dateofbirth'      // 생년월일
+  | 'idcard'           // 신분증번호
+  | 'street'           // 도로명
+  | 'city'             // 도시
+  | 'zipcode'          // 우편번호
+  | 'buildingnum'      // 건물번호
+  | 'ip_address'       // IP 주소
+  | 'password'         // 비밀번호
+  | 'accountnum'       // 계좌번호
+  | 'driverlicensenum' // 운전면허번호
+  | 'company';         // 회사명
 
 export interface PiiMapping {
   original: string;
@@ -169,6 +184,20 @@ export const DEFAULT_CONFIG: AeginelConfig = {
       phone_intl: true,
       ssn: true,
       passport: true,
+      givenname: false,
+      surname: false,
+      username: false,
+      dateofbirth: true,
+      idcard: true,
+      street: true,
+      city: false,
+      zipcode: true,
+      buildingnum: false,
+      ip_address: true,
+      password: true,
+      accountnum: true,
+      driverlicensenum: true,
+      company: false,
     },
   },
   piiProxy: {

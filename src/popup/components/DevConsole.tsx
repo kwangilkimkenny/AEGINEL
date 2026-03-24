@@ -58,7 +58,7 @@ export default function DevConsole() {
           value={filter}
           onChange={(e) => setFilter(e.target.value as DevLogEntry['type'] | 'all')}
           className="bg-aeginel-surface2 rounded px-1.5 py-0.5 text-[9px] text-aeginel-text focus:outline-none"
-          style={{ border: '1px solid #30363d' }}
+          style={{ border: '1px solid var(--aeginel-border)' }}
         >
           <option value="all">All</option>
           <option value="scan">Scan</option>
@@ -72,8 +72,8 @@ export default function DevConsole() {
           className="text-[9px] px-1.5 py-0.5 rounded transition-colors"
           style={{
             background: autoRefresh ? 'rgba(63,185,80,0.15)' : 'rgba(139,148,158,0.1)',
-            border: `1px solid ${autoRefresh ? 'rgba(63,185,80,0.3)' : '#30363d'}`,
-            color: autoRefresh ? '#3fb950' : '#8b949e',
+            border: `1px solid ${autoRefresh ? 'rgba(63,185,80,0.3)' : 'var(--aeginel-border)'}`,
+            color: autoRefresh ? '#3fb950' : 'var(--aeginel-muted)',
           }}
         >
           {autoRefresh ? 'Live' : 'Paused'}
@@ -82,7 +82,7 @@ export default function DevConsole() {
         <button
           onClick={fetchLogs}
           className="text-[9px] px-1.5 py-0.5 rounded text-aeginel-muted hover:text-aeginel-text transition-colors"
-          style={{ background: 'rgba(139,148,158,0.1)', border: '1px solid #30363d' }}
+          style={{ background: 'rgba(139,148,158,0.1)', border: '1px solid var(--aeginel-border)' }}
         >
           Refresh
         </button>
@@ -104,8 +104,8 @@ export default function DevConsole() {
       <div
         className="rounded-lg overflow-hidden"
         style={{
-          background: '#0d1117',
-          border: '1px solid #21262d',
+          background: 'var(--aeginel-bg)',
+          border: '1px solid var(--aeginel-border)',
           maxHeight: '260px',
           overflowY: 'auto',
           fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
@@ -123,7 +123,7 @@ export default function DevConsole() {
               <div
                 key={`${log.timestamp}-${idx}`}
                 className="transition-colors hover:bg-white/[0.02] cursor-pointer"
-                style={{ borderBottom: '1px solid #161b22' }}
+                style={{ borderBottom: '1px solid var(--aeginel-surface)' }}
                 onClick={() => setExpandedIdx(isExpanded ? null : idx)}
               >
                 {/* Summary row */}
@@ -162,7 +162,7 @@ export default function DevConsole() {
                                 ? '#f85149'
                                 : key === 'finalScore' && typeof value === 'number' && value >= 70
                                   ? '#f0883e'
-                                  : '#8b949e',
+                                  : 'var(--aeginel-muted)',
                           }}
                         >
                           {typeof value === 'object' ? JSON.stringify(value) : String(value ?? '-')}

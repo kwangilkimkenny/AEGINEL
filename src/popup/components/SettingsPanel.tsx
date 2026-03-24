@@ -1,7 +1,32 @@
 import React, { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
-import type { AeginelConfig, AegisServerConfig, AegisUsageInfo, AegisVersionMap } from '../../engine/types';
+import type { AeginelConfig, AegisServerConfig, AegisUsageInfo, AegisVersionMap, PiiType } from '../../engine/types';
 import { LANGUAGE_OPTIONS, UI_LANGUAGE_OPTIONS, useI18n } from '../../i18n';
+
+const PII_TYPE_GROUPS: { label: string; types: PiiType[] }[] = [
+  {
+    label: 'ID & Documents',
+    types: ['korean_rrn', 'ssn', 'passport', 'idcard', 'driverlicensenum'],
+  },
+  {
+    label: 'Financial',
+    types: ['credit_card', 'accountnum'],
+  },
+  {
+    label: 'Contact & Account',
+    types: ['email', 'phone_kr', 'phone_intl', 'username', 'password', 'ip_address'],
+  },
+  {
+    label: 'Personal Info',
+    types: ['givenname', 'surname', 'dateofbirth', 'company'],
+  },
+  {
+    label: 'Address',
+    types: ['street', 'city', 'zipcode', 'buildingnum'],
+  },
+];
+
+const ALL_PII_TYPES: PiiType[] = PII_TYPE_GROUPS.flatMap(g => g.types);
 
 const DevConsole = lazy(() => import('./DevConsole'));
 
@@ -18,8 +43,10 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
   const hashIsAegis = window.location.hash === '#aegis';
   const [isOpen, setIsOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>(hashIsAegis ? 'advanced' : 'privacy');
+  const [piiTypesOpen, setPiiTypesOpen] = useState(false);
 
   const piiTypeCount = Object.values(config.pii.types).filter(Boolean).length;
+  const piiTypeTotal = ALL_PII_TYPES.length;
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'privacy',   label: t('settings.tabs.privacy') },
@@ -34,14 +61,14 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
         className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-aeginel-surface2 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b949e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--aeginel-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
             <circle cx="12" cy="12" r="3"/>
           </svg>
           <span className="text-[11px] font-semibold text-aeginel-text">{t('settings.title')}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-aeginel-muted">{t('settings.piiTypesCount', { count: piiTypeCount })}</span>
+          <span className="text-[9px] text-aeginel-muted">{t('settings.piiTypesCount', { count: piiTypeCount, total: piiTypeTotal })}</span>
           <svg
             width="9" height="9" viewBox="0 0 10 10"
             className={`text-aeginel-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
@@ -61,8 +88,8 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                 onClick={() => setActiveTab(key)}
                 className="text-[10px] font-medium px-3 py-1.5 transition-all relative"
                 style={activeTab === key
-                  ? { color: '#e6edf3' }
-                  : { color: '#8b949e' }
+                  ? { color: 'var(--aeginel-text)' }
+                  : { color: 'var(--aeginel-muted)' }
                 }
               >
                 {label}
@@ -91,7 +118,7 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                       value={config.uiLanguage}
                       onChange={(e) => onUpdate({ uiLanguage: e.target.value as AeginelConfig['uiLanguage'] })}
                       className="bg-aeginel-surface2 rounded-lg px-2 py-1 text-[10px] text-aeginel-text focus:outline-none"
-                      style={{ border: '1px solid #30363d' }}
+                      style={{ border: '1px solid var(--aeginel-border)' }}
                     >
                       {UI_LANGUAGE_OPTIONS.map(({ code, label }) => (
                         <option key={code} value={code}>{label}</option>
@@ -108,6 +135,30 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                   checked={config.pii.enabled}
                   onChange={() => onUpdate({ pii: { ...config.pii, enabled: !config.pii.enabled } })}
                 />
+
+                {config.pii.enabled && (
+                  <PiiTypesPanel
+                    types={config.pii.types}
+                    isOpen={piiTypesOpen}
+                    onToggleOpen={() => setPiiTypesOpen(!piiTypesOpen)}
+                    onToggleType={(type) => {
+                      onUpdate({
+                        pii: {
+                          ...config.pii,
+                          types: { ...config.pii.types, [type]: !config.pii.types[type] },
+                        },
+                      });
+                    }}
+                    onSelectAll={() => {
+                      const allOn = Object.fromEntries(ALL_PII_TYPES.map(t => [t, true])) as Record<PiiType, boolean>;
+                      onUpdate({ pii: { ...config.pii, types: allOn } });
+                    }}
+                    onDeselectAll={() => {
+                      const allOff = Object.fromEntries(ALL_PII_TYPES.map(t => [t, false])) as Record<PiiType, boolean>;
+                      onUpdate({ pii: { ...config.pii, types: allOff } });
+                    }}
+                  />
+                )}
 
                 <div className="h-px bg-aeginel-border" />
 
@@ -129,7 +180,7 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                         value={config.piiProxy.mode}
                         onChange={(e) => onUpdate({ piiProxy: { ...config.piiProxy, mode: e.target.value as 'auto' | 'confirm' } })}
                         className="bg-aeginel-surface2 rounded-lg px-2 py-1 text-[10px] text-aeginel-text focus:outline-none"
-                        style={{ border: '1px solid #30363d' }}
+                        style={{ border: '1px solid var(--aeginel-border)' }}
                       >
                         <option value="auto">{t('settings.proxyAuto')}</option>
                         <option value="confirm">{t('settings.proxyConfirm')}</option>
@@ -199,7 +250,7 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                       value={config.language}
                       onChange={(e) => onUpdate({ language: e.target.value })}
                       className="bg-aeginel-surface2 rounded-lg px-2 py-1 text-[10px] text-aeginel-text focus:outline-none"
-                      style={{ border: '1px solid #30363d' }}
+                      style={{ border: '1px solid var(--aeginel-border)' }}
                     >
                       <option value="auto">{t('settings.autoDetect')}</option>
                       {LANGUAGE_OPTIONS.map(({ code, label }) => (
@@ -224,7 +275,7 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                     placeholder={'example.com\nmysite.org'}
                     rows={3}
                     className="w-full bg-aeginel-surface2 rounded-lg px-2.5 py-2 text-[10px] text-aeginel-text resize-none focus:outline-none"
-                    style={{ border: '1px solid #30363d' }}
+                    style={{ border: '1px solid var(--aeginel-border)' }}
                   />
                 </div>
 
@@ -237,7 +288,7 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                 </button>
 
                 {/* Developer Mode */}
-                <div className="pt-2 mt-1" style={{ borderTop: '1px solid #21262d' }}>
+                <div className="pt-2 mt-1" style={{ borderTop: '1px solid var(--aeginel-border)' }}>
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-[10px] font-medium text-aeginel-text">{t('settings.devMode')}</span>
@@ -248,7 +299,7 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                       className="relative w-9 h-[20px] rounded-full transition-all duration-300 flex-shrink-0 p-0 border-0"
                       style={config.devMode
                         ? { background: '#58a6ff', boxShadow: '0 0 8px rgba(88,166,255,0.4)' }
-                        : { background: '#21262d', border: '1px solid #30363d' }
+                        : { background: 'var(--aeginel-toggle-off-bg)', border: '1px solid var(--aeginel-toggle-off-border)' }
                       }
                     >
                       <span
@@ -324,9 +375,9 @@ function InfoTip({ text }: { text: string }) {
           fontWeight: 700,
           fontStyle: 'italic',
           lineHeight: 1,
-          color: open ? '#58a6ff' : '#8b949e',
+          color: open ? '#58a6ff' : 'var(--aeginel-muted)',
           background: open ? 'rgba(88,166,255,0.15)' : 'transparent',
-          border: `1px solid ${open ? 'rgba(88,166,255,0.3)' : '#484f58'}`,
+          border: `1px solid ${open ? 'rgba(88,166,255,0.3)' : 'var(--aeginel-border)'}`,
         }}
       >
         i
@@ -343,9 +394,9 @@ function InfoTip({ text }: { text: string }) {
               width: '300px',
               maxHeight: `${window.innerHeight - 16}px`,
               overflowY: 'auto',
-              background: '#161b22',
-              border: '1px solid #30363d',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              background: 'var(--aeginel-surface)',
+              border: '1px solid var(--aeginel-border)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
             }}
           >
             <p className="text-[9px] text-aeginel-text/90 whitespace-pre-line" style={{ lineHeight: '1.6' }}>{text}</p>
@@ -366,7 +417,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
         width: '32px', height: '18px',
         ...(checked
           ? { background: '#3fb950', boxShadow: '0 0 6px rgba(63,185,80,0.4)' }
-          : { background: '#21262d', border: '1px solid #30363d' }
+          : { background: 'var(--aeginel-toggle-off-bg)', border: '1px solid var(--aeginel-toggle-off-border)' }
         ),
       }}
     >
@@ -388,6 +439,111 @@ function ToggleRow({
         <p className="text-[8px] text-aeginel-muted">{desc}</p>
       </div>
       <Toggle checked={checked} onChange={onChange} />
+    </div>
+  );
+}
+
+function PiiTypesPanel({
+  types,
+  isOpen,
+  onToggleOpen,
+  onToggleType,
+  onSelectAll,
+  onDeselectAll,
+}: {
+  types: Record<PiiType, boolean>;
+  isOpen: boolean;
+  onToggleOpen: () => void;
+  onToggleType: (type: PiiType) => void;
+  onSelectAll: () => void;
+  onDeselectAll: () => void;
+}) {
+  const { t } = useI18n();
+  const enabledCount = Object.values(types).filter(Boolean).length;
+  const allOn = enabledCount === ALL_PII_TYPES.length;
+
+  return (
+    <div className="rounded-lg overflow-hidden bg-aeginel-surface" style={{ border: '1px solid var(--aeginel-border)' }}>
+      <button
+        onClick={onToggleOpen}
+        className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-aeginel-surface2 transition-colors"
+      >
+        <div className="flex items-center gap-1.5">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--aeginel-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          <span className="text-[10px] font-medium text-aeginel-text">{t('settings.piiTypes')}</span>
+          <span className="text-[8px] px-1.5 py-0.5 rounded-full font-medium"
+            style={{
+              background: enabledCount > 0 ? 'rgba(63,185,80,0.1)' : 'rgba(139,148,158,0.1)',
+              color: enabledCount > 0 ? '#3fb950' : 'var(--aeginel-muted)',
+              border: `1px solid ${enabledCount > 0 ? 'rgba(63,185,80,0.2)' : 'rgba(139,148,158,0.2)'}`,
+            }}
+          >
+            {enabledCount}/{ALL_PII_TYPES.length}
+          </span>
+        </div>
+        <svg
+          width="9" height="9" viewBox="0 0 10 10"
+          className={`text-aeginel-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+        >
+          <path d="M2 3.5L5 6.5L8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="px-2.5 pb-2.5 animate-fade-in" style={{ borderTop: '1px solid var(--aeginel-border)' }}>
+          {/* Select All / Deselect All */}
+          <div className="flex items-center gap-1.5 py-2">
+            <button
+              onClick={onSelectAll}
+              disabled={allOn}
+              className="text-[9px] font-medium px-2 py-1 rounded-md transition-all disabled:opacity-40"
+              style={{ background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.2)', color: '#3fb950' }}
+            >
+              {t('settings.piiSelectAll')}
+            </button>
+            <button
+              onClick={onDeselectAll}
+              disabled={enabledCount === 0}
+              className="text-[9px] font-medium px-2 py-1 rounded-md transition-all disabled:opacity-40"
+              style={{ background: 'rgba(139,148,158,0.08)', border: '1px solid rgba(139,148,158,0.15)', color: 'var(--aeginel-muted)' }}
+            >
+              {t('settings.piiDeselectAll')}
+            </button>
+          </div>
+
+          {/* Grouped PII types */}
+          <div className="space-y-2.5">
+            {PII_TYPE_GROUPS.map((group) => (
+              <div key={group.label}>
+                <p className="text-[8px] font-semibold text-aeginel-muted uppercase tracking-wide mb-1">{group.label}</p>
+                <div className="flex flex-wrap gap-1">
+                  {group.types.map((piiType) => {
+                    const on = types[piiType] !== false;
+                    const label = t(`piiTypes.${piiType}`) !== `piiTypes.${piiType}`
+                      ? t(`piiTypes.${piiType}`)
+                      : piiType.replace(/_/g, ' ');
+                    return (
+                      <button
+                        key={piiType}
+                        onClick={() => onToggleType(piiType)}
+                        className="text-[9px] font-medium px-2 py-1 rounded-md transition-all"
+                        style={on
+                          ? { background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.25)', color: '#3fb950' }
+                          : { background: 'rgba(139,148,158,0.06)', border: '1px solid rgba(139,148,158,0.15)', color: '#6e7681' }
+                        }
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -527,7 +683,7 @@ function AegisServerPanel({
   const canVerify = urlDraft.trim().length > 0 && keyDraft.trim().length > 0 && keyStatus !== 'validating';
 
   const statusConfig: Record<KeyStatus, { color: string; label: string }> = {
-    idle: { color: '#8b949e', label: '' },
+    idle: { color: 'var(--aeginel-muted)', label: '' },
     validating: { color: '#d29922', label: t('aegis.verifying') },
     valid: { color: '#3fb950', label: t('aegis.verified').split(' — ')[0] },
     invalid: { color: '#f85149', label: t('aegis.invalid').split(' — ')[0] },
@@ -581,7 +737,7 @@ function AegisServerPanel({
           placeholder="https://api.aiaegis.io"
           className="w-full bg-aeginel-surface2 rounded-lg px-2.5 py-2 text-[10px] text-aeginel-text focus:outline-none"
           style={{
-            border: `1px solid ${keyStatus === 'invalid' ? 'rgba(248,81,73,0.4)' : '#30363d'}`,
+            border: `1px solid ${keyStatus === 'invalid' ? 'rgba(248,81,73,0.4)' : 'var(--aeginel-border)'}`,
           }}
         />
       </div>
@@ -596,7 +752,7 @@ function AegisServerPanel({
             placeholder="aegis_sk_..."
             className="w-full bg-aeginel-surface2 rounded-lg px-2.5 py-2 pr-8 text-[10px] text-aeginel-text focus:outline-none"
             style={{
-              border: `1px solid ${keyStatus === 'invalid' ? 'rgba(248,81,73,0.4)' : keyStatus === 'valid' ? 'rgba(63,185,80,0.4)' : '#30363d'}`,
+              border: `1px solid ${keyStatus === 'invalid' ? 'rgba(248,81,73,0.4)' : keyStatus === 'valid' ? 'rgba(63,185,80,0.4)' : 'var(--aeginel-border)'}`,
             }}
           />
           <button
@@ -764,7 +920,7 @@ function AegisServerPanel({
               value={config.timeoutMs}
               onChange={(e) => onUpdate({ timeoutMs: Number(e.target.value) })}
               className="bg-aeginel-surface2 rounded-lg px-2 py-1 text-[10px] text-aeginel-text focus:outline-none"
-              style={{ border: '1px solid #30363d' }}
+              style={{ border: '1px solid var(--aeginel-border)' }}
             >
               <option value={3000}>3s</option>
               <option value={5000}>5s</option>
@@ -836,7 +992,7 @@ function UsageBar({
         </button>
       </div>
 
-      <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: '#21262d' }}>
+      <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--aeginel-surface2)' }}>
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{ width: `${Math.min(pct, 100)}%`, background: barColor }}
