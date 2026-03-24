@@ -57,8 +57,9 @@
     "domainsCount": "{{count}} dominios",
     "clearHistory": "Borrar Todo el Historial",
     "devMode": "Modo Desarrollador",
-    "devModeDesc": "Mostrar logs de escaneo en tiempo real",
-    "loadingConsole": "Cargando consola..."
+    "devModeDesc": "Mostrar pestaña de registros en la insignia flotante",
+    "loadingConsole": "Cargando consola...",
+    "devModeHint": "Abra la insignia flotante para ver registros"
   },
   "aegis": {
     "title": "Servidor AEGIS",
@@ -202,7 +203,20 @@
     "epClassify": "Clasificación",
     "epKorean": "Coreano",
     "blocked": "Bloqueado",
-    "safe": "Seguro"
+    "safe": "Seguro",
+    "tabDashboard": "Panel",
+    "tabLogs": "Registros",
+    "logFilterAll": "Todos",
+    "logFilterScan": "Escaneo",
+    "logFilterAegis": "Aegis",
+    "logFilterHealth": "Salud",
+    "logFilterError": "Error",
+    "logLive": "En vivo",
+    "logPaused": "Pausado",
+    "logClear": "Borrar",
+    "logEmpty": "Sin registros",
+    "logEmptyHint": "Los registros aparecen al escanear.",
+    "logEntries": "{{count}} registros"
   },
   "health": {
     "degraded": "Aegis Personal: Algunas funciones no disponibles",

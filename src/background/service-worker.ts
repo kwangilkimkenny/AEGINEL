@@ -368,6 +368,7 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
             aegisEnabled: aegisClient.isEnabled,
             totalScans: dashStats.totalScans,
             piiProtected: totalPiiProtected,
+            devMode: currentConfig.devMode,
           },
         };
       }

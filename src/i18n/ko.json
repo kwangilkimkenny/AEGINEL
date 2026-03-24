@@ -61,8 +61,9 @@
     "domainsCount": "{{count}}개 도메인",
     "clearHistory": "모든 이력 삭제",
     "devMode": "개발자 모드",
-    "devModeDesc": "실시간 스캔 로그 및 디버그 정보 표시",
-    "loadingConsole": "콘솔 로딩 중..."
+    "devModeDesc": "플로팅 배지 패널에 개발자 로그 탭 표시",
+    "loadingConsole": "콘솔 로딩 중...",
+    "devModeHint": "플로팅 배지를 열어 로그를 확인하세요"
   },
   "aegis": {
     "title": "AEGIS 서버",
@@ -220,7 +221,20 @@
     "epClassify": "위험 분류",
     "epKorean": "한국어 분석",
     "blocked": "차단됨",
-    "safe": "안전"
+    "safe": "안전",
+    "tabDashboard": "대시보드",
+    "tabLogs": "개발자 로그",
+    "logFilterAll": "전체",
+    "logFilterScan": "스캔",
+    "logFilterAegis": "Aegis",
+    "logFilterHealth": "상태",
+    "logFilterError": "오류",
+    "logLive": "실시간",
+    "logPaused": "일시중지",
+    "logClear": "삭제",
+    "logEmpty": "로그 없음",
+    "logEmptyHint": "스캔 수행 시 로그가 표시됩니다.",
+    "logEntries": "{{count}}건"
   },
   "health": {
     "degraded": "Aegis Personal: 일부 기능을 사용할 수 없습니다",

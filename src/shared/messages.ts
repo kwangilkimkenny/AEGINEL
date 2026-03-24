@@ -174,6 +174,7 @@ export interface DashboardResponseMessage {
     aegisEnabled: boolean;
     totalScans: number;
     piiProtected: number;
+    devMode: boolean;
   };
 }
 
