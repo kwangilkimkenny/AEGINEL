@@ -591,6 +591,61 @@ body {
   background-size: 10px;
 }
 
+/* ── AEGIS Section ────────────────────────────────────────── */
+
+.aegis-section {
+  padding: 80px 0;
+  background: linear-gradient(180deg, var(--bg) 0%, #f0fdf4 50%, var(--bg) 100%);
+}
+
+.aegis-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.aegis-card {
+  padding: 24px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: white;
+  transition: box-shadow 0.2s, transform 0.2s;
+  position: relative;
+}
+.aegis-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.aegis-version {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+  background: #ede9fe;
+  color: var(--purple);
+}
+.aegis-version.highlight {
+  background: var(--green-light);
+  color: var(--green-dark);
+}
+
+.aegis-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.aegis-card p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
 /* ── CTA ───────────────────────────────────────────────────── */
 
 .cta {
@@ -683,6 +738,8 @@ body {
 
   .pricing-grid { grid-template-columns: 1fr; }
 
+  .aegis-grid { grid-template-columns: 1fr; }
+
   .footer-inner { flex-direction: column; }
   .footer-links { flex-direction: column; gap: 24px; }
   .footer-bottom { flex-direction: column; gap: 8px; text-align: center; }
@@ -712,7 +769,7 @@ body {
 }
 
 .hero h1, .hero-sub, .hero-cta, .hero-visual,
-.feature-card, .step, .site-pill, .price-card {
+.feature-card, .step, .site-pill, .price-card, .aegis-card {
   animation: fadeInUp 0.5s ease-out both;
 }
 
