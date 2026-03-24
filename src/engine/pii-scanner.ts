@@ -56,6 +56,8 @@ function maskValue(value: string, piiType: PiiType): string {
       return value.replace(/\d+$/, '***');
     case 'password':
       return '********';
+    case 'time':
+      return '**:**';
     default:
       return value[0] + '*'.repeat(value.length - 2) + value[value.length - 1];
   }
@@ -72,7 +74,7 @@ function computeCharOffsets(entities: NerEntity[], text: string): NerEntity[] {
   const lowerText = text.toLowerCase();
 
   return entities.map((e) => {
-    if (typeof e.start === 'number' && typeof e.end === 'number') return e;
+    if (e.start >= 0 && e.end >= 0) return e;
 
     const word = e.word.replace(/^##/, '');
     const lowerWord = word.toLowerCase();
@@ -100,7 +102,13 @@ function computeCharOffsets(entities: NerEntity[], text: string): NerEntity[] {
 export async function scanPii(input: string, config: AeginelConfig): Promise<PiiMatch[]> {
   if (!config.pii?.enabled || !input.trim()) return [];
 
-  const entities = await runNerInference(input);
+  let entities: Awaited<ReturnType<typeof runNerInference>>;
+  try {
+    entities = await runNerInference(input);
+  } catch (err) {
+    console.error('[PII Scanner] NER inference failed, returning empty:', err);
+    return [];
+  }
   if (entities.length === 0) return [];
 
   const enabledTypes = config.pii.types;

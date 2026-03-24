@@ -175,6 +175,12 @@ function generateFakeValue(type: PiiType, original: string): string {
     case 'company':
       return `Corp_${randomHex(3)}`;
 
+    case 'time': {
+      const hh = String(parseInt(randomDigits(2), 10) % 24).padStart(2, '0');
+      const mi = String(parseInt(randomDigits(2), 10) % 60).padStart(2, '0');
+      return `${hh}:${mi}`;
+    }
+
     default:
       return `[REDACTED_${type}]`;
   }

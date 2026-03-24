@@ -1,13 +1,14 @@
 // ── PII NER Offscreen Document ─────────────────────────────────────────────────
-// Runs mBERT PII-NER ONNX model inference in an offscreen document context,
-// which supports WASM and avoids service worker lifecycle limitations.
+// Runs PII-NER ONNX model inference in an offscreen document context.
+// Model is fetched from HuggingFace Hub and cached in the browser.
 
 import { env, pipeline } from '@huggingface/transformers';
+
+const HF_MODEL_ID = 'YATAV-ENT/aegis-personal-pii-ner';
 
 env.allowRemoteModels = true;
 env.allowLocalModels = false;
 env.useBrowserCache = true;
-env.useFSCache = false;
 
 const ortEnv = env.backends.onnx as Record<string, Record<string, unknown>>;
 if (ortEnv?.wasm) {
@@ -35,20 +36,30 @@ type NerPipeline = (text: string, options?: Record<string, unknown>) => Promise<
 
 let nerPipeline: NerPipeline | null = null;
 let loading: Promise<NerPipeline> | null = null;
+let loadFailed = false;
 
 async function loadModel(): Promise<NerPipeline> {
   if (nerPipeline) return nerPipeline;
+  if (loadFailed) throw new Error('Model previously failed to load');
   if (loading) return loading;
 
   loading = (async () => {
-    const pipe = await pipeline(
-      'token-classification',
-      'YATAV-ENT/aegis-personal-pii-ner',
-      { device: 'wasm', dtype: 'fp32' },
-    );
+    console.debug('[PII-NER Offscreen] Loading model from HF Hub:', HF_MODEL_ID);
 
-    nerPipeline = pipe as unknown as NerPipeline;
-    return nerPipeline;
+    try {
+      const pipe = await pipeline('token-classification', HF_MODEL_ID, {
+        device: 'wasm',
+        dtype: 'q8',
+      });
+
+      nerPipeline = pipe as unknown as NerPipeline;
+      console.debug('[PII-NER Offscreen] Model loaded successfully');
+      return nerPipeline;
+    } catch (err) {
+      loadFailed = true;
+      loading = null;
+      throw err;
+    }
   })();
 
   return loading;
@@ -57,7 +68,7 @@ async function loadModel(): Promise<NerPipeline> {
 async function runInference(text: string): Promise<NerEntity[]> {
   const pipe = await loadModel();
 
-  const rawOutput = await pipe(text, { aggregation_strategy: 'simple' });
+  const rawOutput = await pipe(text);
 
   const results: Array<Record<string, unknown>> = Array.isArray(rawOutput)
     ? (Array.isArray(rawOutput[0]) ? rawOutput.flat() : rawOutput) as Array<Record<string, unknown>>
@@ -72,8 +83,8 @@ async function runInference(text: string): Promise<NerEntity[]> {
       entity: (r.entity_group ?? r.entity) as string,
       score: r.score as number,
       word: r.word as string,
-      start: r.start as number,
-      end: r.end as number,
+      start: (typeof r.start === 'number' && !isNaN(r.start)) ? r.start : -1,
+      end: (typeof r.end === 'number' && !isNaN(r.end)) ? r.end : -1,
     }));
 }
 
