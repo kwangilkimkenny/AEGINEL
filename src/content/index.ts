@@ -184,6 +184,15 @@ function initContentScript(adapter: SiteAdapter) {
     }
   }
 
+  const THREAT_CATEGORIES = new Set([
+    'jailbreak', 'prompt_injection', 'harmful', 'violence',
+    'dangerous', 'self_harm', 'hate_speech',
+  ]);
+
+  function hasThreatCategory(categories: string[]): boolean {
+    return categories.some(c => THREAT_CATEGORIES.has(c.toLowerCase()));
+  }
+
   // Handle scan result — silent-by-default
   // Only show full warning banner for high/critical risk.
   // For low/medium, show a non-intrusive shield icon.
@@ -194,6 +203,17 @@ function initContentScript(adapter: SiteAdapter) {
       hideWarningBanner();
       lastShieldStatus = 'safe';
       if (anchor) showShieldIndicator('safe', anchor);
+      return;
+    }
+
+    // PII-only + proxy enabled → lock shield only, no banner
+    const isPiiOnly = result.piiDetected.length > 0
+      && !hasThreatCategory(result.categories);
+
+    if (isPiiOnly && currentConfig.piiProxy.enabled) {
+      hideWarningBanner();
+      lastShieldStatus = 'pii';
+      if (anchor) showShieldIndicator('pii', anchor);
       return;
     }
 
@@ -289,19 +309,30 @@ function initContentScript(adapter: SiteAdapter) {
 
     // Check if blocked by threat detection (synchronous)
     if (currentResult?.blocked) {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
+      const isPiiOnlyBlock = !hasThreatCategory(currentResult.categories)
+        && currentResult.piiDetected.length > 0;
 
-      const anchor = adapter.getWarningAnchor();
-      if (anchor) {
-        showBlockModal(currentResult, anchor, () => {
-          // User chose to override — allow submission
-          currentResult = { ...currentResult!, blocked: false };
-          triggerSubmit();
-        });
+      if (isPiiOnlyBlock && currentConfig.piiProxy.enabled) {
+        // PII-only block with proxy enabled — skip modal, let proxy handle it.
+        // Clear blocked so the proxy flow proceeds normally.
+        currentResult = { ...currentResult, blocked: false };
+        const anchor = adapter.getWarningAnchor();
+        if (anchor) showShieldIndicator('pii', anchor);
+      } else {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        const anchor = adapter.getWarningAnchor();
+        if (anchor) {
+          showBlockModal(currentResult, anchor, () => {
+            // User chose to override — allow submission
+            currentResult = { ...currentResult!, blocked: false };
+            triggerSubmit();
+          });
+        }
+        return;
       }
-      return;
     }
 
     // PII Proxy: check if enabled (synchronous)
