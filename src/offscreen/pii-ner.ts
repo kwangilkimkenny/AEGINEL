@@ -41,6 +41,18 @@ let nerPipeline: NerPipeline | null = null;
 let loading: Promise<NerPipeline> | null = null;
 let loadFailed = false;
 
+async function clearModelCache(): Promise<void> {
+  const keys = await caches.keys();
+  for (const key of keys) {
+    if (key.includes('transformers') || key.includes('onnx')) {
+      await caches.delete(key);
+    }
+  }
+  nerPipeline = null;
+  loading = null;
+  loadFailed = false;
+}
+
 async function checkModelUpdate(): Promise<void> {
   try {
     const res = await fetch(HF_VERSION_URL, { cache: 'no-store' });
@@ -53,17 +65,9 @@ async function checkModelUpdate(): Promise<void> {
     const stored = await chrome.storage.local.get(MODEL_VERSION_KEY);
     const cachedVersion = stored[MODEL_VERSION_KEY] as string | undefined;
 
-    if (cachedVersion && cachedVersion !== latestVersion) {
-      console.debug(`[PII-NER] Model updated: ${cachedVersion} → ${latestVersion}, clearing cache...`);
-      const keys = await caches.keys();
-      for (const key of keys) {
-        if (key.includes('transformers') || key.includes('onnx')) {
-          await caches.delete(key);
-        }
-      }
-      nerPipeline = null;
-      loading = null;
-      loadFailed = false;
+    if (!cachedVersion || cachedVersion !== latestVersion) {
+      console.debug(`[PII-NER] Model update: ${cachedVersion ?? 'none'} → ${latestVersion}, clearing cache...`);
+      await clearModelCache();
     }
 
     await chrome.storage.local.set({ [MODEL_VERSION_KEY]: latestVersion });
