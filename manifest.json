@@ -78,10 +78,20 @@
       "run_at": "document_idle"
     }
   ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "block_autocompletions",
+        "enabled": true,
+        "path": "rules/block-autocompletions.json"
+      }
+    ]
+  },
   "permissions": [
     "storage",
     "activeTab",
-    "offscreen"
+    "offscreen",
+    "declarativeNetRequest"
   ],
   "host_permissions": [
     "https://api.aiaegis.io/*",
