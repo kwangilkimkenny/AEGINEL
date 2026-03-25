@@ -7,7 +7,10 @@ import { env, pipeline } from '@huggingface/transformers';
 
 const HF_MODEL_ID = 'YATAV-ENT/aegis-personal-pii-ner';
 const HF_VERSION_URL = `https://huggingface.co/${HF_MODEL_ID}/resolve/main/version.json`;
+const HF_API_URL = `https://huggingface.co/api/models/${HF_MODEL_ID}`;
 const MODEL_VERSION_KEY = 'pii_ner_model_version';
+const MODEL_REVISION_KEY = 'pii_ner_model_revision';
+const CHECK_INTERVAL_MS = 30 * 60 * 1000;
 
 env.allowRemoteModels = true;
 env.allowLocalModels = false;
@@ -40,39 +43,67 @@ type NerPipeline = (text: string, options?: Record<string, unknown>) => Promise<
 let nerPipeline: NerPipeline | null = null;
 let loading: Promise<NerPipeline> | null = null;
 let loadFailed = false;
+let currentRevision: string | undefined;
+let initGate: Promise<void> | null = null;
 
 async function clearModelCache(): Promise<void> {
   const keys = await caches.keys();
   for (const key of keys) {
-    if (key.includes('transformers') || key.includes('onnx')) {
-      await caches.delete(key);
-    }
+    await caches.delete(key);
   }
   nerPipeline = null;
   loading = null;
   loadFailed = false;
 }
 
+async function fetchLatestRevision(): Promise<string | undefined> {
+  try {
+    const res = await fetch(HF_API_URL, { cache: 'no-store' });
+    if (!res.ok) return undefined;
+    const data = await res.json();
+    return (data.sha as string) || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function checkModelUpdate(): Promise<void> {
   try {
     const res = await fetch(HF_VERSION_URL, { cache: 'no-store' });
-    if (!res.ok) return;
+    if (!res.ok) {
+      console.warn('[PII-NER] version.json fetch failed:', res.status);
+      return;
+    }
 
     const data = await res.json();
     const latestVersion = data.version as string;
-    if (!latestVersion) return;
+    if (!latestVersion) {
+      console.warn('[PII-NER] version.json missing version field');
+      return;
+    }
 
-    const stored = await chrome.storage.local.get(MODEL_VERSION_KEY);
+    const stored = await chrome.storage.local.get([MODEL_VERSION_KEY, MODEL_REVISION_KEY]);
     const cachedVersion = stored[MODEL_VERSION_KEY] as string | undefined;
 
     if (!cachedVersion || cachedVersion !== latestVersion) {
-      console.debug(`[PII-NER] Model update: ${cachedVersion ?? 'none'} → ${latestVersion}, clearing cache...`);
-      await clearModelCache();
-    }
+      console.debug(`[PII-NER] Model update: ${cachedVersion ?? 'none'} → ${latestVersion}`);
 
-    await chrome.storage.local.set({ [MODEL_VERSION_KEY]: latestVersion });
-  } catch {
-    // Offline or API unavailable — use cached model
+      const sha = await fetchLatestRevision();
+      if (sha) {
+        currentRevision = sha;
+        console.debug(`[PII-NER] Using revision: ${sha}`);
+      }
+
+      await clearModelCache();
+      await chrome.storage.local.set({
+        [MODEL_VERSION_KEY]: latestVersion,
+        [MODEL_REVISION_KEY]: currentRevision ?? '',
+      });
+    } else {
+      currentRevision = (stored[MODEL_REVISION_KEY] as string) || undefined;
+    }
+  } catch (err) {
+    console.error('[PII-NER] checkModelUpdate error:', err);
   }
 }
 
@@ -82,16 +113,15 @@ async function loadModel(): Promise<NerPipeline> {
   if (loading) return loading;
 
   loading = (async () => {
-    console.debug('[PII-NER Offscreen] Loading model from HF Hub:', HF_MODEL_ID);
+    const opts: Record<string, unknown> = { device: 'wasm', dtype: 'q8' };
+    if (currentRevision) opts.revision = currentRevision;
+
+    console.debug('[PII-NER] Loading model:', HF_MODEL_ID, currentRevision ? `@${currentRevision.slice(0, 8)}` : '@main');
 
     try {
-      const pipe = await pipeline('token-classification', HF_MODEL_ID, {
-        device: 'wasm',
-        dtype: 'q8',
-      });
-
+      const pipe = await pipeline('token-classification', HF_MODEL_ID, opts);
       nerPipeline = pipe as unknown as NerPipeline;
-      console.debug('[PII-NER Offscreen] Model loaded successfully');
+      console.debug('[PII-NER] Model loaded successfully');
       return nerPipeline;
     } catch (err) {
       loadFailed = true;
@@ -104,8 +134,9 @@ async function loadModel(): Promise<NerPipeline> {
 }
 
 async function runInference(text: string): Promise<NerEntity[]> {
-  const pipe = await loadModel();
+  if (initGate) await initGate;
 
+  const pipe = await loadModel();
   const rawOutput = await pipe(text);
 
   const results: Array<Record<string, unknown>> = Array.isArray(rawOutput)
@@ -126,6 +157,35 @@ async function runInference(text: string): Promise<NerEntity[]> {
     }));
 }
 
+async function periodicUpdateCheck(): Promise<void> {
+  const stored = await chrome.storage.local.get(MODEL_VERSION_KEY);
+  const prevVersion = stored[MODEL_VERSION_KEY] as string | undefined;
+
+  try {
+    const res = await fetch(HF_VERSION_URL, { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const latestVersion = data.version as string;
+    if (!latestVersion || latestVersion === prevVersion) return;
+
+    console.debug(`[PII-NER] Periodic check: update found ${prevVersion} → ${latestVersion}`);
+
+    const sha = await fetchLatestRevision();
+    if (sha) currentRevision = sha;
+
+    await clearModelCache();
+    await chrome.storage.local.set({
+      [MODEL_VERSION_KEY]: latestVersion,
+      [MODEL_REVISION_KEY]: currentRevision ?? '',
+    });
+
+    await loadModel();
+    console.debug('[PII-NER] Hot-reload complete');
+  } catch (err) {
+    console.error('[PII-NER] Periodic update check error:', err);
+  }
+}
+
 chrome.runtime.onMessage.addListener(
   (message: NerRequest, _sender, sendResponse) => {
     if (message.target !== 'pii-ner-offscreen') return false;
@@ -136,7 +196,7 @@ chrome.runtime.onMessage.addListener(
           sendResponse({ requestId: message.requestId, entities, error: null });
         })
         .catch((err) => {
-          console.error('[PII-NER Offscreen] Inference error:', err);
+          console.error('[PII-NER] Inference error:', err);
           sendResponse({ requestId: message.requestId, entities: [], error: String(err) });
         });
       return true;
@@ -146,8 +206,12 @@ chrome.runtime.onMessage.addListener(
   }
 );
 
-checkModelUpdate()
+initGate = checkModelUpdate()
   .then(() => loadModel())
+  .then(() => { initGate = null; })
   .catch((err) => {
-    console.error('[PII-NER Offscreen] Model preload failed:', err);
+    console.error('[PII-NER] Model preload failed:', err);
+    initGate = null;
   });
+
+setInterval(() => { periodicUpdateCheck(); }, CHECK_INTERVAL_MS);
