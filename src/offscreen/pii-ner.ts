@@ -82,8 +82,7 @@ async function checkModelUpdate(): Promise<void> {
       return;
     }
 
-    const stored = await chrome.storage.local.get([MODEL_VERSION_KEY, MODEL_REVISION_KEY]);
-    const cachedVersion = stored[MODEL_VERSION_KEY] as string | undefined;
+    const cachedVersion = localStorage.getItem(MODEL_VERSION_KEY);
 
     if (!cachedVersion || cachedVersion !== latestVersion) {
       console.debug(`[PII-NER] Model update: ${cachedVersion ?? 'none'} → ${latestVersion}`);
@@ -95,12 +94,10 @@ async function checkModelUpdate(): Promise<void> {
       }
 
       await clearModelCache();
-      await chrome.storage.local.set({
-        [MODEL_VERSION_KEY]: latestVersion,
-        [MODEL_REVISION_KEY]: currentRevision ?? '',
-      });
+      localStorage.setItem(MODEL_VERSION_KEY, latestVersion);
+      localStorage.setItem(MODEL_REVISION_KEY, currentRevision ?? '');
     } else {
-      currentRevision = (stored[MODEL_REVISION_KEY] as string) || undefined;
+      currentRevision = localStorage.getItem(MODEL_REVISION_KEY) || undefined;
     }
   } catch (err) {
     console.error('[PII-NER] checkModelUpdate error:', err);
@@ -158,8 +155,7 @@ async function runInference(text: string): Promise<NerEntity[]> {
 }
 
 async function periodicUpdateCheck(): Promise<void> {
-  const stored = await chrome.storage.local.get(MODEL_VERSION_KEY);
-  const prevVersion = stored[MODEL_VERSION_KEY] as string | undefined;
+  const prevVersion = localStorage.getItem(MODEL_VERSION_KEY);
 
   try {
     const res = await fetch(HF_VERSION_URL, { cache: 'no-store' });
@@ -174,10 +170,8 @@ async function periodicUpdateCheck(): Promise<void> {
     if (sha) currentRevision = sha;
 
     await clearModelCache();
-    await chrome.storage.local.set({
-      [MODEL_VERSION_KEY]: latestVersion,
-      [MODEL_REVISION_KEY]: currentRevision ?? '',
-    });
+    localStorage.setItem(MODEL_VERSION_KEY, latestVersion);
+    localStorage.setItem(MODEL_REVISION_KEY, currentRevision ?? '');
 
     await loadModel();
     console.debug('[PII-NER] Hot-reload complete');
