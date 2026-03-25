@@ -27,6 +27,7 @@ export default function App() {
   const [siteName, setSiteName] = useState('');
   const [badgeVisible, setBadgeVisible] = useState(true);
   const [theme, setTheme] = useState<Theme>('light');
+  const [modelVersion, setModelVersion] = useState('');
 
   const toggleTheme = useCallback(() => {
     const next: Theme = theme === 'light' ? 'dark' : 'light';
@@ -87,6 +88,13 @@ export default function App() {
     chrome.runtime.sendMessage({ type: 'GET_PROXY_STATS' }).then((res) => {
       if (res?.totalProtected != null) setPiiProtected(res.totalProtected);
     }).catch(() => {});
+
+    fetch(`https://huggingface.co/YATAV-ENT/aegis-personal-pii-ner/resolve/main/version.json`)
+      .then(r => r.json())
+      .then((data: { version?: string }) => {
+        if (data?.version) setModelVersion(`Model ${data.version}`);
+      })
+      .catch(() => {});
   }, []);
 
   const now = Date.now();
@@ -231,7 +239,15 @@ export default function App() {
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-1 pb-0.5">
-          <span className="text-[9px] text-aeginel-muted/50">v{chrome.runtime.getManifest().version}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] text-aeginel-muted/50">v{chrome.runtime.getManifest().version}</span>
+            {modelVersion && (
+              <span className="text-[9px] text-aeginel-muted/40">·</span>
+            )}
+            {modelVersion && (
+              <span className="text-[9px] text-aeginel-muted/40">{modelVersion}</span>
+            )}
+          </div>
           <span className="text-[9px] text-aeginel-muted/40">{footerText}</span>
         </div>
       </div>

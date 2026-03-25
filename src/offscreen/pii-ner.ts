@@ -6,7 +6,8 @@
 import { env, pipeline } from '@huggingface/transformers';
 
 const HF_MODEL_ID = 'YATAV-ENT/aegis-personal-pii-ner';
-const MODEL_SHA_KEY = 'pii_ner_model_sha';
+const HF_VERSION_URL = `https://huggingface.co/${HF_MODEL_ID}/resolve/main/version.json`;
+const MODEL_VERSION_KEY = 'pii_ner_model_version';
 
 env.allowRemoteModels = true;
 env.allowLocalModels = false;
@@ -42,20 +43,18 @@ let loadFailed = false;
 
 async function checkModelUpdate(): Promise<void> {
   try {
-    const res = await fetch(`https://huggingface.co/api/models/${HF_MODEL_ID}`, {
-      cache: 'no-store',
-    });
+    const res = await fetch(HF_VERSION_URL, { cache: 'no-store' });
     if (!res.ok) return;
 
     const data = await res.json();
-    const latestSha = data.sha as string;
-    if (!latestSha) return;
+    const latestVersion = data.version as string;
+    if (!latestVersion) return;
 
-    const stored = await chrome.storage.local.get(MODEL_SHA_KEY);
-    const cachedSha = stored[MODEL_SHA_KEY] as string | undefined;
+    const stored = await chrome.storage.local.get(MODEL_VERSION_KEY);
+    const cachedVersion = stored[MODEL_VERSION_KEY] as string | undefined;
 
-    if (cachedSha && cachedSha !== latestSha) {
-      console.debug('[PII-NER] Model updated on HF, clearing cache...');
+    if (cachedVersion && cachedVersion !== latestVersion) {
+      console.debug(`[PII-NER] Model updated: ${cachedVersion} → ${latestVersion}, clearing cache...`);
       const keys = await caches.keys();
       for (const key of keys) {
         if (key.includes('transformers') || key.includes('onnx')) {
@@ -67,7 +66,7 @@ async function checkModelUpdate(): Promise<void> {
       loadFailed = false;
     }
 
-    await chrome.storage.local.set({ [MODEL_SHA_KEY]: latestSha });
+    await chrome.storage.local.set({ [MODEL_VERSION_KEY]: latestVersion });
   } catch {
     // Offline or API unavailable — use cached model
   }
