@@ -270,18 +270,23 @@ export class AegisClient {
       const res = await this.fetchPost('/v1/judge', body as unknown as Record<string, unknown>, signal);
       const data = res as JudgeResponse;
 
+      // Filter out circuit-breaker anomaly risks (e.g. "Anomalous content length")
+      // that produce noise for personal use where input lengths vary widely.
+      const risks = data.risks.filter(r =>
+        !r.description?.includes('Anomalous content length'),
+      );
+
       const baseScore = DECISION_SCORES[data.decision] ?? 50;
-      // For non-Approve decisions, boost score by risk severity
-      const maxRiskScore = Math.max(0, ...data.risks.map(r => (r.score ?? 0) * 100));
-      const score = data.decision === 'Approve'
+      const maxRiskScore = Math.max(0, ...risks.map(r => (r.score ?? 0) * 100));
+      const score = data.decision === 'Approve' || risks.length === 0
         ? 0
         : Math.min(Math.max(baseScore, Math.round(maxRiskScore)), 100);
 
-      const categories = data.risks.flatMap(r =>
+      const categories = risks.flatMap(r =>
         [r.label, ...(r.categories ?? [])],
       ).filter(Boolean);
 
-      const explanation = data.risks
+      const explanation = risks
         .map(r => r.description ?? `${r.label} (${r.severity})`)
         .join('; ');
 
