@@ -1,10 +1,12 @@
 // ── PII NER Offscreen Document ─────────────────────────────────────────────────
 // Runs PII-NER ONNX model inference in an offscreen document context.
 // Model is fetched from HuggingFace Hub and cached in the browser.
+// Auto-updates when a new model version is pushed to HF.
 
 import { env, pipeline } from '@huggingface/transformers';
 
 const HF_MODEL_ID = 'YATAV-ENT/aegis-personal-pii-ner';
+const MODEL_SHA_KEY = 'pii_ner_model_sha';
 
 env.allowRemoteModels = true;
 env.allowLocalModels = false;
@@ -37,6 +39,39 @@ type NerPipeline = (text: string, options?: Record<string, unknown>) => Promise<
 let nerPipeline: NerPipeline | null = null;
 let loading: Promise<NerPipeline> | null = null;
 let loadFailed = false;
+
+async function checkModelUpdate(): Promise<void> {
+  try {
+    const res = await fetch(`https://huggingface.co/api/models/${HF_MODEL_ID}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return;
+
+    const data = await res.json();
+    const latestSha = data.sha as string;
+    if (!latestSha) return;
+
+    const stored = await chrome.storage.local.get(MODEL_SHA_KEY);
+    const cachedSha = stored[MODEL_SHA_KEY] as string | undefined;
+
+    if (cachedSha && cachedSha !== latestSha) {
+      console.debug('[PII-NER] Model updated on HF, clearing cache...');
+      const keys = await caches.keys();
+      for (const key of keys) {
+        if (key.includes('transformers') || key.includes('onnx')) {
+          await caches.delete(key);
+        }
+      }
+      nerPipeline = null;
+      loading = null;
+      loadFailed = false;
+    }
+
+    await chrome.storage.local.set({ [MODEL_SHA_KEY]: latestSha });
+  } catch {
+    // Offline or API unavailable — use cached model
+  }
+}
 
 async function loadModel(): Promise<NerPipeline> {
   if (nerPipeline) return nerPipeline;
@@ -108,6 +143,8 @@ chrome.runtime.onMessage.addListener(
   }
 );
 
-loadModel().catch((err) => {
-  console.error('[PII-NER Offscreen] Model preload failed:', err);
-});
+checkModelUpdate()
+  .then(() => loadModel())
+  .catch((err) => {
+    console.error('[PII-NER Offscreen] Model preload failed:', err);
+  });
