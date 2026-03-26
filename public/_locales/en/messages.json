@@ -4,7 +4,7 @@
     "description": "Extension display name shown in Chrome Web Store and toolbar"
   },
   "extDescription": {
-    "message": "Protect your privacy on AI chatbots. Auto-masks PII and detects prompt attacks on ChatGPT, Claude, Gemini & 25+ AI services.",
+    "message": "Protect your privacy on AI chatbots. Automatically masks personal information (PII) before it reaches AI services. 100% local processing.",
     "description": "Extension description for Chrome Web Store listing (max 132 chars for short desc)"
   }
 }
