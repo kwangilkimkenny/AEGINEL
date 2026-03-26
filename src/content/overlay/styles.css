@@ -350,14 +350,37 @@
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
+/* ── Shield Badge (PII count) ────────────────────────────────────── */
+
+.aeginel-shield-badge {
+  position: absolute;
+  top: -7px;
+  right: -6px;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  background: #58a6ff;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  line-height: 1;
+  box-shadow: 0 0 0 2px #161b22;
+  font-family: -apple-system, system-ui, sans-serif;
+  pointer-events: none;
+}
+
 /* ── PII Popover (shield click) ──────────────────────────────────── */
 
 .aeginel-pii-popover {
   position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
-  min-width: 220px;
-  max-width: 320px;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 300px;
+  max-width: 520px;
   background: #1c2128;
   border: 1px solid #30363d;
   border-radius: 10px;
@@ -365,12 +388,12 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #c9d1d9;
   z-index: 2147483647;
-  overflow: hidden;
+  overflow: visible;
   animation: aeginel-popover-in 0.15s ease-out;
 }
 
 @keyframes aeginel-popover-in {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
@@ -395,50 +418,294 @@
   margin-left: auto;
 }
 
-.aeginel-pii-popover-list {
+/* ── Popover Info Button & Box ──────────────────────────────────── */
+
+.aeginel-pii-info-btn {
+  background: none;
+  border: 1px solid #30363d;
+  color: #8b949e;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  font-style: italic;
+  font-family: Georgia, serif;
+}
+
+.aeginel-pii-info-btn:hover {
+  color: #58a6ff;
+  border-color: #58a6ff;
+}
+
+.aeginel-pii-info-box {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #8b949e;
+  line-height: 1.6;
+  border-bottom: 1px solid #21262d;
+  background: rgba(88, 166, 255, 0.04);
+  animation: aeginel-popover-in 0.12s ease-out;
+}
+
+/* ── Popover Text Area ──────────────────────────────────────────── */
+
+.aeginel-pii-text-area {
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #c9d1d9;
   max-height: 200px;
   overflow-y: auto;
-  padding: 4px 0;
+  word-break: break-word;
+  white-space: pre-wrap;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+  scrollbar-width: thin;
+  scrollbar-color: #30363d transparent;
 }
 
-.aeginel-pii-popover-item {
+.aeginel-pii-text-area::-webkit-scrollbar { width: 4px; }
+.aeginel-pii-text-area::-webkit-scrollbar-track { background: transparent; }
+.aeginel-pii-text-area::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+
+.aeginel-pii-seg {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.aeginel-pii-seg::selection {
+  background: rgba(88, 166, 255, 0.3);
+}
+
+.aeginel-pii-hl-mark {
+  background: rgba(210, 153, 34, 0.3);
+  color: #f0c674;
+  padding: 1px 3px;
+  border-radius: 3px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative;
+  transition: background 0.15s;
+}
+
+.aeginel-pii-hl-mark:hover {
+  background: rgba(210, 153, 34, 0.5);
+}
+
+.aeginel-pii-hl-mark--editing {
+  padding: 0;
+  background: rgba(210, 153, 34, 0.45);
+}
+
+.aeginel-pii-inline-input {
+  all: unset;
+  display: inline;
+  background: transparent;
+  color: #f0c674;
+  font: inherit;
+  font-weight: 500;
+  border: none;
+  padding: 0;
+  margin: 0;
+  caret-color: #f0c674;
+  width: auto;
+  box-sizing: border-box;
+}
+
+/* ── PII Tooltip (hover on mark) ────────────────────────────────── */
+
+.aeginel-pii-tooltip {
+  position: absolute;
+  z-index: 10;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  padding: 5px 6px;
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 5px 12px;
-  font-size: 11px;
-  line-height: 1.5;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  animation: aeginel-popover-in 0.1s ease-out;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.aeginel-pii-popover-item + .aeginel-pii-popover-item {
+.aeginel-pii-tooltip-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(210, 153, 34, 0.1);
+  color: #d29922;
+  border: 1px solid rgba(210, 153, 34, 0.2);
+  flex-shrink: 0;
+}
+
+.aeginel-pii-tooltip-arrow {
+  color: #30363d;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.aeginel-pii-tooltip-pseudo {
+  color: #58a6ff;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.aeginel-pii-tooltip-cancel {
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  background: rgba(248, 81, 73, 0.08);
+  color: #f85149;
+  font-size: 9px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s;
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.aeginel-pii-tooltip-cancel:hover {
+  background: rgba(248, 81, 73, 0.2);
+  border-color: rgba(248, 81, 73, 0.5);
+}
+
+/* ── Popover Drag Hint ──────────────────────────────────────────── */
+
+.aeginel-pii-drag-hint {
+  padding: 6px 12px;
+  font-size: 10px;
+  color: #6e7681;
+  text-align: center;
   border-top: 1px solid #21262d;
 }
 
-.aeginel-pii-popover-type {
-  flex-shrink: 0;
-  font-size: 10px;
-  font-weight: 600;
-  color: #d29922;
-  background: rgba(210, 153, 34, 0.1);
-  padding: 1px 6px;
-  border-radius: 4px;
-  white-space: nowrap;
+/* ── Manual Anonymization Dialog ────────────────────────────────── */
+
+.aeginel-pii-manual-dialog {
+  border-top: 1px solid #21262d;
+  padding: 10px 12px;
+  animation: aeginel-popover-in 0.12s ease-out;
 }
 
-.aeginel-pii-popover-context {
+.aeginel-pii-manual-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #c9d1d9;
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.aeginel-pii-manual-selected {
+  color: #f0c674;
+  background: rgba(210, 153, 34, 0.15);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.aeginel-pii-manual-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.aeginel-pii-manual-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   color: #8b949e;
-  word-break: break-all;
-  overflow: hidden;
+  cursor: pointer;
 }
 
-.aeginel-pii-popover-context mark {
-  background: rgba(210, 153, 34, 0.25);
-  color: #f0c674;
-  padding: 0 2px;
-  border-radius: 2px;
-  font-weight: 500;
+.aeginel-pii-manual-option input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid #30363d;
+  border-radius: 50%;
+  background: #0d1117;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  margin: 0;
 }
+
+.aeginel-pii-manual-option input[type="radio"]:checked {
+  border-color: #58a6ff;
+}
+
+.aeginel-pii-manual-option input[type="radio"]:checked::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #58a6ff;
+}
+
+.aeginel-pii-manual-auto-value {
+  color: #58a6ff;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.aeginel-pii-manual-input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: 5px;
+  border: 1px solid #30363d;
+  background: #0d1117;
+  color: #c9d1d9;
+  font-size: 11px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.aeginel-pii-manual-input:focus {
+  border-color: #58a6ff;
+}
+
+.aeginel-pii-manual-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+/* Legacy popover classes kept for compatibility */
+.aeginel-pii-popover-list { display: none; }
+.aeginel-pii-popover-item { display: none; }
+.aeginel-pii-popover-type { display: none; }
+.aeginel-pii-popover-context { display: none; }
+.aeginel-pii-popover-context mark { display: none; }
 
 /* ── Health Status Banners ────────────────────────────────────────── */
 

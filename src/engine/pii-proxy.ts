@@ -2,7 +2,7 @@
 // Pseudonymizes PII before sending to LLM, restores originals in responses.
 
 import { scanPii } from './pii-scanner';
-import type { AeginelConfig, PiiMapping, PiiMatch, PiiType, ProxyResult } from './types';
+import type { AeginelConfig, PiiMapping, PiiMatch, PiiModifications, PiiType, ProxyResult } from './types';
 
 // ── Fake Value Generators ───────────────────────────────────────────────
 
@@ -43,7 +43,7 @@ function generateLuhnNumber(prefix: string, totalLen: number): string {
   return body + String(checkDigit);
 }
 
-function generateFakeValue(type: PiiType, original: string): string {
+export function generateFakeValue(type: PiiType, original: string): string {
   switch (type) {
     case 'korean_rrn': {
       // Format: YYMMDD-GNNNNNN — preserve format, randomize
@@ -261,17 +261,33 @@ export class PiiProxyEngine {
   /**
    * Detect PII in text and replace with format-preserving pseudonyms.
    */
-  async pseudonymize(text: string, config: AeginelConfig, sessionId: string): Promise<ProxyResult> {
-    const piiMatches = await scanPii(text, config);
+  async pseudonymize(text: string, config: AeginelConfig, sessionId: string, modifications?: PiiModifications): Promise<ProxyResult> {
+    let piiMatches = await scanPii(text, config);
 
-    if (piiMatches.length === 0) {
+    // Apply user modifications: filter out excluded (cancelled) detections
+    if (modifications?.excluded?.length) {
+      piiMatches = piiMatches.filter(m =>
+        !modifications.excluded.some(ex =>
+          m.startIndex >= ex.start && m.endIndex <= ex.end
+        )
+      );
+    }
+
+    // Add manual anonymization items
+    const manualMatches: PiiMatch[] = (modifications?.manual || []).map(m => ({
+      type: 'manual' as PiiType,
+      value: text.slice(m.start, m.end),
+      startIndex: m.start,
+      endIndex: m.end,
+    }));
+
+    const allMatches = [...piiMatches, ...manualMatches];
+
+    if (allMatches.length === 0) {
       return { originalText: text, proxiedText: text, mappings: [], piiCount: 0 };
     }
 
-    // Remove overlapping spans BEFORE replacement to prevent index corruption
-    const deduped = removeOverlappingMatches(piiMatches);
-
-    // Sort by position descending so we can replace from the end
+    const deduped = removeOverlappingMatches(allMatches);
     const sorted = [...deduped].sort((a, b) => b.startIndex - a.startIndex);
 
     const mappings: PiiMapping[] = [];
@@ -279,11 +295,20 @@ export class PiiProxyEngine {
 
     for (const pii of sorted) {
       const original = text.slice(pii.startIndex, pii.endIndex);
-      // Check if we already have a mapping for this exact original value in this session
-      const existing = this.sessionMappings.get(sessionId)
-        ?.find((m) => m.original === original && m.type === pii.type);
 
-      const pseudonym = existing?.pseudonym ?? generateFakeValue(pii.type, original);
+      // For manual items with user-provided-, use that directly
+      const manualItem = modifications?.manual?.find(
+        m => m.start === pii.startIndex && m.end === pii.endIndex
+      );
+
+      let pseudonym: string;
+      if (manualItem) {
+        pseudonym = manualItem.pseudonym;
+      } else {
+        const existing = this.sessionMappings.get(sessionId)
+          ?.find((m) => m.original === original && m.type === pii.type);
+        pseudonym = existing?.pseudonym ?? generateFakeValue(pii.type, original);
+      }
 
       proxied = proxied.slice(0, pii.startIndex) + pseudonym + proxied.slice(pii.endIndex);
 

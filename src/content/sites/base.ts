@@ -27,6 +27,15 @@ export interface SiteAdapter {
   getUserMessageSelector?(): string;
 }
 
+/**
+ * innerText on contenteditable with <p> elements produces extra \n at
+ * block boundaries. Collapse runs of 3+ newlines down to \n\n so a
+ * single visual blank line stays a single blank line in our text.
+ */
+export function normalizeInnerText(raw: string): string {
+  return raw.trim().replace(/\n{3,}/g, '\n\n');
+}
+
 export function getInputText(el: Element): string {
   if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
     return el.value;

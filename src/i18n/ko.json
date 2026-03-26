@@ -159,6 +159,23 @@
     "modeConfirm": "확인 후 적용",
     "notification": "알림 배너 표시"
   },
+  "popover": {
+    "title": "개인정보 보호",
+    "description": "AI가 감지한 개인정보가 노란색으로 표시됩니다",
+    "descriptionFull": "AI가 입력 텍스트에서 개인정보를 자동으로 감지하여 노란색으로 표시합니다. 전송 시 해당 정보는 가명 값으로 대체되어 보호됩니다. 잘못 감지된 항목은 호버 후 취소할 수 있으며, 감지되지 않은 부분은 드래그하여 직접 가명화할 수 있습니다.",
+    "type": "유형",
+    "anonymizedTo": "가명화",
+    "cancelProtection": "보호 취소",
+    "restoreProtection": "보호 복원",
+    "dragHint": "드래그하여 추가 마스킹",
+    "manualTitle": "선택 영역 가명화",
+    "autoGenerate": "자동 생성",
+    "customInput": "직접 입력",
+    "apply": "적용",
+    "cancel": "취소",
+    "cancelManual": "가명화 취소",
+    "manualType": "수동"
+  },
   "piiTypes": {
     "korean_rrn": "주민등록번호",
     "credit_card": "카드번호",

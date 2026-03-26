@@ -55,7 +55,8 @@ export type PiiType =
   | 'accountnum'       // 계좌번호
   | 'driverlicensenum' // 운전면허번호
   | 'company'          // 회사명
-  | 'time';            // 시간
+  | 'time'             // 시간
+  | 'manual';          // 수동 추가
 
 export interface PiiMapping {
   original: string;
@@ -69,6 +70,11 @@ export interface ProxyResult {
   proxiedText: string;
   mappings: PiiMapping[];
   piiCount: number;
+}
+
+export interface PiiModifications {
+  excluded: Array<{ start: number; end: number }>;
+  manual: Array<{ start: number; end: number; pseudonym: string }>;
 }
 
 export interface PiiProxyConfig {
@@ -200,6 +206,7 @@ export const DEFAULT_CONFIG: AeginelConfig = {
       driverlicensenum: true,
       company: false,
       time: false,
+      manual: false,
     },
   },
   piiProxy: {

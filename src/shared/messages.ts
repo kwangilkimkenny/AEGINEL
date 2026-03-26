@@ -1,4 +1,4 @@
-import type { ScanResult, AeginelConfig, HealthEntry } from '../engine/types';
+import type { ScanResult, AeginelConfig, HealthEntry, PiiModifications } from '../engine/types';
 
 // ── Message Types ────────────────────────────────────────────────────────
 
@@ -88,7 +88,7 @@ export interface ClearHistoryMessage {
 
 export interface ProxyInputMessage {
   type: 'PROXY_INPUT';
-  payload: { text: string; site: string; sessionId: string };
+  payload: { text: string; site: string; sessionId: string; modifications?: PiiModifications };
 }
 
 export interface RestoreResponseMessage {

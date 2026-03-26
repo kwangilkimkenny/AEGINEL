@@ -159,6 +159,23 @@
     "modeConfirm": "Confirm before apply",
     "notification": "Show notification"
   },
+  "popover": {
+    "title": "Privacy Protection",
+    "description": "AI-detected personal data is highlighted in yellow",
+    "descriptionFull": "AI automatically detects personal data in your input and highlights it in yellow. When sent, this data is replaced with fake values for protection. Hover over highlighted items to cancel false detections, or drag to select text for manual masking.",
+    "type": "Type",
+    "anonymizedTo": "Masked as",
+    "cancelProtection": "Cancel Protection",
+    "restoreProtection": "Restore Protection",
+    "dragHint": "Drag to select text for masking",
+    "manualTitle": "Mask Selection",
+    "autoGenerate": "Auto-generate",
+    "customInput": "Custom input",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "cancelManual": "Remove mask",
+    "manualType": "Manual"
+  },
   "piiTypes": {
     "korean_rrn": "Resident Reg. Number",
     "credit_card": "Credit Card",

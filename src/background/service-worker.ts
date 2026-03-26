@@ -274,8 +274,8 @@ async function handleMessage(message: ExtensionMessage, sender?: chrome.runtime.
 
       case 'PROXY_INPUT': {
         try {
-          const { text, site, sessionId } = message.payload;
-          const result = await proxyEngine.pseudonymize(text, currentConfig, sessionId);
+          const { text, site, sessionId, modifications } = message.payload;
+          const result = await proxyEngine.pseudonymize(text, currentConfig, sessionId, modifications);
           totalPiiProtected += result.piiCount;
           if (result.piiCount > 0) {
             await updateWeeklyStats({ pii: result.piiCount });

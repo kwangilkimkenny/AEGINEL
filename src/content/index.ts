@@ -7,7 +7,7 @@ import { claudeAdapter } from './sites/claude';
 import { geminiAdapter } from './sites/gemini';
 import { createGenericAdapter } from './sites/generic';
 import { siteRegistry } from './sites/registry';
-import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner, showShieldIndicator, hideShieldIndicator, isShieldVisible, showDisconnectedBanner, updateShieldTooltip, updateShieldScanResult } from './overlay/warning-banner';
+import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner, showShieldIndicator, hideShieldIndicator, isShieldVisible, showDisconnectedBanner, updateShieldTooltip, updateShieldScanResult, getPiiModifications, resetPiiModifications } from './overlay/warning-banner';
 import type { ShieldStatus } from './overlay/warning-banner';
 import { showFloatingBadge, updateFloatingPanel, isFloatingBadgeShown } from './overlay/floating-panel';
 import type { ScanResult, AeginelConfig, ProxyResult, PiiMapping } from '../engine/types';
@@ -258,15 +258,17 @@ function initContentScript(adapter: SiteAdapter) {
   }
 
   async function proxyAndSubmit(inputEl: Element, originalText: string): Promise<boolean> {
+    const modifications = getPiiModifications();
     const response = await sendMessage<ProxyResult>({
       type: 'PROXY_INPUT',
-      payload: { text: originalText, site: adapter.id, sessionId },
+      payload: { text: originalText, site: adapter.id, sessionId, modifications },
     });
 
     if (!response || response.piiCount === 0) {
       return false;
     }
 
+    resetPiiModifications();
     const proxyResult: ProxyResult = response;
     lastProxyResult = proxyResult;
     const anchor = adapter.getWarningAnchor();

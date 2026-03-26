@@ -1,6 +1,6 @@
 // ── Aegis Personal Warning Banner (Shadow DOM) ────────────────────────────────────
 
-import type { ScanResult, ProxyResult, PiiMatch } from '../../engine/types';
+import type { ScanResult, ProxyResult, PiiMatch, PiiModifications } from '../../engine/types';
 import { t } from '../../i18n';
 import styles from './styles.css?inline';
 
@@ -464,7 +464,165 @@ let _shieldScanResult: ScanResult | null = null;
 let _piiPopoverOpen = false;
 
 export function updateShieldScanResult(result: ScanResult): void {
+  if (_shieldScanResult?.input !== result.input) {
+    _cancelledPiiIndices.clear();
+    _manualPiiItems = [];
+    _previewPseudonyms.clear();
+  }
   _shieldScanResult = result;
+}
+
+// ── PII Popover user modifications ──────────────────────────────────────
+
+let _cancelledPiiIndices = new Set<number>();
+
+interface ManualPiiItem {
+  startIndex: number;
+  endIndex: number;
+  originalText: string;
+  pseudonym: string;
+}
+
+let _manualPiiItems: ManualPiiItem[] = [];
+let _previewPseudonyms = new Map<number, string>();
+let _infoExpanded = false;
+let _tooltipTimer: ReturnType<typeof setTimeout> | null = null;
+let _editingManualIndex: number | null = null;
+let _editBlurLocked = false;
+
+let _dragSegInfo: {
+  element: HTMLElement;
+  segStart: number;
+  segEnd: number;
+  mouseStartX: number;
+  mouseStartY: number;
+} | null = null;
+
+interface ProtectedRange {
+  start: number;
+  end: number;
+  type: string;
+  piiIndex?: number;
+  manualIndex?: number;
+  isManual: boolean;
+  pseudonym: string;
+}
+
+interface TextSegment {
+  start: number;
+  end: number;
+  text: string;
+  isProtected: boolean;
+  protectedRange?: ProtectedRange;
+}
+
+function generatePreviewPseudonym(type: string, original: string): string {
+  const rd = (n: number) => Array.from({ length: n }, () => Math.floor(Math.random() * 10)).join('');
+  const rh = (n: number) => Array.from({ length: n }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+  switch (type) {
+    case 'email': return `user_${rh(4)}@example.com`;
+    case 'phone_kr': return `010-${rd(4)}-${rd(4)}`;
+    case 'phone_intl': return `+1-${rd(4)}-${rd(4)}`;
+    case 'korean_rrn': return `${rd(6)}-${rd(7)}`;
+    case 'credit_card': return `${rd(4)}-${rd(4)}-${rd(4)}-${rd(4)}`;
+    case 'ssn': return `${rd(3)}-${rd(2)}-${rd(4)}`;
+    case 'givenname': case 'surname': return `User_${rh(3)}`;
+    case 'username': return `user_${rh(4)}`;
+    case 'password': return `P@ss${rh(4)}!`;
+    case 'ip_address': return `10.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}`;
+    case 'dateofbirth': return `${1970 + Math.floor(Math.random() * 40)}-${String(1 + Math.floor(Math.random() * 12)).padStart(2, '0')}-${String(1 + Math.floor(Math.random() * 28)).padStart(2, '0')}`;
+    case 'passport': return `M${rd(8)}`;
+    case 'accountnum': return rd(original.replace(/\D/g, '').length || 10);
+    default: return original.replace(/\d/g, () => String(Math.floor(Math.random() * 10)));
+  }
+}
+
+function getOrCreatePreviewPseudonym(index: number, match: PiiMatch): string {
+  if (_previewPseudonyms.has(index)) return _previewPseudonyms.get(index)!;
+  const preview = generatePreviewPseudonym(match.type, match.value);
+  _previewPseudonyms.set(index, preview);
+  return preview;
+}
+
+function generateManualPseudonym(text: string): string {
+  const hasDigits = /\d/.test(text);
+  const hasLetters = /[a-zA-Z\u3131-\u318E\uAC00-\uD7A3]/.test(text);
+  if (hasDigits && !hasLetters) {
+    return text.replace(/\d/g, () => String(Math.floor(Math.random() * 10)));
+  }
+  if (hasLetters && !hasDigits) {
+    const hex = Array.from({ length: 4 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    return `[MASKED_${hex}]`;
+  }
+  return text.replace(/\d/g, () => String(Math.floor(Math.random() * 10)));
+}
+
+function getActiveProtectedCount(): number {
+  let count = _shieldScanResult
+    ? _shieldScanResult.piiDetected.length - _cancelledPiiIndices.size
+    : 0;
+  count += _manualPiiItems.length;
+  return Math.max(0, count);
+}
+
+function getProtectedRanges(): ProtectedRange[] {
+  const ranges: ProtectedRange[] = [];
+  if (_shieldScanResult) {
+    for (let i = 0; i < _shieldScanResult.piiDetected.length; i++) {
+      if (_cancelledPiiIndices.has(i)) continue;
+      const m = _shieldScanResult.piiDetected[i];
+      ranges.push({
+        start: m.startIndex, end: m.endIndex, type: m.type,
+        piiIndex: i, isManual: false,
+        pseudonym: getOrCreatePreviewPseudonym(i, m),
+      });
+    }
+  }
+  for (let i = 0; i < _manualPiiItems.length; i++) {
+    const m = _manualPiiItems[i];
+    ranges.push({
+      start: m.startIndex, end: m.endIndex, type: 'manual',
+      manualIndex: i, isManual: true, pseudonym: m.pseudonym,
+    });
+  }
+  ranges.sort((a, b) => a.start - b.start);
+  return ranges;
+}
+
+function buildTextSegments(input: string, ranges: ProtectedRange[]): TextSegment[] {
+  const segments: TextSegment[] = [];
+  let pos = 0;
+  for (const range of ranges) {
+    if (range.start > pos) {
+      segments.push({ start: pos, end: range.start, text: input.slice(pos, range.start), isProtected: false });
+    }
+    segments.push({ start: range.start, end: range.end, text: input.slice(range.start, range.end), isProtected: true, protectedRange: range });
+    pos = range.end;
+  }
+  if (pos < input.length) {
+    segments.push({ start: pos, end: input.length, text: input.slice(pos), isProtected: false });
+  }
+  return segments;
+}
+
+function getCharIndexFromPoint(el: HTMLElement, x: number, y: number): number {
+  const textNode = el.firstChild;
+  if (!textNode || textNode.nodeType !== Node.TEXT_NODE) return 0;
+  const text = (textNode as Text).textContent || '';
+  if (text.length === 0) return 0;
+  const range = document.createRange();
+  let closestIdx = 0;
+  let closestDist = Infinity;
+  for (let i = 0; i <= text.length; i++) {
+    try {
+      range.setStart(textNode, i);
+      range.setEnd(textNode, i);
+      const rect = range.getBoundingClientRect();
+      const dist = Math.hypot(rect.left - x, rect.top + rect.height / 2 - y);
+      if (dist < closestDist) { closestDist = dist; closestIdx = i; }
+    } catch { break; }
+  }
+  return closestIdx;
 }
 
 export function updateShieldTooltip(tooltip: string): void {
@@ -473,43 +631,311 @@ export function updateShieldTooltip(tooltip: string): void {
   if (el) el.title = tooltip;
 }
 
-function buildPiiPopoverHtml(matches: PiiMatch[], input?: string): string {
-  const grouped = new Map<string, PiiMatch[]>();
-  for (const m of matches) {
-    const arr = grouped.get(m.type) || [];
-    arr.push(m);
-    grouped.set(m.type, arr);
-  }
+function buildPiiPopoverElement(matches: PiiMatch[], input: string): HTMLElement {
+  const popover = document.createElement('div');
+  popover.className = 'aeginel-pii-popover';
 
-  let html = '<div class="aeginel-pii-popover">';
-  html += `<div class="aeginel-pii-popover-header">${SHIELD_ICONS.pii} ${t('floating.piiDetected') || 'PII detected'} <span class="aeginel-pii-popover-count">${matches.length}</span></div>`;
-  html += '<div class="aeginel-pii-popover-list">';
+  const activeCount = getActiveProtectedCount();
 
-  for (const [type, items] of grouped) {
-    const label = piiTypeLabel(type);
-    for (const item of items) {
-      let contextSnippet = item.value;
-      if (input && item.startIndex >= 0 && item.endIndex > item.startIndex) {
-        const PRE = 12;
-        const POST = 12;
-        const start = Math.max(0, item.startIndex - PRE);
-        const end = Math.min(input.length, item.endIndex + POST);
-        const before = (start > 0 ? '…' : '') + escapeHtml(input.slice(start, item.startIndex));
-        const match = escapeHtml(input.slice(item.startIndex, item.endIndex));
-        const after = escapeHtml(input.slice(item.endIndex, end)) + (end < input.length ? '…' : '');
-        contextSnippet = `${before}<mark>${match}</mark>${after}`;
+  // Header
+  const header = document.createElement('div');
+  header.className = 'aeginel-pii-popover-header';
+  const headerText = document.createElement('span');
+  headerText.textContent = `${SHIELD_ICONS.pii} ${t('popover.title') || 'Privacy Protection'}`;
+  header.appendChild(headerText);
+
+  const countBadge = document.createElement('span');
+  countBadge.className = 'aeginel-pii-popover-count';
+  countBadge.textContent = String(activeCount);
+  header.appendChild(countBadge);
+
+  const infoBtn = document.createElement('button');
+  infoBtn.className = 'aeginel-pii-info-btn';
+  infoBtn.textContent = 'i';
+  infoBtn.title = t('popover.description');
+  infoBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    _infoExpanded = !_infoExpanded;
+    const box = popover.querySelector('[data-info-box]') as HTMLElement;
+    if (box) box.style.display = _infoExpanded ? 'block' : 'none';
+  });
+  header.appendChild(infoBtn);
+  popover.appendChild(header);
+
+  // Info box (initially hidden)
+  const infoBox = document.createElement('div');
+  infoBox.className = 'aeginel-pii-info-box';
+  infoBox.setAttribute('data-info-box', 'true');
+  infoBox.textContent = t('popover.descriptionFull');
+  infoBox.style.display = _infoExpanded ? 'block' : 'none';
+  popover.appendChild(infoBox);
+
+  // Text area with highlighted PII
+  const textArea = document.createElement('div');
+  textArea.className = 'aeginel-pii-text-area';
+
+  const ranges = getProtectedRanges();
+  const segments = buildTextSegments(input, ranges);
+
+  for (const seg of segments) {
+    if (seg.isProtected && seg.protectedRange) {
+      const mark = document.createElement('mark');
+      mark.className = 'aeginel-pii-hl-mark';
+      mark.dataset.rangeStart = String(seg.start);
+      mark.dataset.rangeEnd = String(seg.end);
+
+      const range = seg.protectedRange;
+      const isEditing = range.isManual && range.manualIndex === _editingManualIndex;
+
+      if (isEditing) {
+        mark.className = 'aeginel-pii-hl-mark aeginel-pii-hl-mark--editing';
+        const manualIdx = range.manualIndex!;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'aeginel-pii-inline-input';
+        input.value = range.pseudonym;
+        input.spellcheck = false;
+        input.autocomplete = 'off';
+        input.style.width = `${Math.max(range.pseudonym.length, 1)}ch`;
+
+        input.addEventListener('input', (ev) => {
+          ev.stopPropagation();
+          input.style.width = `${Math.max(input.value.length, 1)}ch`;
+        });
+
+        const stopAll = (ev: Event) => { ev.stopPropagation(); ev.stopImmediatePropagation(); };
+        input.addEventListener('mousedown', stopAll);
+        input.addEventListener('mouseup', stopAll);
+        input.addEventListener('click', stopAll);
+        input.addEventListener('pointerdown', stopAll);
+        input.addEventListener('pointerup', stopAll);
+        input.addEventListener('focus', stopAll);
+
+        input.addEventListener('keydown', (e) => {
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            _editBlurLocked = false;
+            const val = input.value.trim();
+            if (val && _manualPiiItems[manualIdx]) {
+              _manualPiiItems[manualIdx].pseudonym = val;
+            }
+            _editingManualIndex = null;
+            rebuildPopoverContent();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            _editBlurLocked = false;
+            _editingManualIndex = null;
+            rebuildPopoverContent();
+          }
+        });
+        input.addEventListener('keyup', stopAll);
+        input.addEventListener('keypress', stopAll);
+
+        input.addEventListener('blur', () => {
+          if (_editBlurLocked) return;
+          const val = input.value.trim();
+          if (val && _manualPiiItems[manualIdx]) {
+            _manualPiiItems[manualIdx].pseudonym = val;
+          }
+          _editingManualIndex = null;
+          rebuildPopoverContent();
+        });
+
+        mark.textContent = '';
+        mark.appendChild(input);
+
+        _editBlurLocked = true;
+        setTimeout(() => {
+          input.focus({ preventScroll: true });
+          input.select();
+          _editBlurLocked = false;
+        }, 50);
       } else {
-        contextSnippet = `<mark>${escapeHtml(item.value)}</mark>`;
+        mark.textContent = seg.text;
+        mark.addEventListener('mouseenter', () => showPiiTooltip(mark, range));
+        mark.addEventListener('mouseleave', () => {
+          _tooltipTimer = setTimeout(() => {
+            if (!_shieldShadow?.querySelector('.aeginel-pii-tooltip:hover')) hidePiiTooltip();
+          }, 150);
+        });
+        mark.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (range.isManual && range.manualIndex !== undefined) {
+            _manualPiiItems.splice(range.manualIndex, 1);
+          } else if (range.piiIndex !== undefined) {
+            _cancelledPiiIndices.add(range.piiIndex);
+          }
+          hidePiiTooltip();
+          rebuildPopoverContent();
+        });
       }
-      html += `<div class="aeginel-pii-popover-item">`;
-      html += `<span class="aeginel-pii-popover-type">${escapeHtml(label)}</span>`;
-      html += `<span class="aeginel-pii-popover-context">${contextSnippet}</span>`;
-      html += `</div>`;
+
+      textArea.appendChild(mark);
+    } else {
+      const span = document.createElement('span');
+      span.className = 'aeginel-pii-seg';
+      span.textContent = seg.text;
+      span.dataset.start = String(seg.start);
+      span.dataset.end = String(seg.end);
+
+      span.addEventListener('mousedown', (e) => {
+        _dragSegInfo = {
+          element: span, segStart: seg.start, segEnd: seg.end,
+          mouseStartX: e.clientX, mouseStartY: e.clientY,
+        };
+      });
+
+      textArea.appendChild(span);
     }
   }
 
-  html += '</div></div>';
-  return html;
+  // Mouseup handler for drag-to-select
+  popover.addEventListener('mouseup', handleDragEnd);
+
+  popover.appendChild(textArea);
+
+  // Click outside inline input → confirm edit
+  popover.addEventListener('mousedown', (e) => {
+    if (_editingManualIndex !== null && !(e.target as HTMLElement)?.classList?.contains('aeginel-pii-inline-input')) {
+      const inp = popover.querySelector('.aeginel-pii-inline-input') as HTMLInputElement | null;
+      if (inp) {
+        e.preventDefault();
+        _editBlurLocked = false;
+        const val = inp.value.trim();
+        const idx = _editingManualIndex!;
+        if (val && _manualPiiItems[idx]) {
+          _manualPiiItems[idx].pseudonym = val;
+        }
+        _editingManualIndex = null;
+        rebuildPopoverContent();
+        return;
+      }
+    }
+  });
+
+  // Drag hint
+  const dragHint = document.createElement('div');
+  dragHint.className = 'aeginel-pii-drag-hint';
+  dragHint.textContent = `💡 ${t('popover.dragHint')}`;
+  popover.appendChild(dragHint);
+
+  return popover;
+}
+
+function showPiiTooltip(markEl: HTMLElement, range: ProtectedRange): void {
+  if (_tooltipTimer) { clearTimeout(_tooltipTimer); _tooltipTimer = null; }
+  hidePiiTooltip();
+  if (!_shieldShadow) return;
+
+  const tooltip = document.createElement('div');
+  tooltip.className = 'aeginel-pii-tooltip';
+
+  const pseudo = document.createElement('span');
+  pseudo.className = 'aeginel-pii-tooltip-pseudo';
+  pseudo.textContent = range.pseudonym;
+  tooltip.appendChild(pseudo);
+
+  tooltip.addEventListener('mouseenter', () => {
+    if (_tooltipTimer) { clearTimeout(_tooltipTimer); _tooltipTimer = null; }
+  });
+  tooltip.addEventListener('mouseleave', () => {
+    _tooltipTimer = setTimeout(hidePiiTooltip, 150);
+  });
+
+  // Place tooltip inside the popover (absolute positioning relative to popover)
+  const popover = _shieldShadow.querySelector('.aeginel-pii-popover') as HTMLElement;
+  if (!popover) return;
+  popover.appendChild(tooltip);
+
+  const popoverRect = popover.getBoundingClientRect();
+  const markRect = markEl.getBoundingClientRect();
+  const ttRect = tooltip.getBoundingClientRect();
+
+  let left = markRect.left - popoverRect.left + markRect.width / 2 - ttRect.width / 2;
+  let top = markRect.top - popoverRect.top - ttRect.height - 8;
+
+  left = Math.max(0, Math.min(left, popoverRect.width - ttRect.width));
+  if (markRect.top - popoverRect.top < ttRect.height + 12) {
+    top = markRect.bottom - popoverRect.top + 8;
+  }
+
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function hidePiiTooltip(): void {
+  if (_tooltipTimer) { clearTimeout(_tooltipTimer); _tooltipTimer = null; }
+  _shieldShadow?.querySelector('.aeginel-pii-tooltip')?.remove();
+}
+
+function handleDragEnd(e: MouseEvent): void {
+  if (!_dragSegInfo || !_shieldScanResult) { _dragSegInfo = null; return; }
+
+  const seg = _dragSegInfo;
+  _dragSegInfo = null;
+
+  const dx = Math.abs(e.clientX - seg.mouseStartX);
+  const dy = Math.abs(e.clientY - seg.mouseStartY);
+  if (dx < 3 && dy < 3) return;
+
+  const rawStart = getCharIndexFromPoint(seg.element, seg.mouseStartX, seg.mouseStartY);
+  const rawEnd = getCharIndexFromPoint(seg.element, e.clientX, e.clientY);
+  const dragForward = rawStart <= rawEnd;
+
+  const selStart = Math.min(rawStart, rawEnd);
+  const selEnd = Math.max(rawStart, rawEnd);
+  if (selStart >= selEnd) return;
+
+  let origStart = seg.segStart + selStart;
+  let origEnd = seg.segStart + selEnd;
+  let selectedText = _shieldScanResult.input.slice(origStart, origEnd);
+
+  if (selectedText.includes('\n')) {
+    if (dragForward) {
+      // Dragged top→bottom: keep the line where drag started (before first \n)
+      const nlIdx = selectedText.indexOf('\n');
+      origEnd = origStart + nlIdx;
+    } else {
+      // Dragged bottom→top: keep the line where drag started (after last \n)
+      const lastNl = selectedText.lastIndexOf('\n');
+      origStart = origStart + lastNl + 1;
+    }
+    selectedText = _shieldScanResult.input.slice(origStart, origEnd);
+  }
+  if (!selectedText.trim() || origStart >= origEnd) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+  try { window.getSelection()?.removeAllRanges(); } catch { /* ok */ }
+
+  const pseudonym = generateManualPseudonym(selectedText);
+  _manualPiiItems.push({ startIndex: origStart, endIndex: origEnd, originalText: selectedText, pseudonym });
+  _editingManualIndex = _manualPiiItems.length - 1;
+  rebuildPopoverContent();
+}
+
+function rebuildPopoverContent(): void {
+  if (!_shieldShadow || !_shieldScanResult || !_piiPopoverOpen) return;
+  const existing = _shieldShadow.querySelector('.aeginel-pii-popover');
+  if (!existing) return;
+  existing.remove();
+  const newPopover = buildPiiPopoverElement(_shieldScanResult.piiDetected, _shieldScanResult.input);
+  _shieldShadow.appendChild(newPopover);
+  updateShieldBadge();
+}
+
+function updateShieldBadge(): void {
+  if (!_shieldShadow) return;
+  const badge = _shieldShadow.querySelector('.aeginel-shield-badge');
+  if (badge) {
+    const count = getActiveProtectedCount();
+    badge.textContent = String(count);
+    (badge as HTMLElement).style.display = count > 0 ? '' : 'none';
+  }
 }
 
 function escapeHtml(s: string): string {
@@ -518,28 +944,38 @@ function escapeHtml(s: string): string {
 
 function togglePiiPopover(): void {
   if (!_shieldShadow) return;
+
   const existing = _shieldShadow.querySelector('.aeginel-pii-popover');
   if (existing) {
     existing.remove();
+    hidePiiTooltip();
     _piiPopoverOpen = false;
     return;
   }
 
   const matches = _shieldScanResult?.piiDetected;
-  if (!matches || matches.length === 0) return;
+  const input = _shieldScanResult?.input;
+  if (!input) return;
+  if ((!matches || matches.length === 0) && _manualPiiItems.length === 0) return;
 
-  const wrapper = document.createElement('div');
-  wrapper.innerHTML = buildPiiPopoverHtml(matches, _shieldScanResult?.input);
-  const popover = wrapper.firstElementChild as HTMLElement;
-  if (!popover) return;
-
+  const popover = buildPiiPopoverElement(matches || [], input);
   _shieldShadow.appendChild(popover);
   _piiPopoverOpen = true;
 
   const onClickOutside = (e: MouseEvent) => {
+    // Closed shadow DOM hides internal elements from composedPath(),
+    // so we check against the shadow host element instead.
+    const shieldHost = document.getElementById(SHIELD_HOST_ID);
+    if (!shieldHost) {
+      _piiPopoverOpen = false;
+      document.removeEventListener('click', onClickOutside, true);
+      return;
+    }
     const path = e.composedPath();
-    if (!path.some(el => el === popover || (el instanceof Element && el.classList?.contains('aeginel-shield-indicator')))) {
-      popover.remove();
+    if (!path.includes(shieldHost)) {
+      const currentPopover = _shieldShadow?.querySelector('.aeginel-pii-popover');
+      if (currentPopover) currentPopover.remove();
+      hidePiiTooltip();
       _piiPopoverOpen = false;
       document.removeEventListener('click', onClickOutside, true);
     }
@@ -552,7 +988,7 @@ export function showShieldIndicator(status: ShieldStatus, anchor: Element): void
 
   const host = document.createElement('div');
   host.id = SHIELD_HOST_ID;
-  const shadow = host.attachShadow({ mode: 'closed' });
+  const shadow = host.attachShadow({ mode: 'closed', delegatesFocus: true });
   _shieldShadow = shadow;
 
   const style = document.createElement('style');
@@ -566,7 +1002,17 @@ export function showShieldIndicator(status: ShieldStatus, anchor: Element): void
   shield.style.borderColor = colors.border;
   shield.style.cursor = (status === 'pii' || status === 'warning' || status === 'danger') ? 'pointer' : 'default';
   shield.title = SHIELD_TOOLTIPS[status];
-  shield.textContent = SHIELD_ICONS[status];
+  shield.appendChild(document.createTextNode(SHIELD_ICONS[status]));
+
+  if (status === 'pii' && _shieldScanResult) {
+    const count = getActiveProtectedCount();
+    if (count > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'aeginel-shield-badge';
+      badge.textContent = String(count);
+      shield.appendChild(badge);
+    }
+  }
 
   if (status === 'pii' || status === 'warning' || status === 'danger') {
     shield.addEventListener('click', (e) => {
@@ -729,5 +1175,30 @@ export function hideDisconnectedBanner(): void {
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 function piiTypeLabel(type: string): string {
+  if (type === 'manual') return t('popover.manualType') || 'Manual';
   return t(`piiTypes.${type}`) || type;
+}
+
+// ── PII Modifications Export (for proxy integration) ────────────────────
+
+export function getPiiModifications(): PiiModifications {
+  const excluded: Array<{ start: number; end: number }> = [];
+  if (_shieldScanResult) {
+    for (const idx of _cancelledPiiIndices) {
+      const match = _shieldScanResult.piiDetected[idx];
+      if (match) excluded.push({ start: match.startIndex, end: match.endIndex });
+    }
+  }
+  return {
+    excluded,
+    manual: _manualPiiItems.map(m => ({
+      start: m.startIndex, end: m.endIndex, pseudonym: m.pseudonym,
+    })),
+  };
+}
+
+export function resetPiiModifications(): void {
+  _cancelledPiiIndices.clear();
+  _manualPiiItems = [];
+  _previewPseudonyms.clear();
 }
