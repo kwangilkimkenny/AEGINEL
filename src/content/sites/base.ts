@@ -60,7 +60,6 @@ export function setInputText(el: Element, text: string): void {
   const htmlEl = el as HTMLElement;
   htmlEl.focus();
 
-  // Step 1: Select all existing content
   const selection = window.getSelection();
   if (selection) {
     const range = document.createRange();
@@ -69,29 +68,59 @@ export function setInputText(el: Element, text: string): void {
     selection.addRange(range);
   }
 
-  // Step 2: Try execCommand('insertText') — goes through the editor's input pipeline
+  // For multiline text, use insertParagraph to create proper <p> elements.
+  // insertText with \n creates <br> which ProseMirror renders with extra spacing.
+  if (text.includes('\n')) {
+    document.execCommand('delete', false);
+
+    // innerText may produce \n\n between <p> elements with CSS margins;
+    // collapse to single \n since each represents one paragraph boundary.
+    const lines = text.replace(/\n{2,}/g, '\n').split('\n');
+    let anyInserted = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i]) {
+        anyInserted = document.execCommand('insertText', false, lines[i]) || anyInserted;
+      }
+      if (i < lines.length - 1) {
+        document.execCommand('insertParagraph', false);
+      }
+    }
+
+    if (!anyInserted) {
+      htmlEl.textContent = text;
+      htmlEl.dispatchEvent(new InputEvent('input', {
+        bubbles: true, cancelable: false, inputType: 'insertText', data: text,
+      }));
+    }
+
+    htmlEl.dispatchEvent(new Event('input', { bubbles: true }));
+    htmlEl.dispatchEvent(new Event('change', { bubbles: true }));
+    htmlEl.dispatchEvent(new CompositionEvent('compositionend', {
+      bubbles: true,
+      data: text,
+    }));
+    return;
+  }
+
   const inserted = document.execCommand('insertText', false, text);
 
   if (!inserted) {
-    // Fallback: use InputEvent which ProseMirror also listens to
     if (selection) {
       selection.deleteFromDocument();
     }
-    // Clear and set via DOM, then fire proper InputEvent
     htmlEl.textContent = '';
     const textNode = document.createTextNode(text);
     htmlEl.appendChild(textNode);
 
-    // Select the inserted text to update cursor position
     if (selection) {
       const newRange = document.createRange();
       newRange.selectNodeContents(htmlEl);
-      newRange.collapse(false); // collapse to end
+      newRange.collapse(false);
       selection.removeAllRanges();
       selection.addRange(newRange);
     }
 
-    // Fire InputEvent with proper inputType so frameworks detect the change
     htmlEl.dispatchEvent(new InputEvent('input', {
       bubbles: true,
       cancelable: false,
@@ -100,11 +129,8 @@ export function setInputText(el: Element, text: string): void {
     }));
   }
 
-  // Step 3: Additional events that React/Next.js/ProseMirror may listen to
   htmlEl.dispatchEvent(new Event('input', { bubbles: true }));
   htmlEl.dispatchEvent(new Event('change', { bubbles: true }));
-
-  // Step 4: Trigger compositionend for CJK input method editors
   htmlEl.dispatchEvent(new CompositionEvent('compositionend', {
     bubbles: true,
     data: text,

@@ -24,7 +24,7 @@ export async function scan(input: string, site: string, config: AeginelConfig = 
   return {
     id,
     timestamp: Date.now(),
-    input: input.slice(0, 200),
+    input: input.slice(0, 1000),
     site,
     score: piiScore,
     level,
@@ -38,7 +38,7 @@ export async function scan(input: string, site: string, config: AeginelConfig = 
 
 function emptyScanResult(id: string, input: string, site: string): ScanResult {
   return {
-    id, timestamp: Date.now(), input: input.slice(0, 200), site,
+    id, timestamp: Date.now(), input: input.slice(0, 1000), site,
     score: 0, level: 'low', categories: [], explanation: 'No PII detected.',
     blocked: false, totalLatencyMs: 0, piiDetected: [],
   };

@@ -1009,6 +1009,63 @@
 
 [data-theme="dark"] .aeginel-cat-chip.cat-safe { color: #3fb950; }
 
+/* ── PII Context Snippets ────────────────────────────────────────── */
+
+.aeginel-pii-context-box {
+  margin-top: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+  background: var(--overlay-hover);
+  border-radius: 8px;
+  border: 1px solid var(--border-primary);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-primary) transparent;
+}
+
+.aeginel-pii-context-box::-webkit-scrollbar {
+  width: 4px;
+}
+
+.aeginel-pii-context-box::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.aeginel-pii-context-box::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 2px;
+}
+
+.aeginel-pii-snippet {
+  padding: 6px 10px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  word-break: break-all;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.aeginel-pii-snippet:last-child {
+  border-bottom: none;
+}
+
+.aeginel-pii-hl {
+  background: rgba(210, 153, 34, 0.25);
+  color: #d29922;
+  padding: 1px 3px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+[data-theme="light"] .aeginel-pii-hl {
+  background: rgba(210, 153, 34, 0.15);
+  color: #bf8700;
+}
+
+.aeginel-pii-ellipsis {
+  color: var(--text-tertiary);
+  user-select: none;
+}
+
 /* ── Explanation Text ────────────────────────────────────────────── */
 
 .aeginel-explain {

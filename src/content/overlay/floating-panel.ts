@@ -315,6 +315,59 @@ function repositionPanel() {
   }
 }
 
+// ── PII Context Snippet Renderer ─────────────────────────────────────
+
+function buildPiiContextHtml(input: string, matches: Array<{ startIndex: number; endIndex: number }>): string {
+  if (!input || matches.length === 0) return '';
+
+  const CTX = 25;
+  const sorted = [...matches]
+    .filter((m) => m.startIndex >= 0 && m.endIndex > m.startIndex && m.startIndex < input.length)
+    .sort((a, b) => a.startIndex - b.startIndex);
+  if (sorted.length === 0) return '';
+
+  interface Segment { ctxStart: number; ctxEnd: number; highlights: Array<{ start: number; end: number }> }
+  const segments: Segment[] = [];
+
+  for (const m of sorted) {
+    const cs = Math.max(0, m.startIndex - CTX);
+    const ce = Math.min(input.length, m.endIndex + CTX);
+    const hs = m.startIndex;
+    const he = Math.min(m.endIndex, input.length);
+
+    const last = segments[segments.length - 1];
+    if (last && cs <= last.ctxEnd) {
+      last.ctxEnd = Math.max(last.ctxEnd, ce);
+      last.highlights.push({ start: hs, end: he });
+    } else {
+      segments.push({ ctxStart: cs, ctxEnd: ce, highlights: [{ start: hs, end: he }] });
+    }
+  }
+
+  let html = '<div class="aeginel-pii-context-box">';
+  for (const seg of segments) {
+    html += '<div class="aeginel-pii-snippet">';
+    if (seg.ctxStart > 0) html += '<span class="aeginel-pii-ellipsis">…</span>';
+
+    let cursor = seg.ctxStart;
+    for (const hl of seg.highlights) {
+      if (cursor < hl.start) {
+        html += escapeHtml(input.slice(cursor, hl.start));
+      }
+      html += `<span class="aeginel-pii-hl">${escapeHtml(input.slice(hl.start, hl.end))}</span>`;
+      cursor = hl.end;
+    }
+    if (cursor < seg.ctxEnd) {
+      html += escapeHtml(input.slice(cursor, seg.ctxEnd));
+    }
+
+    if (seg.ctxEnd < input.length) html += '<span class="aeginel-pii-ellipsis">…</span>';
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
 // ── Scan Detail HTML (reusable) ──────────────────────────────────────
 
 function buildScanDetailHtml(scan: ScanResult): string {
@@ -385,6 +438,11 @@ function buildScanDetailHtml(scan: ScanResult): string {
       html += `<span class="aeginel-cat-chip ${categoryClass(cat)}">${translateCategory(cat)}</span>`;
     }
     html += '</div></div>';
+  }
+
+  if (scan.piiDetected && scan.piiDetected.length > 0 && scan.input) {
+    const ctxHtml = buildPiiContextHtml(scan.input, scan.piiDetected);
+    if (ctxHtml) html += ctxHtml;
   }
 
   if (scan.serverExplanation && scan.serverAvailable) {

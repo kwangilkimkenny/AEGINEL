@@ -6,11 +6,15 @@
 import { env, pipeline } from '@huggingface/transformers';
 
 const HF_MODEL_ID = 'YATAV-ENT/aegis-personal-pii-ner';
-const HF_VERSION_URL = `https://huggingface.co/${HF_MODEL_ID}/resolve/main/version.json`;
-const HF_API_URL = `https://huggingface.co/api/models/${HF_MODEL_ID}`;
+const HF_BASE = `https://huggingface.co/${HF_MODEL_ID}/resolve/main`;
+const HF_VERSION_URL = `${HF_BASE}/version.json`;
 const MODEL_VERSION_KEY = 'pii_ner_model_version';
-const MODEL_REVISION_KEY = 'pii_ner_model_revision';
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
+
+const MODEL_FILES = [
+  'config.json', 'tokenizer.json', 'tokenizer_config.json',
+  'special_tokens_map.json', 'onnx/model_quantized.onnx',
+];
 
 env.allowRemoteModels = true;
 env.allowLocalModels = false;
@@ -43,10 +47,9 @@ type NerPipeline = (text: string, options?: Record<string, unknown>) => Promise<
 let nerPipeline: NerPipeline | null = null;
 let loading: Promise<NerPipeline> | null = null;
 let loadFailed = false;
-let currentRevision: string | undefined;
 let initGate: Promise<void> | null = null;
 
-async function clearModelCache(): Promise<void> {
+async function clearAllCaches(): Promise<void> {
   const keys = await caches.keys();
   for (const key of keys) {
     await caches.delete(key);
@@ -56,15 +59,16 @@ async function clearModelCache(): Promise<void> {
   loadFailed = false;
 }
 
-async function fetchLatestRevision(): Promise<string | undefined> {
-  try {
-    const res = await fetch(HF_API_URL, { cache: 'no-store' });
-    if (!res.ok) return undefined;
-    const data = await res.json();
-    return (data.sha as string) || undefined;
-  } catch {
-    return undefined;
+async function prefetchModelFiles(): Promise<void> {
+  const cache = await caches.open('transformers-cache');
+  for (const file of MODEL_FILES) {
+    const url = `${HF_BASE}/${file}`;
+    try {
+      const resp = await fetch(url, { cache: 'no-store' });
+      if (resp.ok) await cache.put(url, resp);
+    } catch { /* skip non-critical files */ }
   }
+  console.debug('[PII-NER] Model files prefetched (HTTP cache bypassed)');
 }
 
 async function checkModelUpdate(): Promise<void> {
@@ -86,18 +90,9 @@ async function checkModelUpdate(): Promise<void> {
 
     if (!cachedVersion || cachedVersion !== latestVersion) {
       console.debug(`[PII-NER] Model update: ${cachedVersion ?? 'none'} → ${latestVersion}`);
-
-      const sha = await fetchLatestRevision();
-      if (sha) {
-        currentRevision = sha;
-        console.debug(`[PII-NER] Using revision: ${sha}`);
-      }
-
-      await clearModelCache();
+      await clearAllCaches();
+      await prefetchModelFiles();
       localStorage.setItem(MODEL_VERSION_KEY, latestVersion);
-      localStorage.setItem(MODEL_REVISION_KEY, currentRevision ?? '');
-    } else {
-      currentRevision = localStorage.getItem(MODEL_REVISION_KEY) || undefined;
     }
   } catch (err) {
     console.error('[PII-NER] checkModelUpdate error:', err);
@@ -110,13 +105,12 @@ async function loadModel(): Promise<NerPipeline> {
   if (loading) return loading;
 
   loading = (async () => {
-    const opts: Record<string, unknown> = { device: 'wasm', dtype: 'q8' };
-    if (currentRevision) opts.revision = currentRevision;
-
-    console.debug('[PII-NER] Loading model:', HF_MODEL_ID, currentRevision ? `@${currentRevision.slice(0, 8)}` : '@main');
-
+    console.debug('[PII-NER] Loading model:', HF_MODEL_ID);
     try {
-      const pipe = await pipeline('token-classification', HF_MODEL_ID, opts);
+      const pipe = await pipeline('token-classification', HF_MODEL_ID, {
+        device: 'wasm',
+        dtype: 'q8',
+      });
       nerPipeline = pipe as unknown as NerPipeline;
       console.debug('[PII-NER] Model loaded successfully');
       return nerPipeline;
@@ -164,15 +158,10 @@ async function periodicUpdateCheck(): Promise<void> {
     const latestVersion = data.version as string;
     if (!latestVersion || latestVersion === prevVersion) return;
 
-    console.debug(`[PII-NER] Periodic check: update found ${prevVersion} → ${latestVersion}`);
-
-    const sha = await fetchLatestRevision();
-    if (sha) currentRevision = sha;
-
-    await clearModelCache();
+    console.debug(`[PII-NER] Periodic check: update ${prevVersion} → ${latestVersion}`);
+    await clearAllCaches();
+    await prefetchModelFiles();
     localStorage.setItem(MODEL_VERSION_KEY, latestVersion);
-    localStorage.setItem(MODEL_REVISION_KEY, currentRevision ?? '');
-
     await loadModel();
     console.debug('[PII-NER] Hot-reload complete');
   } catch (err) {
