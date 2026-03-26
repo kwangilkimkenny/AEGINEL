@@ -350,6 +350,95 @@
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
+/* ── PII Popover (shield click) ──────────────────────────────────── */
+
+.aeginel-pii-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  min-width: 220px;
+  max-width: 320px;
+  background: #1c2128;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #c9d1d9;
+  z-index: 2147483647;
+  overflow: hidden;
+  animation: aeginel-popover-in 0.15s ease-out;
+}
+
+@keyframes aeginel-popover-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.aeginel-pii-popover-header {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #58a6ff;
+  border-bottom: 1px solid #21262d;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.aeginel-pii-popover-count {
+  background: rgba(88, 166, 255, 0.15);
+  color: #58a6ff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: auto;
+}
+
+.aeginel-pii-popover-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.aeginel-pii-popover-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 12px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.aeginel-pii-popover-item + .aeginel-pii-popover-item {
+  border-top: 1px solid #21262d;
+}
+
+.aeginel-pii-popover-type {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: #d29922;
+  background: rgba(210, 153, 34, 0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.aeginel-pii-popover-context {
+  font-size: 11px;
+  color: #8b949e;
+  word-break: break-all;
+  overflow: hidden;
+}
+
+.aeginel-pii-popover-context mark {
+  background: rgba(210, 153, 34, 0.25);
+  color: #f0c674;
+  padding: 0 2px;
+  border-radius: 2px;
+  font-weight: 500;
+}
 
 /* ── Health Status Banners ────────────────────────────────────────── */
 

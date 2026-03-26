@@ -75,7 +75,7 @@ export function setInputText(el: Element, text: string): void {
 
     // innerText may produce \n\n between <p> elements with CSS margins;
     // collapse to single \n since each represents one paragraph boundary.
-    const lines = text.replace(/\n{2,}/g, '\n').split('\n');
+    const lines = text.split('\n');
     let anyInserted = false;
 
     for (let i = 0; i < lines.length; i++) {

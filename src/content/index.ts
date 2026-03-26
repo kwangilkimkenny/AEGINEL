@@ -7,7 +7,7 @@ import { claudeAdapter } from './sites/claude';
 import { geminiAdapter } from './sites/gemini';
 import { createGenericAdapter } from './sites/generic';
 import { siteRegistry } from './sites/registry';
-import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner, showShieldIndicator, hideShieldIndicator, isShieldVisible, showDisconnectedBanner, updateShieldTooltip } from './overlay/warning-banner';
+import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner, showShieldIndicator, hideShieldIndicator, isShieldVisible, showDisconnectedBanner, updateShieldTooltip, updateShieldScanResult } from './overlay/warning-banner';
 import type { ShieldStatus } from './overlay/warning-banner';
 import { showFloatingBadge, updateFloatingPanel, isFloatingBadgeShown } from './overlay/floating-panel';
 import type { ScanResult, AeginelConfig, ProxyResult, PiiMapping } from '../engine/types';
@@ -198,6 +198,10 @@ function initContentScript(adapter: SiteAdapter) {
   // For low/medium, show a non-intrusive shield icon.
   function handleScanResult(result: ScanResult) {
     const anchor = adapter.getWarningAnchor();
+
+    if (result.piiDetected.length > 0) {
+      updateShieldScanResult(result);
+    }
 
     if (result.score === 0 && result.piiDetected.length === 0) {
       hideWarningBanner();

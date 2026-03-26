@@ -930,10 +930,19 @@ function togglePanel() {
   panel.style.display = _panelOpen ? 'block' : 'none';
 
   if (_panelOpen) {
+    if (_dashboardData?.lastScan?.piiDetected?.length) {
+      _selectedScanIdx = 0;
+    } else {
+      _selectedScanIdx = null;
+    }
+
     repositionPanel();
     fetchDashboard().then(async (data) => {
       if (data) {
         _dashboardData = data;
+        if (data.lastScan?.piiDetected?.length) {
+          _selectedScanIdx = 0;
+        }
         if (_activeTab === 'logs' && data.devMode) {
           _devLogs = await fetchDevLogs();
           startLogAutoRefresh();
@@ -942,9 +951,11 @@ function togglePanel() {
       }
     });
   } else {
+    _selectedScanIdx = null;
     stopLogAutoRefresh();
   }
 }
+
 
 async function refreshDashboard() {
   if (!_shadow) return;

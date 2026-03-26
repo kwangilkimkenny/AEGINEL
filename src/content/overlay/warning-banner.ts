@@ -1,6 +1,6 @@
 // ── Aegis Personal Warning Banner (Shadow DOM) ────────────────────────────────────
 
-import type { ScanResult, ProxyResult } from '../../engine/types';
+import type { ScanResult, ProxyResult, PiiMatch } from '../../engine/types';
 import { t } from '../../i18n';
 import styles from './styles.css?inline';
 
@@ -460,11 +460,91 @@ function stopShieldPositionTracking(): void {
 // ── Show / Hide Shield ───────────────────────────────────────────────────
 
 let _shieldShadow: ShadowRoot | null = null;
+let _shieldScanResult: ScanResult | null = null;
+let _piiPopoverOpen = false;
+
+export function updateShieldScanResult(result: ScanResult): void {
+  _shieldScanResult = result;
+}
 
 export function updateShieldTooltip(tooltip: string): void {
   if (!_shieldShadow) return;
   const el = _shieldShadow.querySelector('.aeginel-shield-indicator') as HTMLElement | null;
   if (el) el.title = tooltip;
+}
+
+function buildPiiPopoverHtml(matches: PiiMatch[], input?: string): string {
+  const grouped = new Map<string, PiiMatch[]>();
+  for (const m of matches) {
+    const arr = grouped.get(m.type) || [];
+    arr.push(m);
+    grouped.set(m.type, arr);
+  }
+
+  let html = '<div class="aeginel-pii-popover">';
+  html += `<div class="aeginel-pii-popover-header">${SHIELD_ICONS.pii} ${t('floating.piiDetected') || 'PII detected'} <span class="aeginel-pii-popover-count">${matches.length}</span></div>`;
+  html += '<div class="aeginel-pii-popover-list">';
+
+  for (const [type, items] of grouped) {
+    const label = piiTypeLabel(type);
+    for (const item of items) {
+      let contextSnippet = item.value;
+      if (input && item.startIndex >= 0 && item.endIndex > item.startIndex) {
+        const PRE = 12;
+        const POST = 12;
+        const start = Math.max(0, item.startIndex - PRE);
+        const end = Math.min(input.length, item.endIndex + POST);
+        const before = (start > 0 ? '…' : '') + escapeHtml(input.slice(start, item.startIndex));
+        const match = escapeHtml(input.slice(item.startIndex, item.endIndex));
+        const after = escapeHtml(input.slice(item.endIndex, end)) + (end < input.length ? '…' : '');
+        contextSnippet = `${before}<mark>${match}</mark>${after}`;
+      } else {
+        contextSnippet = `<mark>${escapeHtml(item.value)}</mark>`;
+      }
+      html += `<div class="aeginel-pii-popover-item">`;
+      html += `<span class="aeginel-pii-popover-type">${escapeHtml(label)}</span>`;
+      html += `<span class="aeginel-pii-popover-context">${contextSnippet}</span>`;
+      html += `</div>`;
+    }
+  }
+
+  html += '</div></div>';
+  return html;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function togglePiiPopover(): void {
+  if (!_shieldShadow) return;
+  const existing = _shieldShadow.querySelector('.aeginel-pii-popover');
+  if (existing) {
+    existing.remove();
+    _piiPopoverOpen = false;
+    return;
+  }
+
+  const matches = _shieldScanResult?.piiDetected;
+  if (!matches || matches.length === 0) return;
+
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = buildPiiPopoverHtml(matches, _shieldScanResult?.input);
+  const popover = wrapper.firstElementChild as HTMLElement;
+  if (!popover) return;
+
+  _shieldShadow.appendChild(popover);
+  _piiPopoverOpen = true;
+
+  const onClickOutside = (e: MouseEvent) => {
+    const path = e.composedPath();
+    if (!path.some(el => el === popover || (el instanceof Element && el.classList?.contains('aeginel-shield-indicator')))) {
+      popover.remove();
+      _piiPopoverOpen = false;
+      document.removeEventListener('click', onClickOutside, true);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', onClickOutside, true), 0);
 }
 
 export function showShieldIndicator(status: ShieldStatus, anchor: Element): void {
@@ -484,8 +564,18 @@ export function showShieldIndicator(status: ShieldStatus, anchor: Element): void
   shield.className = 'aeginel-shield-indicator';
   shield.style.background = colors.bg;
   shield.style.borderColor = colors.border;
+  shield.style.cursor = (status === 'pii' || status === 'warning' || status === 'danger') ? 'pointer' : 'default';
   shield.title = SHIELD_TOOLTIPS[status];
   shield.textContent = SHIELD_ICONS[status];
+
+  if (status === 'pii' || status === 'warning' || status === 'danger') {
+    shield.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      togglePiiPopover();
+    });
+  }
+
   shadow.appendChild(shield);
 
   if (shouldUseFixedPosition(anchor)) {
