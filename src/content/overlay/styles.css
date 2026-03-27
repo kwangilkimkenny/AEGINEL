@@ -418,40 +418,15 @@
   margin-left: auto;
 }
 
-/* ── Popover Info Button & Box ──────────────────────────────────── */
+/* ── Popover Inline Description ─────────────────────────────────── */
 
-.aeginel-pii-info-btn {
-  background: none;
-  border: 1px solid #30363d;
-  color: #8b949e;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-  flex-shrink: 0;
-  font-style: italic;
-  font-family: Georgia, serif;
-}
-
-.aeginel-pii-info-btn:hover {
-  color: #58a6ff;
-  border-color: #58a6ff;
-}
-
-.aeginel-pii-info-box {
-  padding: 8px 12px;
+.aeginel-pii-popover-desc {
+  padding: 6px 12px;
   font-size: 11px;
   color: #8b949e;
-  line-height: 1.6;
+  line-height: 1.5;
   border-bottom: 1px solid #21262d;
   background: rgba(88, 166, 255, 0.04);
-  animation: aeginel-popover-in 0.12s ease-out;
 }
 
 /* ── Popover Text Area ──────────────────────────────────────────── */
@@ -588,14 +563,27 @@
   border-color: rgba(248, 81, 73, 0.5);
 }
 
-/* ── Popover Drag Hint ──────────────────────────────────────────── */
+/* ── Popover Interaction Hints ──────────────────────────────────── */
 
-.aeginel-pii-drag-hint {
+.aeginel-pii-hint-bar {
   padding: 6px 12px;
   font-size: 10px;
   color: #6e7681;
   text-align: center;
   border-top: 1px solid #21262d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.aeginel-pii-hint-item {
+  white-space: nowrap;
+}
+
+.aeginel-pii-hint-sep {
+  color: #30363d;
+  font-weight: 700;
 }
 
 /* ── Manual Anonymization Dialog ────────────────────────────────── */

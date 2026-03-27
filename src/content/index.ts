@@ -133,7 +133,7 @@ function initContentScript(adapter: SiteAdapter) {
   sendMessage<{ payload?: AeginelConfig }>({ type: 'GET_CONFIG' }).then((res) => {
     if (res?.payload) {
       currentConfig = res.payload;
-      setLocale(res.payload.language);
+      setLocale(res.payload.uiLanguage ?? 'auto');
     }
   });
 

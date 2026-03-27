@@ -486,7 +486,6 @@ interface ManualPiiItem {
 
 let _manualPiiItems: ManualPiiItem[] = [];
 let _previewPseudonyms = new Map<number, string>();
-let _infoExpanded = false;
 let _tooltipTimer: ReturnType<typeof setTimeout> | null = null;
 let _editingManualIndex: number | null = null;
 let _editBlurLocked = false;
@@ -710,27 +709,13 @@ function buildPiiPopoverElement(matches: PiiMatch[], input: string): HTMLElement
   countBadge.className = 'aeginel-pii-popover-count';
   countBadge.textContent = String(activeCount);
   header.appendChild(countBadge);
-
-  const infoBtn = document.createElement('button');
-  infoBtn.className = 'aeginel-pii-info-btn';
-  infoBtn.textContent = 'i';
-  infoBtn.title = t('popover.description');
-  infoBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    _infoExpanded = !_infoExpanded;
-    const box = popover.querySelector('[data-info-box]') as HTMLElement;
-    if (box) box.style.display = _infoExpanded ? 'block' : 'none';
-  });
-  header.appendChild(infoBtn);
   popover.appendChild(header);
 
-  // Info box (initially hidden)
-  const infoBox = document.createElement('div');
-  infoBox.className = 'aeginel-pii-info-box';
-  infoBox.setAttribute('data-info-box', 'true');
-  infoBox.textContent = t('popover.descriptionFull');
-  infoBox.style.display = _infoExpanded ? 'block' : 'none';
-  popover.appendChild(infoBox);
+  // Always-visible description
+  const desc = document.createElement('div');
+  desc.className = 'aeginel-pii-popover-desc';
+  desc.textContent = t('popover.inlineDesc') || 'Highlighted data will be replaced with fake values when sent.';
+  popover.appendChild(desc);
 
   // Text area with highlighted PII
   const textArea = document.createElement('div');
@@ -896,11 +881,26 @@ function buildPiiPopoverElement(matches: PiiMatch[], input: string): HTMLElement
     }
   });
 
-  // Drag hint
-  const dragHint = document.createElement('div');
-  dragHint.className = 'aeginel-pii-drag-hint';
-  dragHint.textContent = `💡 ${t('popover.dragHint')}`;
-  popover.appendChild(dragHint);
+  // Interaction hints
+  const hintBar = document.createElement('div');
+  hintBar.className = 'aeginel-pii-hint-bar';
+
+  const clickHint = document.createElement('span');
+  clickHint.className = 'aeginel-pii-hint-item';
+  clickHint.textContent = t('popover.hintClick') || 'Click highlight \u2192 remove';
+  hintBar.appendChild(clickHint);
+
+  const sep = document.createElement('span');
+  sep.className = 'aeginel-pii-hint-sep';
+  sep.textContent = '\u00B7';
+  hintBar.appendChild(sep);
+
+  const dragHint = document.createElement('span');
+  dragHint.className = 'aeginel-pii-hint-item';
+  dragHint.textContent = t('popover.hintDrag') || 'Drag text \u2192 add mask';
+  hintBar.appendChild(dragHint);
+
+  popover.appendChild(hintBar);
 
   return popover;
 }
@@ -912,6 +912,18 @@ function showPiiTooltip(markEl: HTMLElement, range: ProtectedRange): void {
 
   const tooltip = document.createElement('div');
   tooltip.className = 'aeginel-pii-tooltip';
+
+  if (range.type !== 'manual') {
+    const typeChip = document.createElement('span');
+    typeChip.className = 'aeginel-pii-tooltip-chip';
+    typeChip.textContent = piiTypeLabel(range.type);
+    tooltip.appendChild(typeChip);
+
+    const arrow = document.createElement('span');
+    arrow.className = 'aeginel-pii-tooltip-arrow';
+    arrow.textContent = '\u2192';
+    tooltip.appendChild(arrow);
+  }
 
   const pseudo = document.createElement('span');
   pseudo.className = 'aeginel-pii-tooltip-pseudo';
