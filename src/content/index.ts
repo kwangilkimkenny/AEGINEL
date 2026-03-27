@@ -41,7 +41,23 @@ if (adapter) {
   console.debug(`[Aegis] No matching site adapter for: ${window.location.hostname}`);
 }
 
+// ── Fetch Interceptor (MAIN world) ────────────────────────────────────────
+// Injected as an external script from web_accessible_resources to bypass CSP.
+// Wraps window.fetch so that when data-aegis-proxy-text is set on <html>,
+// the outgoing request body's query text is replaced with the proxied version.
+
+function injectFetchInterceptor(): void {
+  if (document.documentElement.hasAttribute('data-aegis-fetch-patched')) return;
+  document.documentElement.setAttribute('data-aegis-fetch-patched', '1');
+
+  const script = document.createElement('script');
+  script.src = chrome.runtime.getURL('fetch-interceptor.js');
+  (document.head || document.documentElement).appendChild(script);
+}
+
 function initContentScript(adapter: SiteAdapter) {
+  injectFetchInterceptor();
+
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let lastScannedText = '';
   let currentResult: ScanResult | null = null;
@@ -276,25 +292,31 @@ function initContentScript(adapter: SiteAdapter) {
       return new Promise<boolean>((resolve) => {
         showProxyConfirmModal(proxyResult, anchor,
           () => {
-            // User confirmed — hide text, swap, submit
             hideInputText(inputEl);
-            adapter.setInputText(inputEl, proxyResult.proxiedText);
+            // Set fetch interceptor attribute BEFORE setInputText (which may throw)
+            document.documentElement.setAttribute(
+              'data-aegis-proxy-text', proxyResult.proxiedText,
+            );
+            try { adapter.setInputText(inputEl, proxyResult.proxiedText); } catch { /* fetch interceptor will handle it */ }
             if (currentConfig.piiProxy.showNotification && anchor) {
               showProtectedBanner(proxyResult.piiCount, anchor);
             }
             resolve(true);
           },
           () => {
-            // User skipped — send original
             resolve(false);
           },
         );
       });
     }
 
-    // Auto mode — hide text so the user never sees the pseudonymized value
+    // Auto mode
     hideInputText(inputEl);
-    adapter.setInputText(inputEl, proxyResult.proxiedText);
+    // Set fetch interceptor attribute BEFORE setInputText (which may throw)
+    document.documentElement.setAttribute(
+      'data-aegis-proxy-text', proxyResult.proxiedText,
+    );
+    try { adapter.setInputText(inputEl, proxyResult.proxiedText); } catch { /* fetch interceptor will handle it */ }
     if (currentConfig.piiProxy.showNotification && anchor) {
       showProtectedBanner(proxyResult.piiCount, anchor);
     }
@@ -379,6 +401,11 @@ function initContentScript(adapter: SiteAdapter) {
     // the pseudonymized value synchronously during the submit event
     if (proxied) {
       unhideInputText(inputEl);
+      // Clean up fetch interceptor attribute after a short delay
+      // (the fetch call should have already read it by now)
+      setTimeout(() => {
+        document.documentElement.removeAttribute('data-aegis-proxy-text');
+      }, 2000);
     }
   }
 

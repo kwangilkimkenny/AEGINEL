@@ -144,7 +144,8 @@
     {
       "resources": [
         "ort/*.wasm",
-        "ort/*.mjs"
+        "ort/*.mjs",
+        "fetch-interceptor.js"
       ],
       "matches": ["<all_urls>"]
     }

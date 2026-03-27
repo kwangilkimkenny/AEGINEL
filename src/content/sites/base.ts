@@ -45,8 +45,8 @@ export function getInputText(el: Element): string {
 }
 
 export function setInputText(el: Element, text: string): void {
+  // ── Textarea / Input ──
   if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
-    // Use native setter to trigger React/framework change detection
     const nativeSetter = Object.getOwnPropertyDescriptor(
       el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype,
       'value',
@@ -61,87 +61,85 @@ export function setInputText(el: Element, text: string): void {
     return;
   }
 
-  // ── Contenteditable / ProseMirror editors ──
-  // Direct textContent manipulation bypasses ProseMirror's internal state.
-  // We must go through the browser's editing pipeline so the framework
-  // picks up the change and sends the updated text on submit.
-
+  // ── Contenteditable editors ──
   const htmlEl = el as HTMLElement;
   htmlEl.focus();
-
   const selection = window.getSelection();
-  if (selection) {
-    const range = document.createRange();
-    range.selectNodeContents(htmlEl);
-    selection.removeAllRanges();
-    selection.addRange(range);
+  const isProseMirror = !!htmlEl.closest('.ProseMirror');
+
+  // ── Strategy A: Atomic selectAll + insertText ──
+  // Uses browser-native selectAll (not Range API) so the editor framework
+  // recognises the selection. insertText then replaces it atomically and
+  // fires a trusted input event that updates React/Slate/etc. state.
+  if (!isProseMirror || !text.includes('\n')) {
+    document.execCommand('selectAll', false);
+    if (document.execCommand('insertText', false, text)) {
+      const actual = (htmlEl.innerText || htmlEl.textContent || '').trim();
+      if (actual.length <= text.trim().length * 1.5) {
+        dispatchChangeEvents(htmlEl, text);
+        return;
+      }
+      // Content grew → insertText appended. Undo and fall through.
+      document.execCommand('undo', false);
+    }
   }
 
-  // For multiline text, use insertParagraph to create proper <p> elements.
-  // insertText with \n creates <br> which ProseMirror renders with extra spacing.
-  if (text.includes('\n')) {
+  // ── Strategy B: ProseMirror line-by-line (delete + insertParagraph) ──
+  if (isProseMirror) {
+    selectAllContent(htmlEl, selection);
     document.execCommand('delete', false);
 
-    // innerText may produce \n\n between <p> elements with CSS margins;
-    // collapse to single \n since each represents one paragraph boundary.
     const lines = text.split('\n');
-    let anyInserted = false;
-
     for (let i = 0; i < lines.length; i++) {
       if (lines[i]) {
-        anyInserted = document.execCommand('insertText', false, lines[i]) || anyInserted;
+        document.execCommand('insertText', false, lines[i]);
       }
       if (i < lines.length - 1) {
         document.execCommand('insertParagraph', false);
       }
     }
-
-    if (!anyInserted) {
-      htmlEl.textContent = text;
-      htmlEl.dispatchEvent(new InputEvent('input', {
-        bubbles: true, cancelable: false, inputType: 'insertText', data: text,
-      }));
-    }
-
-    htmlEl.dispatchEvent(new Event('input', { bubbles: true }));
-    htmlEl.dispatchEvent(new Event('change', { bubbles: true }));
-    htmlEl.dispatchEvent(new CompositionEvent('compositionend', {
-      bubbles: true,
-      data: text,
-    }));
+    dispatchChangeEvents(htmlEl, text);
     return;
   }
 
-  const inserted = document.execCommand('insertText', false, text);
+  // ── Strategy C: Direct DOM replacement + React fiber state sync ──
+  while (htmlEl.firstChild) htmlEl.removeChild(htmlEl.firstChild);
 
-  if (!inserted) {
-    if (selection) {
-      selection.deleteFromDocument();
+  const frag = document.createDocumentFragment();
+  if (text.includes('\n')) {
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) frag.appendChild(document.createElement('br'));
+      frag.appendChild(document.createTextNode(lines[i]));
     }
-    htmlEl.textContent = '';
-    const textNode = document.createTextNode(text);
-    htmlEl.appendChild(textNode);
+  } else {
+    frag.appendChild(document.createTextNode(text));
+  }
+  htmlEl.appendChild(frag);
 
-    if (selection) {
-      const newRange = document.createRange();
-      newRange.selectNodeContents(htmlEl);
-      newRange.collapse(false);
-      selection.removeAllRanges();
-      selection.addRange(newRange);
-    }
-
-    htmlEl.dispatchEvent(new InputEvent('input', {
-      bubbles: true,
-      cancelable: false,
-      inputType: 'insertText',
-      data: text,
-    }));
+  if (selection) {
+    const r = document.createRange();
+    r.selectNodeContents(htmlEl);
+    r.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(r);
   }
 
-  htmlEl.dispatchEvent(new Event('input', { bubbles: true }));
-  htmlEl.dispatchEvent(new Event('change', { bubbles: true }));
-  htmlEl.dispatchEvent(new CompositionEvent('compositionend', {
-    bubbles: true,
-    data: text,
+  dispatchChangeEvents(htmlEl, text);
+}
+
+function selectAllContent(el: HTMLElement, selection: Selection | null): void {
+  if (!selection) return;
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function dispatchChangeEvents(el: HTMLElement, text: string): void {
+  el.dispatchEvent(new InputEvent('input', {
+    bubbles: true, cancelable: false, inputType: 'insertText', data: text,
   }));
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  el.dispatchEvent(new Event('change', { bubbles: true }));
 }

@@ -86,10 +86,12 @@ export const siteRegistry: SiteConfig[] = [
     inputSelectors: [
       'textarea[placeholder*="Ask"]',
       'textarea[placeholder*="ask"]',
+      'textarea[placeholder*="질문"]',
+      'textarea[placeholder*="물어"]',
       'textarea[autofocus]',
+      'textarea',
       'div[contenteditable="true"][role="textbox"]',
       '[role="textbox"]',
-      'textarea',
     ],
     submitSelectors: [
       'button[aria-label="Submit"]',
