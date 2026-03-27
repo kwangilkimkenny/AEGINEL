@@ -32,6 +32,8 @@ export const FALLBACK_SUBMIT_SELECTORS = [
   'button[type="submit"]',
   'button[aria-label*="Send" i]',
   'button[aria-label*="Submit" i]',
+  'button[aria-label*="보내기"]',
+  'button[aria-label*="전송"]',
   'button[data-testid*="send" i]',
 ];
 

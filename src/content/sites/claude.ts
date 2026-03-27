@@ -24,7 +24,14 @@ const SUBMIT_SELECTORS = [
   'button[aria-label="Send Message"]',
   'button[aria-label="Send message"]',
   'button[aria-label="Send"]',
+  'button[aria-label="메시지 보내기"]',
+  'button[aria-label="보내기"]',
+  'button[aria-label*="send" i]',
+  'button[data-testid="send-button"]',
+  'button[data-testid*="send" i]',
   'fieldset button[type="button"]:last-of-type',
+  'fieldset button:last-of-type',
+  '[class*="composer"] button[type="button"]:last-of-type',
 ];
 
 export const claudeAdapter: SiteAdapter = {
