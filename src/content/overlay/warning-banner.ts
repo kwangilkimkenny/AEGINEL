@@ -491,9 +491,7 @@ let _editingManualIndex: number | null = null;
 let _editBlurLocked = false;
 
 let _dragSegInfo: {
-  element: HTMLElement;
-  segStart: number;
-  segEnd: number;
+  textArea: HTMLElement;
   mouseStartX: number;
   mouseStartY: number;
 } | null = null;
@@ -629,6 +627,62 @@ export function updateShieldTooltip(tooltip: string): void {
   if (!_shieldShadow) return;
   const el = _shieldShadow.querySelector('.aeginel-shield-indicator') as HTMLElement | null;
   if (el) el.title = tooltip;
+}
+
+function getOrigIndexFromPointInTextArea(textArea: HTMLElement, x: number, y: number): number | null {
+  let closestIndex: number | null = null;
+  let closestDist = Infinity;
+  const segs = textArea.querySelectorAll('.aeginel-pii-seg');
+  for (const seg of segs) {
+    const htmlSeg = seg as HTMLElement;
+    const segStart = parseInt(htmlSeg.dataset.start!, 10);
+    const textNode = htmlSeg.firstChild;
+    if (!textNode || textNode.nodeType !== Node.TEXT_NODE) continue;
+    const text = (textNode as Text).textContent || '';
+    if (text.length === 0) continue;
+    const range = document.createRange();
+    for (let i = 0; i <= text.length; i++) {
+      try {
+        range.setStart(textNode, i);
+        range.setEnd(textNode, i);
+        const rect = range.getBoundingClientRect();
+        const dist = Math.hypot(rect.left - x, rect.top + rect.height / 2 - y);
+        if (dist < closestDist) { closestDist = dist; closestIndex = segStart + i; }
+      } catch { break; }
+    }
+  }
+  return closestIndex;
+}
+
+function getWordBoundsAt(text: string, charIndex: number): [number, number] {
+  const wordRegex = /[\w\u3131-\u318E\uAC00-\uD7A3]+/g;
+  let match;
+  while ((match = wordRegex.exec(text)) !== null) {
+    if (match.index <= charIndex && match.index + match[0].length >= charIndex) {
+      return [match.index, match.index + match[0].length];
+    }
+  }
+  if (charIndex < text.length) return [charIndex, charIndex + 1];
+  return [Math.max(0, charIndex - 1), charIndex];
+}
+
+function getUnprotectedSubranges(
+  start: number, end: number, protectedRanges: ProtectedRange[],
+): Array<{ start: number; end: number }> {
+  const result: Array<{ start: number; end: number }> = [];
+  let pos = start;
+  for (const range of protectedRanges) {
+    if (range.end <= pos) continue;
+    if (range.start >= end) break;
+    if (range.start > pos) {
+      result.push({ start: pos, end: Math.min(range.start, end) });
+    }
+    pos = Math.max(pos, range.end);
+  }
+  if (pos < end) {
+    result.push({ start: pos, end });
+  }
+  return result;
 }
 
 function buildPiiPopoverElement(matches: PiiMatch[], input: string): HTMLElement {
@@ -781,16 +835,34 @@ function buildPiiPopoverElement(matches: PiiMatch[], input: string): HTMLElement
       span.dataset.start = String(seg.start);
       span.dataset.end = String(seg.end);
 
-      span.addEventListener('mousedown', (e) => {
-        _dragSegInfo = {
-          element: span, segStart: seg.start, segEnd: seg.end,
-          mouseStartX: e.clientX, mouseStartY: e.clientY,
-        };
-      });
-
       textArea.appendChild(span);
     }
   }
+
+  textArea.addEventListener('mousedown', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('.aeginel-pii-hl-mark') || target.classList.contains('aeginel-pii-inline-input')) return;
+    _dragSegInfo = { textArea, mouseStartX: e.clientX, mouseStartY: e.clientY };
+  });
+
+  textArea.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!_shieldScanResult) return;
+    const target = e.target as HTMLElement;
+    if (!target.classList.contains('aeginel-pii-seg')) return;
+    const segStart = parseInt(target.dataset.start!, 10);
+    const segText = _shieldScanResult.input.slice(segStart, parseInt(target.dataset.end!, 10));
+    const charIdx = getCharIndexFromPoint(target, e.clientX, e.clientY);
+    const [wordStart, wordEnd] = getWordBoundsAt(segText, charIdx);
+    const word = segText.slice(wordStart, wordEnd);
+    if (!word.trim()) return;
+    try { window.getSelection()?.removeAllRanges(); } catch { /* ok */ }
+    const pseudonym = generateManualPseudonym(word);
+    _manualPiiItems.push({ startIndex: segStart + wordStart, endIndex: segStart + wordEnd, originalText: word, pseudonym });
+    _editingManualIndex = _manualPiiItems.length - 1;
+    rebuildPopoverContent();
+  });
 
   // Mouseup handler for drag-to-select
   popover.addEventListener('mouseup', handleDragEnd);
@@ -874,32 +946,29 @@ function hidePiiTooltip(): void {
 function handleDragEnd(e: MouseEvent): void {
   if (!_dragSegInfo || !_shieldScanResult) { _dragSegInfo = null; return; }
 
-  const seg = _dragSegInfo;
+  const info = _dragSegInfo;
   _dragSegInfo = null;
 
-  const dx = Math.abs(e.clientX - seg.mouseStartX);
-  const dy = Math.abs(e.clientY - seg.mouseStartY);
+  const dx = Math.abs(e.clientX - info.mouseStartX);
+  const dy = Math.abs(e.clientY - info.mouseStartY);
   if (dx < 3 && dy < 3) return;
 
-  const rawStart = getCharIndexFromPoint(seg.element, seg.mouseStartX, seg.mouseStartY);
-  const rawEnd = getCharIndexFromPoint(seg.element, e.clientX, e.clientY);
-  const dragForward = rawStart <= rawEnd;
+  const startIdx = getOrigIndexFromPointInTextArea(info.textArea, info.mouseStartX, info.mouseStartY);
+  const endIdx = getOrigIndexFromPointInTextArea(info.textArea, e.clientX, e.clientY);
+  if (startIdx === null || endIdx === null) return;
 
-  const selStart = Math.min(rawStart, rawEnd);
-  const selEnd = Math.max(rawStart, rawEnd);
-  if (selStart >= selEnd) return;
+  const dragForward = startIdx <= endIdx;
+  let origStart = Math.min(startIdx, endIdx);
+  let origEnd = Math.max(startIdx, endIdx);
+  if (origStart >= origEnd) return;
 
-  let origStart = seg.segStart + selStart;
-  let origEnd = seg.segStart + selEnd;
   let selectedText = _shieldScanResult.input.slice(origStart, origEnd);
 
   if (selectedText.includes('\n')) {
     if (dragForward) {
-      // Dragged top→bottom: keep the line where drag started (before first \n)
       const nlIdx = selectedText.indexOf('\n');
       origEnd = origStart + nlIdx;
     } else {
-      // Dragged bottom→top: keep the line where drag started (after last \n)
       const lastNl = selectedText.lastIndexOf('\n');
       origStart = origStart + lastNl + 1;
     }
@@ -912,10 +981,20 @@ function handleDragEnd(e: MouseEvent): void {
   e.stopImmediatePropagation();
   try { window.getSelection()?.removeAllRanges(); } catch { /* ok */ }
 
-  const pseudonym = generateManualPseudonym(selectedText);
-  _manualPiiItems.push({ startIndex: origStart, endIndex: origEnd, originalText: selectedText, pseudonym });
-  _editingManualIndex = _manualPiiItems.length - 1;
-  rebuildPopoverContent();
+  const existingRanges = getProtectedRanges();
+  const subranges = getUnprotectedSubranges(origStart, origEnd, existingRanges);
+
+  for (const sub of subranges) {
+    const subText = _shieldScanResult!.input.slice(sub.start, sub.end);
+    if (!subText.trim()) continue;
+    const pseudonym = generateManualPseudonym(subText);
+    _manualPiiItems.push({ startIndex: sub.start, endIndex: sub.end, originalText: subText, pseudonym });
+  }
+
+  if (subranges.length > 0) {
+    _editingManualIndex = _manualPiiItems.length - 1;
+    rebuildPopoverContent();
+  }
 }
 
 function rebuildPopoverContent(): void {
