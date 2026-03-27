@@ -199,9 +199,7 @@ function initContentScript(adapter: SiteAdapter) {
   function handleScanResult(result: ScanResult) {
     const anchor = adapter.getWarningAnchor();
 
-    if (result.piiDetected.length > 0) {
-      updateShieldScanResult(result);
-    }
+    updateShieldScanResult(result);
 
     if (result.score === 0 && result.piiDetected.length === 0) {
       hideWarningBanner();

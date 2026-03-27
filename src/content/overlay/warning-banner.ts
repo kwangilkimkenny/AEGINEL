@@ -956,7 +956,6 @@ function togglePiiPopover(): void {
   const matches = _shieldScanResult?.piiDetected;
   const input = _shieldScanResult?.input;
   if (!input) return;
-  if ((!matches || matches.length === 0) && _manualPiiItems.length === 0) return;
 
   const popover = buildPiiPopoverElement(matches || [], input);
   _shieldShadow.appendChild(popover);
@@ -1000,7 +999,7 @@ export function showShieldIndicator(status: ShieldStatus, anchor: Element): void
   shield.className = 'aeginel-shield-indicator';
   shield.style.background = colors.bg;
   shield.style.borderColor = colors.border;
-  shield.style.cursor = (status === 'pii' || status === 'warning' || status === 'danger') ? 'pointer' : 'default';
+  shield.style.cursor = status === 'idle' || status === 'loading' ? 'default' : 'pointer';
   shield.title = SHIELD_TOOLTIPS[status];
   shield.appendChild(document.createTextNode(SHIELD_ICONS[status]));
 
@@ -1014,7 +1013,7 @@ export function showShieldIndicator(status: ShieldStatus, anchor: Element): void
     }
   }
 
-  if (status === 'pii' || status === 'warning' || status === 'danger') {
+  if (status !== 'idle' && status !== 'loading') {
     shield.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
