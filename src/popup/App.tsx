@@ -92,7 +92,10 @@ export default function App() {
     fetch(`https://huggingface.co/YATAV-ENT/aegis-personal-pii-ner/resolve/main/version.json`)
       .then(r => r.json())
       .then((data: { version?: string }) => {
-        if (data?.version) setModelVersion(`Model ${data.version}`);
+        if (data?.version) {
+          const v = data.version;
+          setModelVersion(v.match(/^\d/) ? `Model v${v}` : `Model ${v}`);
+        }
       })
       .catch(() => {});
   }, []);
@@ -245,7 +248,17 @@ export default function App() {
               <span className="text-[9px] text-aeginel-muted/40">·</span>
             )}
             {modelVersion && (
-              <span className="text-[9px] text-aeginel-muted/40">{modelVersion}</span>
+              <a
+                href="https://huggingface.co/YATAV-ENT/aegis-personal-pii-ner"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[9px] hover:underline transition-colors"
+                style={{ color: 'var(--aeginel-muted)', opacity: 0.5 }}
+                onMouseEnter={e => { (e.target as HTMLElement).style.opacity = '0.8'; }}
+                onMouseLeave={e => { (e.target as HTMLElement).style.opacity = '0.5'; }}
+              >
+                {modelVersion}
+              </a>
             )}
           </div>
           <span className="text-[9px] text-aeginel-muted/40">{footerText}</span>
