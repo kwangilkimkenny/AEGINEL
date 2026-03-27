@@ -34,6 +34,7 @@ export const FALLBACK_SUBMIT_SELECTORS = [
   'button[aria-label*="Submit" i]',
   'button[aria-label*="보내기"]',
   'button[aria-label*="전송"]',
+  'button[aria-label*="제출"]',
   'button[data-testid*="send" i]',
 ];
 
@@ -93,15 +94,25 @@ export const siteRegistry: SiteConfig[] = [
     submitSelectors: [
       'button[aria-label="Submit"]',
       'button[aria-label="Send"]',
+      'button[aria-label="제출"]',
+      'button[aria-label="보내기"]',
+      'button[aria-label*="submit" i]',
+      'button[aria-label*="send" i]',
       'button svg[data-icon="arrow-right"]',
       'button[type="submit"]',
+      'button[class*="submit" i]',
+      'button[class*="send" i]',
+      'textarea + button',
+      'textarea ~ button',
     ],
     responseSelectors: [
       '.prose',
       '[class*="answer"]',
       '.markdown-content',
+      '[class*="response"]',
+      '[class*="result"]',
     ],
-    warningAnchorSelectors: ['[class*="search-input"]', 'main'],
+    warningAnchorSelectors: ['[class*="search-input"]', '[class*="query"]', 'main'],
     streamingSelectors: ['[class*="loading"]', '[class*="streaming"]'],
   },
 
