@@ -16,6 +16,7 @@ const BADGE_SIZE = 36;
 const PANEL_WIDTH = 340;
 const PANEL_MAX_H = 440;
 const GAP = 8;
+const SCREEN_EDGE_GAP = 50;
 
 const STORAGE_KEY_SIZE = 'aeginel_panel_size';
 const MIN_PANEL_W = 200;
@@ -64,6 +65,42 @@ let _dragHostStartY = 0;
 let _dragMoved = false;
 let _dragCaptureEl: HTMLElement | null = null;
 let _dragTapFn: (() => void) | null = null;
+let _resizeHandler: (() => void) | null = null;
+
+// ── Corner-relative positioning ──────────────────────────────────────
+// Badge position is stored relative to the nearest viewport corner so
+// it follows that corner when the screen resizes.
+
+interface BadgeAnchor {
+  corner: 'tl' | 'tr' | 'bl' | 'br';
+  dx: number;
+  dy: number;
+}
+
+let _currentAnchor: BadgeAnchor | null = null;
+
+function computeAnchor(x: number, y: number): BadgeAnchor {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const cx = x + BADGE_SIZE / 2;
+  const cy = y + BADGE_SIZE / 2;
+  const isRight = cx > vw / 2;
+  const isBottom = cy > vh / 2;
+
+  return {
+    corner: isBottom ? (isRight ? 'br' : 'bl') : (isRight ? 'tr' : 'tl'),
+    dx: isRight ? vw - x : x,
+    dy: isBottom ? vh - y : y,
+  };
+}
+
+function anchorToPosition(a: BadgeAnchor): { x: number; y: number } {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const x = (a.corner === 'tr' || a.corner === 'br') ? vw - a.dx : a.dx;
+  const y = (a.corner === 'bl' || a.corner === 'br') ? vh - a.dy : a.dy;
+  return { x, y };
+}
 
 function onDragStart(e: PointerEvent, tapFn?: () => void) {
   if (!_host) return;
@@ -82,14 +119,32 @@ function onDragStart(e: PointerEvent, tapFn?: () => void) {
   e.preventDefault();
 }
 
+function edgeBounds() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const minX = Math.min(SCREEN_EDGE_GAP, (vw - BADGE_SIZE) / 2);
+  const maxX = Math.max(vw - BADGE_SIZE - SCREEN_EDGE_GAP, minX);
+  const minY = Math.min(SCREEN_EDGE_GAP, (vh - BADGE_SIZE) / 2);
+  const maxY = Math.max(vh - BADGE_SIZE - SCREEN_EDGE_GAP, minY);
+  return { minX, maxX, minY, maxY };
+}
+
 function onDragMove(e: PointerEvent) {
   if (!_isDragging || !_host) return;
+  if (e.buttons === 0) {
+    _isDragging = false;
+    try { _dragCaptureEl?.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+    _dragCaptureEl = null;
+    _dragTapFn = null;
+    return;
+  }
   const dx = e.clientX - _dragStartX;
   const dy = e.clientY - _dragStartY;
   if (!_dragMoved && Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
   _dragMoved = true;
-  const newX = Math.max(-BADGE_SIZE / 2, Math.min(window.innerWidth - BADGE_SIZE / 2, _dragHostStartX + dx));
-  const newY = Math.max(-BADGE_SIZE / 2, Math.min(window.innerHeight - BADGE_SIZE / 2, _dragHostStartY + dy));
+  const { minX, maxX, minY, maxY } = edgeBounds();
+  const newX = Math.max(minX, Math.min(maxX, _dragHostStartX + dx));
+  const newY = Math.max(minY, Math.min(maxY, _dragHostStartY + dy));
   _host.style.left = `${newX}px`;
   _host.style.top = `${newY}px`;
 }
@@ -116,6 +171,10 @@ function attachDragBehavior(el: HTMLElement, onTap?: () => void) {
   });
   el.addEventListener('pointermove', (e) => onDragMove(e));
   el.addEventListener('pointerup', (e) => {
+    onDragEnd(e);
+    el.style.cursor = 'grab';
+  });
+  el.addEventListener('pointercancel', (e) => {
     onDragEnd(e);
     el.style.cursor = 'grab';
   });
@@ -203,14 +262,23 @@ function escapeHtml(str: string): string {
 async function loadPosition(): Promise<{ x: number; y: number }> {
   try {
     const stored = await chrome.storage.local.get(STORAGE_KEY_POS);
-    if (stored[STORAGE_KEY_POS]) return stored[STORAGE_KEY_POS];
+    if (stored[STORAGE_KEY_POS]) {
+      const data = stored[STORAGE_KEY_POS];
+      if ('corner' in data && 'dx' in data && 'dy' in data) {
+        _currentAnchor = data as BadgeAnchor;
+        return anchorToPosition(_currentAnchor);
+      }
+      // Legacy {x, y} format — migrate on next save
+      return data;
+    }
   } catch { /* ignore */ }
   return { x: window.innerWidth - BADGE_SIZE - 16, y: window.innerHeight - BADGE_SIZE - 16 };
 }
 
 async function savePosition(x: number, y: number) {
   try {
-    await chrome.storage.local.set({ [STORAGE_KEY_POS]: { x, y } });
+    _currentAnchor = computeAnchor(x, y);
+    await chrome.storage.local.set({ [STORAGE_KEY_POS]: _currentAnchor });
   } catch { /* ignore */ }
 }
 
@@ -274,6 +342,34 @@ function toggleTheme() {
   renderPanel();
 }
 
+// ── Viewport Edge Clamping ──────────────────────────────────────────
+// Re-clamps badge position when viewport resizes so it never sits
+// outside the visible area.
+
+function clampHostPosition() {
+  if (!_host) return;
+
+  let x: number;
+  let y: number;
+
+  if (_currentAnchor) {
+    const pos = anchorToPosition(_currentAnchor);
+    x = pos.x;
+    y = pos.y;
+  } else {
+    x = _host.offsetLeft;
+    y = _host.offsetTop;
+  }
+
+  const { minX, maxX, minY, maxY } = edgeBounds();
+  const cx = Math.max(minX, Math.min(maxX, x));
+  const cy = Math.max(minY, Math.min(maxY, y));
+
+  _host.style.left = `${cx}px`;
+  _host.style.top = `${cy}px`;
+  if (_panelOpen) repositionPanel();
+}
+
 // ── Adaptive Panel Positioning ──────────────────────────────────────
 // Determines which direction the panel should expand based on where
 // the badge sits relative to viewport center.
@@ -287,11 +383,11 @@ function repositionPanel() {
   const by = _host.offsetTop;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
+  const pw = _panelWidth;
 
   const isRight = bx + BADGE_SIZE / 2 > vw / 2;
   const isBottom = by + BADGE_SIZE / 2 > vh / 2;
 
-  // Reset
   panel.style.position = 'absolute';
   panel.style.top = '';
   panel.style.bottom = '';
@@ -299,19 +395,25 @@ function repositionPanel() {
   panel.style.right = '';
 
   if (isBottom) {
-    // Panel above badge
     panel.style.bottom = `${BADGE_SIZE + GAP}px`;
   } else {
-    // Panel below badge
     panel.style.top = `${BADGE_SIZE + GAP}px`;
   }
 
   if (isRight) {
-    // Panel to the left — align right edge with badge right edge
-    panel.style.right = '0';
+    const panelLeft = bx + BADGE_SIZE - pw;
+    if (panelLeft < SCREEN_EDGE_GAP) {
+      panel.style.left = `${SCREEN_EDGE_GAP - bx}px`;
+    } else {
+      panel.style.right = '0';
+    }
   } else {
-    // Panel to the right — align left edge with badge left edge
-    panel.style.left = '0';
+    const panelRight = bx + pw;
+    if (panelRight > vw - SCREEN_EDGE_GAP) {
+      panel.style.left = `${(vw - SCREEN_EDGE_GAP) - pw - bx}px`;
+    } else {
+      panel.style.left = '0';
+    }
   }
 }
 
@@ -1003,7 +1105,11 @@ export async function showFloatingBadge() {
 
   const host = document.createElement('div');
   host.id = FLOAT_HOST_ID;
-  host.style.cssText = `position:fixed;z-index:2147483646;left:${pos.x}px;top:${pos.y}px;margin:0;padding:0;width:auto;height:auto;pointer-events:auto;`;
+  const { minX, maxX, minY, maxY } = edgeBounds();
+  const cx = Math.max(minX, Math.min(maxX, pos.x));
+  const cy = Math.max(minY, Math.min(maxY, pos.y));
+  if (!_currentAnchor) _currentAnchor = computeAnchor(cx, cy);
+  host.style.cssText = `position:fixed;z-index:2147483646;left:${cx}px;top:${cy}px;margin:0;padding:0;width:auto;height:auto;pointer-events:auto;`;
   _host = host;
 
   const shadow = host.attachShadow({ mode: 'closed' });
@@ -1042,6 +1148,9 @@ export async function showFloatingBadge() {
   shadow.appendChild(themeRoot);
   document.body.appendChild(host);
 
+  _resizeHandler = () => clampHostPosition();
+  window.addEventListener('resize', _resizeHandler);
+
   // ── Drag logic (badge tap toggles panel) ──
   attachDragBehavior(badge, togglePanel);
 
@@ -1076,9 +1185,14 @@ export async function showFloatingBadge() {
 export function hideFloatingBadge() {
   stopSurvivalMonitor();
   stopLogAutoRefresh();
+  if (_resizeHandler) {
+    window.removeEventListener('resize', _resizeHandler);
+    _resizeHandler = null;
+  }
   _shadow = null;
   _host = null;
   _panelOpen = false;
+  _currentAnchor = null;
   document.getElementById(FLOAT_HOST_ID)?.remove();
 }
 
