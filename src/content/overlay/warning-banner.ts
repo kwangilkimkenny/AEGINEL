@@ -1021,9 +1021,12 @@ function rebuildPopoverContent(): void {
   if (!_shieldShadow || !_shieldScanResult || !_piiPopoverOpen) return;
   const existing = _shieldShadow.querySelector('.aeginel-pii-popover');
   if (!existing) return;
-  existing.remove();
   const newPopover = buildPiiPopoverElement(_shieldScanResult.piiDetected, _shieldScanResult.input);
-  _shieldShadow.appendChild(newPopover);
+  newPopover.classList.add('aeginel-pii-popover--no-anim');
+  if (existing.classList.contains('aeginel-pii-popover--above')) {
+    newPopover.classList.add('aeginel-pii-popover--above');
+  }
+  existing.replaceWith(newPopover);
   updateShieldBadge();
 }
 
