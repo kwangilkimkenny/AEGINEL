@@ -1082,6 +1082,13 @@ function togglePiiPopover(): void {
   _shieldShadow.appendChild(popover);
   _piiPopoverOpen = true;
 
+  requestAnimationFrame(() => {
+    const popoverRect = popover.getBoundingClientRect();
+    if (popoverRect.bottom > window.innerHeight) {
+      popover.classList.add('aeginel-pii-popover--above');
+    }
+  });
+
   const onClickOutside = (e: MouseEvent) => {
     // Closed shadow DOM hides internal elements from composedPath(),
     // so we check against the shadow host element instead.

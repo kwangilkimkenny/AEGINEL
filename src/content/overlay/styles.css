@@ -392,8 +392,19 @@
   animation: aeginel-popover-in 0.15s ease-out;
 }
 
+.aeginel-pii-popover.aeginel-pii-popover--above {
+  top: auto;
+  bottom: calc(100% + 8px);
+  animation: aeginel-popover-in-above 0.15s ease-out;
+}
+
 @keyframes aeginel-popover-in {
   from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes aeginel-popover-in-above {
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
