@@ -462,6 +462,7 @@ function stopShieldPositionTracking(): void {
 let _shieldShadow: ShadowRoot | null = null;
 let _shieldScanResult: ScanResult | null = null;
 let _piiPopoverOpen = false;
+let _baseShieldStatus: ShieldStatus = 'idle';
 
 export function updateShieldScanResult(result: ScanResult): void {
   if (_shieldScanResult?.input !== result.input) {
@@ -561,6 +562,13 @@ function getActiveProtectedCount(): number {
     : 0;
   count += _manualPiiItems.length;
   return Math.max(0, count);
+}
+
+function getEffectiveShieldStatus(base: ShieldStatus): ShieldStatus {
+  if (base === 'safe' && getActiveProtectedCount() > 0) {
+    return 'pii';
+  }
+  return base;
 }
 
 function getProtectedRanges(): ProtectedRange[] {
@@ -1009,11 +1017,33 @@ function rebuildPopoverContent(): void {
 
 function updateShieldBadge(): void {
   if (!_shieldShadow) return;
-  const badge = _shieldShadow.querySelector('.aeginel-shield-badge');
-  if (badge) {
-    const count = getActiveProtectedCount();
+  const shield = _shieldShadow.querySelector('.aeginel-shield-indicator') as HTMLElement | null;
+  if (!shield) return;
+
+  const count = getActiveProtectedCount();
+  const effectiveStatus = getEffectiveShieldStatus(_baseShieldStatus);
+
+  const iconNode = shield.firstChild;
+  if (iconNode && iconNode.nodeType === Node.TEXT_NODE) {
+    iconNode.textContent = SHIELD_ICONS[effectiveStatus];
+  }
+
+  const colors = SHIELD_COLORS[effectiveStatus];
+  shield.style.background = colors.bg;
+  shield.style.borderColor = colors.border;
+  shield.title = SHIELD_TOOLTIPS[effectiveStatus];
+
+  let badge = _shieldShadow.querySelector('.aeginel-shield-badge') as HTMLElement | null;
+  if (effectiveStatus === 'pii' && count > 0) {
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'aeginel-shield-badge';
+      shield.appendChild(badge);
+    }
     badge.textContent = String(count);
-    (badge as HTMLElement).style.display = count > 0 ? '' : 'none';
+    badge.style.display = '';
+  } else if (badge) {
+    badge.style.display = 'none';
   }
 }
 
@@ -1063,6 +1093,8 @@ function togglePiiPopover(): void {
 
 export function showShieldIndicator(status: ShieldStatus, anchor: Element): void {
   hideShieldIndicator();
+  _baseShieldStatus = status;
+  const effectiveStatus = getEffectiveShieldStatus(status);
 
   const host = document.createElement('div');
   host.id = SHIELD_HOST_ID;
@@ -1073,16 +1105,16 @@ export function showShieldIndicator(status: ShieldStatus, anchor: Element): void
   style.textContent = styles;
   shadow.appendChild(style);
 
-  const colors = SHIELD_COLORS[status];
+  const colors = SHIELD_COLORS[effectiveStatus];
   const shield = document.createElement('div');
   shield.className = 'aeginel-shield-indicator';
   shield.style.background = colors.bg;
   shield.style.borderColor = colors.border;
   shield.style.cursor = status === 'idle' || status === 'loading' ? 'default' : 'pointer';
-  shield.title = SHIELD_TOOLTIPS[status];
-  shield.appendChild(document.createTextNode(SHIELD_ICONS[status]));
+  shield.title = SHIELD_TOOLTIPS[effectiveStatus];
+  shield.appendChild(document.createTextNode(SHIELD_ICONS[effectiveStatus]));
 
-  if (status === 'pii' && _shieldScanResult) {
+  if (effectiveStatus === 'pii') {
     const count = getActiveProtectedCount();
     if (count > 0) {
       const badge = document.createElement('span');
