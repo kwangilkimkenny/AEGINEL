@@ -398,6 +398,10 @@
   animation: aeginel-popover-in-above 0.15s ease-out;
 }
 
+.aeginel-pii-popover.aeginel-pii-popover--no-anim {
+  animation: none;
+}
+
 @keyframes aeginel-popover-in {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
