@@ -87,20 +87,29 @@ function initContentScript(adapter: SiteAdapter) {
     // Only check input + submit — response elements don't exist until
     // the AI has replied at least once, so checking them on a fresh
     // conversation would always produce a false "degraded" warning.
-    const selectors: Record<string, string> = {
-      input: adapter.getInputSelector(),
-      submit: adapter.getSubmitSelector(),
-    };
-
     const brokenSelectors: string[] = [];
-    for (const [name, selector] of Object.entries(selectors)) {
+
+    const inputSelector = adapter.getInputSelector();
+    let inputEl: Element | null = null;
+    try {
+      inputEl = document.querySelector(inputSelector);
+      if (!inputEl) brokenSelectors.push('input');
+    } catch {
+      brokenSelectors.push('input');
+    }
+
+    // Many chat UIs hide the submit button when the input is empty.
+    // Only flag submit as broken when the input has content.
+    const inputHasText = inputEl instanceof HTMLElement
+      && (inputEl as HTMLInputElement).value?.length > 0
+      || (inputEl instanceof HTMLElement && (inputEl.textContent?.trim().length ?? 0) > 0);
+
+    if (inputHasText) {
+      const submitSelector = adapter.getSubmitSelector();
       try {
-        const el = document.querySelector(selector);
-        if (!el) {
-          brokenSelectors.push(name);
-        }
+        if (!document.querySelector(submitSelector)) brokenSelectors.push('submit');
       } catch {
-        brokenSelectors.push(name);
+        brokenSelectors.push('submit');
       }
     }
 
@@ -926,16 +935,19 @@ function initContentScript(adapter: SiteAdapter) {
     return tag === 'main' || tag === 'body' || tag === 'html';
   }
 
+  function findBestAnchor(): Element | null {
+    return adapter.getWarningAnchor();
+  }
+
   function scheduleShieldRetry(attempt = 0) {
     if (shieldRetryTimer) clearTimeout(shieldRetryTimer);
     if (attempt >= 50) return;
 
-    // Fast retries initially (100ms × 10), then slower (300ms)
     const delay = attempt < 10 ? 100 : 300;
     shieldRetryTimer = setTimeout(() => {
       if (shieldProperlyPlaced) return;
 
-      const anchor = adapter.getWarningAnchor();
+      const anchor = findBestAnchor();
       if (!anchor || isGenericAnchor(anchor)) {
         scheduleShieldRetry(attempt + 1);
         return;

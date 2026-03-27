@@ -174,54 +174,58 @@ function hideBlockModal(): void {
 
 // ── Show Protected Banner (PII Proxy notification) ──────────────────────
 
-export function showProtectedBanner(piiCount: number, anchor: Element): void {
+export function showProtectedBanner(piiCount: number, _anchor: Element): void {
   hideProtectedBanner();
 
   const host = document.createElement('div');
   host.id = PROTECTED_HOST_ID;
-  host.style.width = '100%';
-  host.style.boxSizing = 'border-box';
+  // Fixed-position toast — never pushes page content
+  host.style.cssText = 'position:fixed;top:16px;right:16px;z-index:2147483647;pointer-events:auto;';
   const shadow = host.attachShadow({ mode: 'closed' });
 
   const style = document.createElement('style');
-  style.textContent = styles;
+  style.textContent = styles + `
+    .aeginel-protected-toast {
+      display: flex; align-items: center; gap: 10px;
+      background: #1a1a2e; color: #fff; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px; padding: 12px 18px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      font: 14px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      animation: aeginel-toast-in 0.3s ease-out;
+      max-width: 360px;
+    }
+    .aeginel-protected-toast .shield { font-size: 20px; flex-shrink: 0; }
+    .aeginel-protected-toast .text { flex: 1; }
+    .aeginel-protected-toast .title { font-weight: 600; font-size: 13px; }
+    .aeginel-protected-toast .detail { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+    .aeginel-protected-toast .close {
+      background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer;
+      font-size: 16px; padding: 0 0 0 8px; line-height: 1;
+    }
+    .aeginel-protected-toast .close:hover { color: #fff; }
+    @keyframes aeginel-toast-in {
+      from { opacity: 0; transform: translateY(-12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  `;
   shadow.appendChild(style);
 
-  const banner = document.createElement('div');
-  banner.className = 'aeginel-banner aeginel-protected';
+  const toast = document.createElement('div');
+  toast.className = 'aeginel-protected-toast';
+  toast.innerHTML = `
+    <span class="shield">\u{1F6E1}\uFE0F</span>
+    <div class="text">
+      <div class="title">${t('proxy.protected', { count: piiCount })}</div>
+      <div class="detail">PII Proxy</div>
+    </div>
+    <button class="close">\u2715</button>
+  `;
+  toast.querySelector('.close')!.addEventListener('click', () => hideProtectedBanner());
+  shadow.appendChild(toast);
 
-  const shield = document.createElement('span');
-  shield.className = 'aeginel-shield';
-  shield.textContent = '\u{1F6E1}\uFE0F';
+  document.body.appendChild(host);
 
-  const content = document.createElement('div');
-  content.className = 'aeginel-content';
-
-  const title = document.createElement('div');
-  title.className = 'aeginel-title';
-  title.textContent = t('proxy.protected', { count: piiCount });
-
-  const detail = document.createElement('div');
-  detail.className = 'aeginel-detail';
-  detail.textContent = 'PII Proxy';
-
-  content.appendChild(title);
-  content.appendChild(detail);
-
-  const close = document.createElement('button');
-  close.className = 'aeginel-close';
-  close.textContent = '\u2715';
-  close.onclick = () => hideProtectedBanner();
-
-  banner.appendChild(shield);
-  banner.appendChild(content);
-  banner.appendChild(close);
-  shadow.appendChild(banner);
-
-  anchor.parentElement?.insertBefore(host, anchor);
-
-  // Auto-dismiss after 3 seconds
-  setTimeout(() => hideProtectedBanner(), 3000);
+  setTimeout(() => hideProtectedBanner(), 2500);
 }
 
 function hideProtectedBanner(): void {
@@ -1066,6 +1070,13 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function setHostPointerEvents(enabled: boolean): void {
+  const host = document.getElementById(SHIELD_HOST_ID);
+  if (host && host.style.position === 'fixed') {
+    host.style.pointerEvents = enabled ? 'auto' : 'none';
+  }
+}
+
 function togglePiiPopover(): void {
   if (!_shieldShadow) return;
 
@@ -1074,6 +1085,7 @@ function togglePiiPopover(): void {
     existing.remove();
     hidePiiTooltip();
     _piiPopoverOpen = false;
+    setHostPointerEvents(false);
     return;
   }
 
@@ -1084,6 +1096,7 @@ function togglePiiPopover(): void {
   const popover = buildPiiPopoverElement(matches || [], input);
   _shieldShadow.appendChild(popover);
   _piiPopoverOpen = true;
+  setHostPointerEvents(true);
 
   requestAnimationFrame(() => {
     const popoverRect = popover.getBoundingClientRect();
@@ -1107,6 +1120,7 @@ function togglePiiPopover(): void {
       if (currentPopover) currentPopover.remove();
       hidePiiTooltip();
       _piiPopoverOpen = false;
+      setHostPointerEvents(false);
       document.removeEventListener('click', onClickOutside, true);
     }
   };
