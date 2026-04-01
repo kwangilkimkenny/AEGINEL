@@ -1,0 +1,44 @@
+name: Verify i18n
+
+on:
+  push:
+    paths:
+      - "src/i18n/**"
+      - "landing/i18n/**"
+      - "landing/index.html"
+      - "scripts/verify-i18n.ts"
+      - "landing/validate-i18n.mjs"
+  pull_request:
+    paths:
+      - "src/i18n/**"
+      - "landing/i18n/**"
+      - "landing/index.html"
+      - "scripts/verify-i18n.ts"
+      - "landing/validate-i18n.mjs"
+
+jobs:
+  verify:
+    name: i18n consistency check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify extension i18n (en ↔ ko, es)
+        run: pnpm verify:i18n
+
+      - name: Verify landing i18n
+        run: node landing/validate-i18n.mjs
