@@ -163,6 +163,7 @@
     "title": "Protección de Privacidad",
     "description": "Los datos personales detectados por IA se resaltan en amarillo",
     "descriptionFull": "La IA detecta automáticamente datos personales en su entrada y los resalta en amarillo. Al enviar, estos datos se reemplazan con valores falsos para su protección. Pase el cursor sobre los elementos resaltados para cancelar detecciones falsas, o arrastre para seleccionar texto y enmascarar manualmente.",
+    "inlineDesc": "Los datos resaltados se reemplazarán con valores falsos al enviar.",
     "type": "Tipo",
     "anonymizedTo": "Enmascarado como",
     "cancelProtection": "Cancelar Protección",
@@ -174,7 +175,9 @@
     "apply": "Aplicar",
     "cancel": "Cancelar",
     "cancelManual": "Eliminar máscara",
-    "manualType": "Manual"
+    "manualType": "Manual",
+    "hintClick": "Clic en resaltado → quitar",
+    "hintDrag": "Arrastrar texto → enmascarar"
   },
   "piiTypes": {
     "korean_rrn": "Número de Residente",
