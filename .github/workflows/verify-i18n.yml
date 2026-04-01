@@ -8,6 +8,7 @@ on:
       - "landing/index.html"
       - "scripts/verify-i18n.ts"
       - "landing/validate-i18n.mjs"
+      - ".github/workflows/verify-i18n.yml"
   pull_request:
     paths:
       - "src/i18n/**"
@@ -15,6 +16,8 @@ on:
       - "landing/index.html"
       - "scripts/verify-i18n.ts"
       - "landing/validate-i18n.mjs"
+      - ".github/workflows/verify-i18n.yml"
+  workflow_dispatch:
 
 jobs:
   verify:
