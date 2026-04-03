@@ -7,8 +7,9 @@ import { claudeAdapter } from './sites/claude';
 import { geminiAdapter } from './sites/gemini';
 import { createGenericAdapter } from './sites/generic';
 import { siteRegistry } from './sites/registry';
-import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner, showShieldIndicator, hideShieldIndicator, isShieldVisible, showDisconnectedBanner } from './overlay/warning-banner';
+import { showWarningBanner, hideWarningBanner, showBlockModal, showProtectedBanner, showProxyConfirmModal, showHealthBanner, hideHealthBanner, showShieldIndicator, hideShieldIndicator, isShieldVisible, showDisconnectedBanner, updateShieldTooltip, updateShieldScanResult, getPiiModifications, resetPiiModifications } from './overlay/warning-banner';
 import type { ShieldStatus } from './overlay/warning-banner';
+import { showFloatingBadge, updateFloatingPanel, isFloatingBadgeShown } from './overlay/floating-panel';
 import type { ScanResult, AeginelConfig, ProxyResult, PiiMapping } from '../engine/types';
 import { DEFAULT_CONFIG } from '../engine/types';
 import { DEBOUNCE_MS, INPUT_MIN_LENGTH } from '../shared/constants';
@@ -40,7 +41,23 @@ if (adapter) {
   console.debug(`[Aegis] No matching site adapter for: ${window.location.hostname}`);
 }
 
+// ── Fetch Interceptor (MAIN world) ────────────────────────────────────────
+// Injected as an external script from web_accessible_resources to bypass CSP.
+// Wraps window.fetch so that when data-aegis-proxy-text is set on <html>,
+// the outgoing request body's query text is replaced with the proxied version.
+
+function injectFetchInterceptor(): void {
+  if (document.documentElement.hasAttribute('data-aegis-fetch-patched')) return;
+  document.documentElement.setAttribute('data-aegis-fetch-patched', '1');
+
+  const script = document.createElement('script');
+  script.src = chrome.runtime.getURL('fetch-interceptor.js');
+  (document.head || document.documentElement).appendChild(script);
+}
+
 function initContentScript(adapter: SiteAdapter) {
+  injectFetchInterceptor();
+
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let lastScannedText = '';
   let currentResult: ScanResult | null = null;
@@ -70,20 +87,29 @@ function initContentScript(adapter: SiteAdapter) {
     // Only check input + submit — response elements don't exist until
     // the AI has replied at least once, so checking them on a fresh
     // conversation would always produce a false "degraded" warning.
-    const selectors: Record<string, string> = {
-      input: adapter.getInputSelector(),
-      submit: adapter.getSubmitSelector(),
-    };
-
     const brokenSelectors: string[] = [];
-    for (const [name, selector] of Object.entries(selectors)) {
+
+    const inputSelector = adapter.getInputSelector();
+    let inputEl: Element | null = null;
+    try {
+      inputEl = document.querySelector(inputSelector);
+      if (!inputEl) brokenSelectors.push('input');
+    } catch {
+      brokenSelectors.push('input');
+    }
+
+    // Many chat UIs hide the submit button when the input is empty.
+    // Only flag submit as broken when the input has content.
+    const inputHasText = inputEl instanceof HTMLElement
+      && (inputEl as HTMLInputElement).value?.length > 0
+      || (inputEl instanceof HTMLElement && (inputEl.textContent?.trim().length ?? 0) > 0);
+
+    if (inputHasText) {
+      const submitSelector = adapter.getSubmitSelector();
       try {
-        const el = document.querySelector(selector);
-        if (!el) {
-          brokenSelectors.push(name);
-        }
+        if (!document.querySelector(submitSelector)) brokenSelectors.push('submit');
       } catch {
-        brokenSelectors.push(name);
+        brokenSelectors.push('submit');
       }
     }
 
@@ -132,7 +158,7 @@ function initContentScript(adapter: SiteAdapter) {
   sendMessage<{ payload?: AeginelConfig }>({ type: 'GET_CONFIG' }).then((res) => {
     if (res?.payload) {
       currentConfig = res.payload;
-      setLocale(res.payload.language);
+      setLocale(res.payload.uiLanguage ?? 'auto');
     }
   });
 
@@ -183,16 +209,38 @@ function initContentScript(adapter: SiteAdapter) {
     }
   }
 
+  const THREAT_CATEGORIES = new Set([
+    'jailbreak', 'prompt_injection', 'harmful', 'violence',
+    'dangerous', 'self_harm', 'hate_speech',
+  ]);
+
+  function hasThreatCategory(categories: string[]): boolean {
+    return categories.some(c => THREAT_CATEGORIES.has(c.toLowerCase()));
+  }
+
   // Handle scan result — silent-by-default
   // Only show full warning banner for high/critical risk.
   // For low/medium, show a non-intrusive shield icon.
   function handleScanResult(result: ScanResult) {
     const anchor = adapter.getWarningAnchor();
 
+    updateShieldScanResult(result);
+
     if (result.score === 0 && result.piiDetected.length === 0) {
       hideWarningBanner();
       lastShieldStatus = 'safe';
       if (anchor) showShieldIndicator('safe', anchor);
+      return;
+    }
+
+    // PII-only + proxy enabled → lock shield only, no banner
+    const isPiiOnly = result.piiDetected.length > 0
+      && !hasThreatCategory(result.categories);
+
+    if (isPiiOnly && currentConfig.piiProxy.enabled) {
+      hideWarningBanner();
+      lastShieldStatus = 'pii';
+      if (anchor) showShieldIndicator('pii', anchor);
       return;
     }
 
@@ -218,23 +266,6 @@ function initContentScript(adapter: SiteAdapter) {
     showShieldIndicator(shieldStatus, anchor);
   }
 
-  // ── PII Proxy: Quick check if text likely has PII ───────────────────
-  // Fast heuristic to avoid unnecessary submit interception
-  function textMayContainPii(text: string): boolean {
-    // Quick checks for common PII patterns
-    // 6+ consecutive digits (RRN, card, phone, SSN)
-    if (/\d{6,}/.test(text)) return true;
-    // Digit groups with dashes (RRN, SSN, phone)
-    if (/\d{2,4}[-–.]\d{2,4}/.test(text)) return true;
-    // Email pattern
-    if (/@[a-zA-Z0-9]/.test(text)) return true;
-    // + prefix for international phone
-    if (/\+\d{1,3}/.test(text)) return true;
-    // Passport-like: letter(s) + 7+ digits
-    if (/[A-Z]{1,2}\d{7}/.test(text)) return true;
-    return false;
-  }
-
   // ── PII Proxy: Pseudonymize before submit ─────────────────────────────
 
   function hideInputText(el: Element): void {
@@ -250,15 +281,17 @@ function initContentScript(adapter: SiteAdapter) {
   }
 
   async function proxyAndSubmit(inputEl: Element, originalText: string): Promise<boolean> {
+    const modifications = getPiiModifications();
     const response = await sendMessage<ProxyResult>({
       type: 'PROXY_INPUT',
-      payload: { text: originalText, site: adapter.id, sessionId },
+      payload: { text: originalText, site: adapter.id, sessionId, modifications },
     });
 
     if (!response || response.piiCount === 0) {
       return false;
     }
 
+    resetPiiModifications();
     const proxyResult: ProxyResult = response;
     lastProxyResult = proxyResult;
     const anchor = adapter.getWarningAnchor();
@@ -268,25 +301,31 @@ function initContentScript(adapter: SiteAdapter) {
       return new Promise<boolean>((resolve) => {
         showProxyConfirmModal(proxyResult, anchor,
           () => {
-            // User confirmed — hide text, swap, submit
             hideInputText(inputEl);
-            adapter.setInputText(inputEl, proxyResult.proxiedText);
+            // Set fetch interceptor attribute BEFORE setInputText (which may throw)
+            document.documentElement.setAttribute(
+              'data-aegis-proxy-text', proxyResult.proxiedText,
+            );
+            try { adapter.setInputText(inputEl, proxyResult.proxiedText); } catch { /* fetch interceptor will handle it */ }
             if (currentConfig.piiProxy.showNotification && anchor) {
               showProtectedBanner(proxyResult.piiCount, anchor);
             }
             resolve(true);
           },
           () => {
-            // User skipped — send original
             resolve(false);
           },
         );
       });
     }
 
-    // Auto mode — hide text so the user never sees the pseudonymized value
+    // Auto mode
     hideInputText(inputEl);
-    adapter.setInputText(inputEl, proxyResult.proxiedText);
+    // Set fetch interceptor attribute BEFORE setInputText (which may throw)
+    document.documentElement.setAttribute(
+      'data-aegis-proxy-text', proxyResult.proxiedText,
+    );
+    try { adapter.setInputText(inputEl, proxyResult.proxiedText); } catch { /* fetch interceptor will handle it */ }
     if (currentConfig.piiProxy.showNotification && anchor) {
       showProtectedBanner(proxyResult.piiCount, anchor);
     }
@@ -305,19 +344,30 @@ function initContentScript(adapter: SiteAdapter) {
 
     // Check if blocked by threat detection (synchronous)
     if (currentResult?.blocked) {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
+      const isPiiOnlyBlock = !hasThreatCategory(currentResult.categories)
+        && currentResult.piiDetected.length > 0;
 
-      const anchor = adapter.getWarningAnchor();
-      if (anchor) {
-        showBlockModal(currentResult, anchor, () => {
-          // User chose to override — allow submission
-          currentResult = { ...currentResult!, blocked: false };
-          triggerSubmit();
-        });
+      if (isPiiOnlyBlock && currentConfig.piiProxy.enabled) {
+        // PII-only block with proxy enabled — skip modal, let proxy handle it.
+        // Clear blocked so the proxy flow proceeds normally.
+        currentResult = { ...currentResult, blocked: false };
+        const anchor = adapter.getWarningAnchor();
+        if (anchor) showShieldIndicator('pii', anchor);
+      } else {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        const anchor = adapter.getWarningAnchor();
+        if (anchor) {
+          showBlockModal(currentResult, anchor, () => {
+            // User chose to override — allow submission
+            currentResult = { ...currentResult!, blocked: false };
+            triggerSubmit();
+          });
+        }
+        return;
       }
-      return;
     }
 
     // PII Proxy: check if enabled (synchronous)
@@ -329,9 +379,6 @@ function initContentScript(adapter: SiteAdapter) {
 
     const text = adapter.getInputText(inputEl);
     if (text.length < INPUT_MIN_LENGTH) return;
-
-    // Quick heuristic: skip interception if text unlikely to contain PII (synchronous)
-    if (!textMayContainPii(text)) return;
 
     // All synchronous checks passed — prevent default NOW before any async work
     e.preventDefault();
@@ -363,6 +410,11 @@ function initContentScript(adapter: SiteAdapter) {
     // the pseudonymized value synchronously during the submit event
     if (proxied) {
       unhideInputText(inputEl);
+      // Clean up fetch interceptor attribute after a short delay
+      // (the fetch call should have already read it by now)
+      setTimeout(() => {
+        document.documentElement.removeAttribute('data-aegis-proxy-text');
+      }, 2000);
     }
   }
 
@@ -647,17 +699,28 @@ function initContentScript(adapter: SiteAdapter) {
 
   function watchResponses(): MutationObserver {
     const responseSelector = adapter.getResponseSelector();
+    const userMsgSelector = adapter.getUserMessageSelector?.();
     let restoreTimer: ReturnType<typeof setTimeout> | null = null;
     const restoredElements = new WeakSet<Element>();
-    // Track content snapshots to detect changes after initial restoration
     const restoredSnapshots = new WeakMap<Element, string>();
-    // Track consecutive empty selector results (for Gemini fallback)
     let emptyResultCount = 0;
 
     async function tryRestoreAll() {
       if (adapter.isStreaming()) return;
 
       let responseEls = document.querySelectorAll(responseSelector);
+
+      // Also include user messages for restoration (needed after page refresh)
+      if (userMsgSelector) {
+        const userMsgEls = document.querySelectorAll(userMsgSelector);
+        if (userMsgEls.length > 0) {
+          const combined = Array.from(responseEls);
+          for (const el of userMsgEls) {
+            if (!combined.includes(el)) combined.push(el);
+          }
+          responseEls = combined as unknown as NodeListOf<Element>;
+        }
+      }
 
       // Gemini fallback: if selectors don't match, try broader patterns
       if (responseEls.length === 0) {
@@ -702,6 +765,8 @@ function initContentScript(adapter: SiteAdapter) {
           }
         }
 
+      const beforeText = currentText;
+
         // Try enhanced deep restoration first (for Gemini shadow DOM)
         if (adapter.id === 'gemini' && lastProxyResult && lastProxyResult.piiCount > 0) {
           if (deepRestoreInElement(el, lastProxyResult.mappings)) {
@@ -713,8 +778,11 @@ function initContentScript(adapter: SiteAdapter) {
         }
 
         await restoreInDom(el);
-        restoredSnapshots.set(el, el.textContent ?? '');
-        restoredElements.add(el);
+        const afterText = el.textContent ?? '';
+        if (afterText !== beforeText) {
+          restoredSnapshots.set(el, afterText);
+          restoredElements.add(el);
+        }
       }
     }
 
@@ -736,6 +804,13 @@ function initContentScript(adapter: SiteAdapter) {
     // For Gemini, check more frequently
     const checkInterval = adapter.id === 'gemini' ? 1500 : 2000;
     setInterval(tryRestoreAll, checkInterval);
+
+    // Initial restoration on load: catch already-rendered messages after page
+    // refresh. Stagger attempts to allow the service worker to fully initialize
+    // and load persisted PII mappings from chrome.storage.session.
+    setTimeout(tryRestoreAll, 500);
+    setTimeout(tryRestoreAll, 1500);
+    setTimeout(tryRestoreAll, 3000);
 
     return responseObserver;
   }
@@ -860,16 +935,19 @@ function initContentScript(adapter: SiteAdapter) {
     return tag === 'main' || tag === 'body' || tag === 'html';
   }
 
+  function findBestAnchor(): Element | null {
+    return adapter.getWarningAnchor();
+  }
+
   function scheduleShieldRetry(attempt = 0) {
     if (shieldRetryTimer) clearTimeout(shieldRetryTimer);
     if (attempt >= 50) return;
 
-    // Fast retries initially (100ms × 10), then slower (300ms)
     const delay = attempt < 10 ? 100 : 300;
     shieldRetryTimer = setTimeout(() => {
       if (shieldProperlyPlaced) return;
 
-      const anchor = adapter.getWarningAnchor();
+      const anchor = findBestAnchor();
       if (!anchor || isGenericAnchor(anchor)) {
         scheduleShieldRetry(attempt + 1);
         return;
@@ -931,6 +1009,9 @@ function initContentScript(adapter: SiteAdapter) {
       checkForNavigation();
       scanExistingElements();
       ensureShieldVisible();
+      if (!isFloatingBadgeShown()) {
+        showFloatingBadge();
+      }
     }, 200);
   });
 
@@ -966,24 +1047,49 @@ function initContentScript(adapter: SiteAdapter) {
     shieldProperlyPlaced = true;
   }
 
+  // Initialize floating badge
+  function initFloatingBadge() {
+    showFloatingBadge();
+  }
+
   // Initial attach
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       scanExistingElements();
       responseObserverRef = watchResponses();
       showIdleShield();
+      initFloatingBadge();
       setTimeout(checkAdapterHealth, 2000);
     });
   } else {
     scanExistingElements();
     responseObserverRef = watchResponses();
     showIdleShield();
+    initFloatingBadge();
     setTimeout(checkAdapterHealth, 2000);
   }
 
   // Periodic health check every 5 minutes to detect site layout changes
   const HEALTH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
   setInterval(checkAdapterHealth, HEALTH_CHECK_INTERVAL_MS);
+
+  // ── Scan Progress Updates ──────────────────────────────────────────
+  const PHASE_TOOLTIPS: Record<string, string> = {
+    pii: 'Aegis: Scanning for personal information...',
+    aegis: 'Aegis: Checking AEGIS server...',
+    done: 'Aegis: Done',
+  };
+
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg?.type === 'SCAN_PROGRESS' && msg.payload) {
+      const { phase, detail } = msg.payload as { phase: string; detail: string };
+      const tooltip = PHASE_TOOLTIPS[phase] ?? `Aegis: ${detail}`;
+      updateShieldTooltip(tooltip);
+    }
+    if (msg?.type === 'SCAN_COMPLETE' && msg.payload) {
+      updateFloatingPanel(msg.payload as ScanResult);
+    }
+  });
 
   // ── Disconnection Detection ──────────────────────────────────────────
   // Show a non-intrusive banner when the extension context is lost

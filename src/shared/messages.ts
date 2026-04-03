@@ -1,4 +1,4 @@
-import type { ScanResult, AeginelConfig } from '../engine/types';
+import type { ScanResult, AeginelConfig, HealthEntry, PiiModifications } from '../engine/types';
 
 // ── Message Types ────────────────────────────────────────────────────────
 
@@ -17,10 +17,23 @@ export type MessageType =
   | 'RESTORE_RESPONSE'
   | 'GET_PROXY_STATS'
   | 'HEALTH_REPORT'
-  | 'ML_LOAD_ERROR'
   | 'GET_HEALTH'
-  | 'GET_ML_STATUS'
-  | 'GET_WEEKLY_REPORT';
+  | 'GET_WEEKLY_REPORT'
+  | 'AEGIS_HEALTH_CHECK'
+  | 'AEGIS_HEALTH_RESPONSE'
+  | 'AEGIS_GET_USAGE'
+  | 'AEGIS_USAGE_RESPONSE'
+  | 'AEGIS_CHECK_ACCESS'
+  | 'AEGIS_ACCESS_RESPONSE'
+  | 'GET_DEV_LOGS'
+  | 'DEV_LOGS_RESPONSE'
+  | 'CLEAR_DEV_LOGS'
+  | 'SCAN_PROGRESS'
+  | 'GET_DASHBOARD'
+  | 'DASHBOARD_RESPONSE'
+  | 'SCAN_COMPLETE'
+  | 'GET_HF_MODEL_INFO'
+  | 'HF_MODEL_INFO_RESPONSE';
 
 export interface ScanInputMessage {
   type: 'SCAN_INPUT';
@@ -75,7 +88,7 @@ export interface ClearHistoryMessage {
 
 export interface ProxyInputMessage {
   type: 'PROXY_INPUT';
-  payload: { text: string; site: string; sessionId: string };
+  payload: { text: string; site: string; sessionId: string; modifications?: PiiModifications };
 }
 
 export interface RestoreResponseMessage {
@@ -98,24 +111,98 @@ export interface HealthReportMessage {
   };
 }
 
-export interface MlLoadErrorMessage {
-  type: 'ML_LOAD_ERROR';
-  payload: {
-    error: string;
-    retryCount: number;
-  };
-}
-
 export interface GetHealthMessage {
   type: 'GET_HEALTH';
 }
 
-export interface GetMlStatusMessage {
-  type: 'GET_ML_STATUS';
-}
-
 export interface GetWeeklyReportMessage {
   type: 'GET_WEEKLY_REPORT';
+}
+
+export interface AegisHealthCheckMessage {
+  type: 'AEGIS_HEALTH_CHECK';
+}
+
+export interface AegisHealthResponseMessage {
+  type: 'AEGIS_HEALTH_RESPONSE';
+  payload: {
+    enabled: boolean;
+    connected: boolean;
+    latencyMs: number;
+  };
+}
+
+export interface AegisGetUsageMessage {
+  type: 'AEGIS_GET_USAGE';
+}
+
+export interface AegisUsageResponseMessage {
+  type: 'AEGIS_USAGE_RESPONSE';
+  payload: import('../engine/types').AegisUsageInfo | null;
+}
+
+export interface AegisCheckAccessMessage {
+  type: 'AEGIS_CHECK_ACCESS';
+}
+
+export interface AegisAccessResponseMessage {
+  type: 'AEGIS_ACCESS_RESPONSE';
+  payload: import('../engine/types').AegisVersionMap;
+}
+
+export interface GetDevLogsMessage {
+  type: 'GET_DEV_LOGS';
+}
+
+export interface DevLogsResponseMessage {
+  type: 'DEV_LOGS_RESPONSE';
+  payload: import('../engine/types').DevLogEntry[];
+}
+
+export interface ClearDevLogsMessage {
+  type: 'CLEAR_DEV_LOGS';
+}
+
+export interface GetDashboardMessage {
+  type: 'GET_DASHBOARD';
+}
+
+export interface DashboardResponseMessage {
+  type: 'DASHBOARD_RESPONSE';
+  payload: {
+    lastScan: ScanResult | null;
+    recentScans: ScanResult[];
+    health: Record<string, HealthEntry>;
+    aegisEnabled: boolean;
+    totalScans: number;
+    piiProtected: number;
+    devMode: boolean;
+  };
+}
+
+export interface ScanCompleteMessage {
+  type: 'SCAN_COMPLETE';
+  payload: ScanResult;
+}
+
+export interface GetHfModelInfoMessage {
+  type: 'GET_HF_MODEL_INFO';
+}
+
+export interface HfModelInfoResponseMessage {
+  type: 'HF_MODEL_INFO_RESPONSE';
+  payload: {
+    modelId: string;
+    lastModified: string | null;
+    error?: string;
+  };
+}
+
+export type ScanPhase = 'pii' | 'aegis' | 'done';
+
+export interface ScanProgressMessage {
+  type: 'SCAN_PROGRESS';
+  payload: { phase: ScanPhase; detail: string };
 }
 
 export type ExtensionMessage =
@@ -133,7 +220,21 @@ export type ExtensionMessage =
   | RestoreResponseMessage
   | GetProxyStatsMessage
   | HealthReportMessage
-  | MlLoadErrorMessage
   | GetHealthMessage
-  | GetMlStatusMessage
-  | GetWeeklyReportMessage;
+  | GetWeeklyReportMessage
+  | AegisHealthCheckMessage
+  | AegisHealthResponseMessage
+  | AegisGetUsageMessage
+  | AegisUsageResponseMessage
+  | AegisCheckAccessMessage
+  | AegisAccessResponseMessage
+  | GetDevLogsMessage
+  | DevLogsResponseMessage
+  | ClearDevLogsMessage
+  | ScanProgressMessage
+  | GetDashboardMessage
+  | DashboardResponseMessage
+  | ScanCompleteMessage
+  | { type: 'OPEN_AEGIS_SETTINGS' }
+  | GetHfModelInfoMessage
+  | HfModelInfoResponseMessage;

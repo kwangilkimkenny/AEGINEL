@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ScanResult } from '../../engine/types';
+import { useI18n } from '../../i18n';
 
 interface Props {
   scans: ScanResult[];
@@ -20,6 +21,7 @@ const LEVEL_BG: Record<string, string> = {
 };
 
 export default function RecentScans({ scans }: Props) {
+  const { t } = useI18n();
   const recent = scans.slice(0, 3);
 
   const handleExport = () => {
@@ -36,7 +38,7 @@ export default function RecentScans({ scans }: Props) {
   return (
     <div className="rounded-xl border border-aeginel-border bg-aeginel-surface p-3">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-[11px] font-semibold text-aeginel-text">Recent Scans</h3>
+        <h3 className="text-[11px] font-semibold text-aeginel-text">{t('history.title')}</h3>
         {scans.length > 0 && (
           <button
             onClick={handleExport}
@@ -45,17 +47,17 @@ export default function RecentScans({ scans }: Props) {
             <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            Export
+            {t('history.export')}
           </button>
         )}
       </div>
 
       {recent.length === 0 ? (
         <div className="flex flex-col items-center gap-1 py-4">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#30363d" strokeWidth="1.5" strokeLinecap="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--aeginel-border)" strokeWidth="1.5" strokeLinecap="round">
             <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
           </svg>
-          <p className="text-[9px] text-aeginel-muted">No scans yet</p>
+          <p className="text-[9px] text-aeginel-muted">{t('history.empty')}</p>
         </div>
       ) : (
         <div className="space-y-1">
@@ -74,7 +76,6 @@ export default function RecentScans({ scans }: Props) {
                   background: bg,
                 }}
               >
-                {/* Score */}
                 <span
                   className="text-sm font-bold number-hero flex-shrink-0 w-6 text-right"
                   style={{ color }}
@@ -82,7 +83,6 @@ export default function RecentScans({ scans }: Props) {
                   {scan.score}
                 </span>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="text-[10px] font-medium text-aeginel-text truncate">{scan.site}</div>
                   {scan.categories.length > 0 && (
@@ -90,7 +90,6 @@ export default function RecentScans({ scans }: Props) {
                   )}
                 </div>
 
-                {/* Time */}
                 <span className="text-[8px] text-aeginel-muted flex-shrink-0">{fmt(scan.timestamp)}</span>
               </div>
             );

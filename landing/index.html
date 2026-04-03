@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aegis Personal | AI Safety Guard</title>
-  <meta name="description" content="Protect your privacy on AI chatbots. Auto-mask personal data and detect prompt attacks on ChatGPT, Claude, Gemini & 25+ AI services." />
+  <title>Aegis Personal | PII Protection for AI Chatbots</title>
+  <meta name="description" content="Protect your personal information on AI chatbots. Auto-detect and mask PII before it reaches ChatGPT, Claude, Gemini & 25+ AI services. Connect AEGIS server for enterprise-grade protection." />
   <meta name="theme-color" content="#16a34a" />
 
   <!-- Open Graph -->
-  <meta property="og:title" content="Aegis Personal — AI Safety Guard" />
-  <meta property="og:description" content="Don't ban AI. Use it safely. Protect your privacy on ChatGPT, Claude, Gemini & 25+ AI services." />
+  <meta property="og:title" content="Aegis Personal — PII Protection for AI" />
+  <meta property="og:description" content="Don't leak your data to AI. Auto-detect and mask personal information on ChatGPT, Claude, Gemini & 25+ services." />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="https://aeginel.com/og-image.png" />
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Aegis Personal — AI Safety Guard" />
-  <meta name="twitter:description" content="Don't ban AI. Use it safely." />
+  <meta name="twitter:title" content="Aegis Personal — PII Protection for AI" />
+  <meta name="twitter:description" content="Don't leak your data to AI. Auto-detect and mask personal information." />
 
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2316a34a'><path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/></svg>" />
   <link rel="stylesheet" href="style.css" />
@@ -35,22 +35,38 @@
         <span>Aegis Personal</span>
       </a>
       <div class="nav-links">
-        <a href="#features">Features</a>
-        <a href="#how-it-works">How It Works</a>
-        <a href="#sites">Sites</a>
-        <a href="#pricing">Pricing</a>
-        <a href="https://chromewebstore.google.com/detail/aegis-personal/fjldblhbcicgggkggpdncgpgjkoaodca?hl=ko" class="btn btn-sm btn-primary" target="_blank" rel="noopener">Install Free</a>
+        <a href="#features" data-i18n="nav.features"></a>
+        <a href="#how-it-works" data-i18n="nav.howItWorks"></a>
+        <a href="#aegis" data-i18n="nav.aegis"></a>
+        <a href="#pricing" data-i18n="nav.pricing"></a>
+        <div class="lang-switcher" id="langSwitcher">
+          <button class="lang-btn" id="langBtn" aria-label="Language">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <span id="langLabel">KO</span>
+          </button>
+          <div class="lang-dropdown" id="langDropdown">
+            <button class="lang-option" data-lang="ko">🇰🇷 한국어</button>
+            <button class="lang-option" data-lang="en">🇺🇸 English</button>
+            <button class="lang-option" data-lang="es">🇪🇸 Español</button>
+          </div>
+        </div>
+        <a href="https://chromewebstore.google.com/detail/aegis-personal/fjldblhbcicgggkggpdncgpgjkoaodca?hl=ko" class="btn btn-sm btn-primary" target="_blank" rel="noopener" data-i18n="nav.install"></a>
       </div>
       <button class="nav-menu-btn" id="menuBtn" aria-label="Menu">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
       </button>
     </div>
     <div class="nav-mobile" id="mobileMenu">
-      <a href="#features">Features</a>
-      <a href="#how-it-works">How It Works</a>
-      <a href="#sites">Sites</a>
-      <a href="#pricing">Pricing</a>
-      <a href="https://chromewebstore.google.com/detail/aegis-personal/fjldblhbcicgggkggpdncgpgjkoaodca?hl=ko" class="btn btn-primary" style="width:100%;text-align:center" target="_blank" rel="noopener">Install Free</a>
+      <a href="#features" data-i18n="nav.features"></a>
+      <a href="#how-it-works" data-i18n="nav.howItWorks"></a>
+      <a href="#aegis" data-i18n="nav.aegis"></a>
+      <a href="#pricing" data-i18n="nav.pricing"></a>
+      <div class="lang-switcher-mobile">
+        <button class="lang-option-mobile" data-lang="ko">🇰🇷 한국어</button>
+        <button class="lang-option-mobile" data-lang="en">🇺🇸 English</button>
+        <button class="lang-option-mobile" data-lang="es">🇪🇸 Español</button>
+      </div>
+      <a href="https://chromewebstore.google.com/detail/aegis-personal/fjldblhbcicgggkggpdncgpgjkoaodca?hl=ko" class="btn btn-primary" style="width:100%;text-align:center" target="_blank" rel="noopener" data-i18n="nav.install"></a>
     </div>
   </nav>
 
@@ -60,17 +76,17 @@
   <!-- ── Hero ─────────────────────────────────────────────────── -->
   <section class="hero">
     <div class="container">
-      <div class="hero-badge">Open Source &middot; 100% Local &middot; No Data Leaves Your Browser</div>
-      <h1>Don't ban AI.<br/><span class="text-gradient">Use it safely.</span></h1>
-      <p class="hero-sub">Aegis Personal protects your privacy when you use ChatGPT, Claude, Gemini, and 25+ AI services. It auto-masks personal data and detects prompt attacks — all running locally in your browser.</p>
+      <div class="hero-badge" data-i18n="hero.badge"></div>
+      <h1 data-i18n-html="hero.title"></h1>
+      <p class="hero-sub" data-i18n="hero.sub"></p>
       <div class="hero-cta">
         <a href="https://chromewebstore.google.com/detail/aegis-personal/fjldblhbcicgggkggpdncgpgjkoaodca?hl=ko" class="btn btn-primary btn-lg" target="_blank" rel="noopener">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 3.059A6.96 6.96 0 0 1 12 5.051a6.96 6.96 0 0 1 5.415 2.509l3.953-3.059C19.169 1.757 15.79 0 12 0zM1.244 7.697A11.94 11.94 0 0 0 0 12c0 1.537.29 3.006.818 4.354l4.697-1.621A6.93 6.93 0 0 1 5.051 12c0-.953.192-1.861.539-2.689L1.244 7.697zM12 18.949a6.96 6.96 0 0 1-5.415-2.509l-3.953 3.059C4.831 22.243 8.21 24 12 24c3.729 0 7.06-1.704 9.26-4.377l-3.895-3.12A6.96 6.96 0 0 1 12 18.949zM23.182 7.646l-4.697 1.621c.347.828.539 1.736.539 2.689 0 .985-.204 1.924-.572 2.776l4.712 1.584A11.95 11.95 0 0 0 24 12c0-1.558-.3-3.047-.818-4.354z"/></svg>
-          Add to Chrome — It's Free
+          <span data-i18n="hero.cta.chrome"></span>
         </a>
         <a href="https://github.com/kwangilkimkenny/AEGINEL" class="btn btn-outline btn-lg" target="_blank" rel="noopener">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-          View on GitHub
+          <span data-i18n="hero.cta.github"></span>
         </a>
       </div>
       <div class="hero-visual">
@@ -83,17 +99,17 @@
           </div>
           <div class="demo-body">
             <div class="demo-input">
-              <span class="demo-text">My SSN is <span class="pii-highlight">123-45-6789</span> and email is <span class="pii-highlight">john@company.com</span></span>
+              <span class="demo-text" data-i18n-html="demo.textBefore"></span>
               <div class="demo-shield safe">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               </div>
             </div>
             <div class="demo-arrow">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M12 5v14m-7-7 7 7 7-7"/></svg>
-              <span class="demo-arrow-label">Aegis Personal protects</span>
+              <span class="demo-arrow-label" data-i18n="demo.arrowLabel"></span>
             </div>
             <div class="demo-input protected">
-              <span class="demo-text">My SSN is <span class="pseudo-highlight">482-91-3047</span> and email is <span class="pseudo-highlight">user_a3f1@example.com</span></span>
+              <span class="demo-text" data-i18n-html="demo.textAfter"></span>
               <div class="demo-shield active">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               </div>
@@ -109,20 +125,20 @@
     <div class="container">
       <div class="stats-grid">
         <div class="stat-item">
-          <div class="stat-number">9</div>
-          <div class="stat-label">Detection Layers</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number">25+</div>
-          <div class="stat-label">AI Sites Supported</div>
-        </div>
-        <div class="stat-item">
           <div class="stat-number">7</div>
-          <div class="stat-label">PII Types Protected</div>
+          <div class="stat-label" data-i18n="stats.piiTypes"></div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">25</div>
+          <div class="stat-label" data-i18n="stats.aiSites"></div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">3</div>
+          <div class="stat-label" data-i18n="stats.languages"></div>
         </div>
         <div class="stat-item">
           <div class="stat-number">0</div>
-          <div class="stat-label">Data Sent to Servers</div>
+          <div class="stat-label" data-i18n="stats.dataSent"></div>
         </div>
       </div>
     </div>
@@ -132,51 +148,51 @@
   <section class="features" id="features">
     <div class="container">
       <div class="section-header">
-        <h2>Everything you need to<br/><span class="text-gradient">use AI safely</span></h2>
-        <p>Aegis Personal runs entirely in your browser. Your prompts, your data — they never leave your device.</p>
+        <h2 data-i18n-html="features.title"></h2>
+        <p data-i18n="features.sub"></p>
       </div>
       <div class="features-grid">
         <div class="feature-card">
           <div class="feature-icon blue">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           </div>
-          <h3>PII Auto-Masking</h3>
-          <p>Automatically detects and pseudonymizes SSNs, credit cards, emails, phone numbers, and Korean RRN before they reach any AI.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon red">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-          </div>
-          <h3>9-Layer Threat Detection</h3>
-          <p>Detects prompt injection, jailbreak, data extraction, social engineering, encoding attacks, and multi-turn manipulation in real time.</p>
+          <h3 data-i18n="features.pii.title"></h3>
+          <p data-i18n="features.pii.desc"></p>
         </div>
         <div class="feature-card">
           <div class="feature-icon green">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
           </div>
-          <h3>Silent by Default</h3>
-          <p>No annoying popups. A subtle shield icon shows your protection status. Full alerts only when real threats are detected.</p>
+          <h3 data-i18n="features.dashboard.title"></h3>
+          <p data-i18n="features.dashboard.desc"></p>
         </div>
         <div class="feature-card">
           <div class="feature-icon purple">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
           </div>
-          <h3>On-Device ML</h3>
-          <p>A DistilBERT ONNX model runs directly in your browser for ML-powered classification — no cloud API calls needed.</p>
+          <h3 data-i18n="features.aegis.title"></h3>
+          <p data-i18n="features.aegis.desc"></p>
         </div>
         <div class="feature-card">
           <div class="feature-icon orange">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </div>
-          <h3>CJK/Korean Evasion</h3>
-          <p>Detects chosung separation, spacing manipulation, homoglyph attacks, and code-switching attempts unique to Korean/CJK text.</p>
+          <h3 data-i18n="features.silent.title"></h3>
+          <p data-i18n="features.silent.desc"></p>
         </div>
         <div class="feature-card">
           <div class="feature-icon teal">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </div>
+          <h3 data-i18n="features.lang.title"></h3>
+          <p data-i18n="features.lang.desc"></p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon red">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
           </div>
-          <h3>Weekly Reports</h3>
-          <p>See how many threats were blocked and PII items protected. Share your weekly protection summary with one click.</p>
+          <h3 data-i18n="features.reports.title"></h3>
+          <p data-i18n="features.reports.desc"></p>
         </div>
       </div>
     </div>
@@ -186,31 +202,79 @@
   <section class="how-it-works" id="how-it-works">
     <div class="container">
       <div class="section-header">
-        <h2>How it works</h2>
-        <p>Three layers of protection, zero configuration needed.</p>
+        <h2 data-i18n="howItWorks.title"></h2>
+        <p data-i18n="howItWorks.sub"></p>
       </div>
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-content">
-            <h3>You type normally</h3>
-            <p>Use ChatGPT, Claude, or any supported AI service as usual. Aegis Personal watches silently in the background.</p>
+            <h3 data-i18n="howItWorks.step1.title"></h3>
+            <p data-i18n="howItWorks.step1.desc"></p>
           </div>
         </div>
         <div class="step">
           <div class="step-num">2</div>
           <div class="step-content">
-            <h3>Aegis Personal scans in real-time</h3>
-            <p>Every input is analyzed through 9 detection layers + ML classification. PII is detected and auto-masked before sending.</p>
+            <h3 data-i18n="howItWorks.step2.title"></h3>
+            <p data-i18n="howItWorks.step2.desc"></p>
           </div>
         </div>
         <div class="step">
           <div class="step-num">3</div>
           <div class="step-content">
-            <h3>Threats blocked, PII masked</h3>
-            <p>Dangerous prompts are blocked. Personal data is replaced with realistic pseudonyms. AI responses are auto-restored with your real data.</p>
+            <h3 data-i18n="howItWorks.step3.title"></h3>
+            <p data-i18n="howItWorks.step3.desc"></p>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── AEGIS Server ─────────────────────────────────────────── -->
+  <section class="aegis-section" id="aegis">
+    <div class="container">
+      <div class="section-header">
+        <h2 data-i18n-html="aegis.title"></h2>
+        <p data-i18n="aegis.sub"></p>
+      </div>
+      <div class="aegis-grid">
+        <div class="aegis-card">
+          <div class="aegis-version">v1</div>
+          <h3 data-i18n="aegis.judgment.title"></h3>
+          <p data-i18n="aegis.judgment.desc"></p>
+        </div>
+        <div class="aegis-card">
+          <div class="aegis-version">v2</div>
+          <h3 data-i18n="aegis.jailbreak.title"></h3>
+          <p data-i18n="aegis.jailbreak.desc"></p>
+        </div>
+        <div class="aegis-card">
+          <div class="aegis-version">v2</div>
+          <h3 data-i18n="aegis.safety.title"></h3>
+          <p data-i18n="aegis.safety.desc"></p>
+        </div>
+        <div class="aegis-card">
+          <div class="aegis-version">v2</div>
+          <h3 data-i18n="aegis.classify.title"></h3>
+          <p data-i18n="aegis.classify.desc"></p>
+        </div>
+        <div class="aegis-card">
+          <div class="aegis-version">v3</div>
+          <h3 data-i18n="aegis.korean.title"></h3>
+          <p data-i18n="aegis.korean.desc"></p>
+        </div>
+        <div class="aegis-card">
+          <div class="aegis-version highlight">Live</div>
+          <h3 data-i18n="aegis.floating.title"></h3>
+          <p data-i18n="aegis.floating.desc"></p>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:32px">
+        <a href="https://aiaegis.io" class="btn btn-primary btn-lg" target="_blank" rel="noopener">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          <span data-i18n="aegis.explore"></span>
+        </a>
       </div>
     </div>
   </section>
@@ -219,8 +283,8 @@
   <section class="sites" id="sites">
     <div class="container">
       <div class="section-header">
-        <h2>Works on <span class="text-gradient">25+ AI services</span></h2>
-        <p>Wherever you chat with AI, Aegis Personal is there.</p>
+        <h2 data-i18n-html="sites.title"></h2>
+        <p data-i18n="sites.sub"></p>
       </div>
       <div class="sites-grid">
         <div class="site-pill">ChatGPT</div>
@@ -257,51 +321,54 @@
   <section class="pricing" id="pricing">
     <div class="container">
       <div class="section-header">
-        <h2>Simple pricing</h2>
-        <p>Free for individuals. Powerful for teams.</p>
+        <h2 data-i18n="pricing.title"></h2>
+        <p data-i18n="pricing.sub"></p>
       </div>
       <div class="pricing-grid">
         <div class="price-card">
-          <div class="price-badge">Personal</div>
-          <div class="price-amount">$0</div>
-          <div class="price-period">forever free</div>
+          <div class="price-badge" data-i18n="pricing.personal.badge"></div>
+          <div class="price-amount">₩0</div>
+          <div class="price-period" data-i18n="pricing.personal.period"></div>
           <ul class="price-features">
-            <li>9-layer threat detection</li>
-            <li>PII auto-masking (7 types)</li>
-            <li>On-device ML classification</li>
-            <li>25+ AI sites supported</li>
-            <li>Weekly protection reports</li>
-            <li>All languages supported</li>
+            <li data-i18n="pricing.personal.f1"></li>
+            <li data-i18n="pricing.personal.f2"></li>
+            <li data-i18n="pricing.personal.f3"></li>
+            <li data-i18n="pricing.personal.f4"></li>
+            <li data-i18n="pricing.personal.f5"></li>
+            <li data-i18n="pricing.personal.f6"></li>
+            <li data-i18n="pricing.personal.f7"></li>
           </ul>
-          <a href="https://chromewebstore.google.com/detail/aegis-personal/fjldblhbcicgggkggpdncgpgjkoaodca?hl=ko" class="btn btn-primary" style="width:100%" target="_blank" rel="noopener">Install Free</a>
+          <a href="https://chromewebstore.google.com/detail/aegis-personal/fjldblhbcicgggkggpdncgpgjkoaodca?hl=ko" class="btn btn-primary" style="width:100%" target="_blank" rel="noopener" data-i18n="pricing.personal.cta"></a>
         </div>
         <div class="price-card featured">
-          <div class="price-badge">Team</div>
-          <div class="price-amount">$10<span class="price-per">/seat/mo</span></div>
-          <div class="price-period">5-50 seats</div>
+          <div class="price-badge" data-i18n="pricing.pro.badge"></div>
+          <div class="price-amount">₩27,000<span class="price-per">/mo</span></div>
+          <div class="price-period" data-i18n="pricing.pro.period"></div>
           <ul class="price-features">
-            <li>Everything in Personal +</li>
-            <li>Admin dashboard</li>
-            <li>Centralized policy management</li>
-            <li>Audit log & compliance reports</li>
-            <li>Custom detection rules</li>
-            <li>Priority support</li>
+            <li data-i18n="pricing.pro.f1"></li>
+            <li data-i18n="pricing.pro.f2"></li>
+            <li data-i18n="pricing.pro.f3"></li>
+            <li data-i18n="pricing.pro.f4"></li>
+            <li data-i18n="pricing.pro.f5"></li>
+            <li data-i18n="pricing.pro.f6"></li>
+            <li data-i18n="pricing.pro.f7"></li>
           </ul>
-          <a href="mailto:contact@aeginel.com?subject=Team Plan" class="btn btn-primary" style="width:100%">Contact Us</a>
+          <a href="https://aiaegis.io/pricing" class="btn btn-primary" style="width:100%" target="_blank" rel="noopener" data-i18n="pricing.pro.cta"></a>
         </div>
         <div class="price-card">
-          <div class="price-badge">Enterprise</div>
-          <div class="price-amount">Custom</div>
-          <div class="price-period">500+ seats</div>
+          <div class="price-badge" data-i18n="pricing.enterprise.badge"></div>
+          <div class="price-amount" data-i18n="pricing.enterprise.amount"></div>
+          <div class="price-period" data-i18n="pricing.enterprise.period"></div>
           <ul class="price-features">
-            <li>Everything in Team +</li>
-            <li>SSO / SCIM integration</li>
-            <li>On-premise deployment</li>
-            <li>DLP solution integration</li>
-            <li>Custom SLA</li>
-            <li>Dedicated support</li>
+            <li data-i18n="pricing.enterprise.f1"></li>
+            <li data-i18n="pricing.enterprise.f2"></li>
+            <li data-i18n="pricing.enterprise.f3"></li>
+            <li data-i18n="pricing.enterprise.f4"></li>
+            <li data-i18n="pricing.enterprise.f5"></li>
+            <li data-i18n="pricing.enterprise.f6"></li>
+            <li data-i18n="pricing.enterprise.f7"></li>
           </ul>
-          <a href="mailto:enterprise@aeginel.com?subject=Enterprise Plan" class="btn btn-outline" style="width:100%">Talk to Sales</a>
+          <a href="mailto:enterprise@aeginel.com?subject=Enterprise Plan" class="btn btn-outline" style="width:100%" data-i18n="pricing.enterprise.cta"></a>
         </div>
       </div>
     </div>
@@ -310,11 +377,11 @@
   <!-- ── CTA ──────────────────────────────────────────────────── -->
   <section class="cta" id="install">
     <div class="container">
-      <h2>Protect your AI conversations<br/><span class="text-gradient">starting now</span></h2>
-      <p>Free. Open source. Takes 10 seconds to install.</p>
+      <h2 data-i18n-html="cta.title"></h2>
+      <p data-i18n="cta.sub"></p>
       <a href="https://chromewebstore.google.com/detail/aegis-personal/fjldblhbcicgggkggpdncgpgjkoaodca?hl=ko" class="btn btn-primary btn-lg" target="_blank" rel="noopener">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 3.059A6.96 6.96 0 0 1 12 5.051a6.96 6.96 0 0 1 5.415 2.509l3.953-3.059C19.169 1.757 15.79 0 12 0zM1.244 7.697A11.94 11.94 0 0 0 0 12c0 1.537.29 3.006.818 4.354l4.697-1.621A6.93 6.93 0 0 1 5.051 12c0-.953.192-1.861.539-2.689L1.244 7.697zM12 18.949a6.96 6.96 0 0 1-5.415-2.509l-3.953 3.059C4.831 22.243 8.21 24 12 24c3.729 0 7.06-1.704 9.26-4.377l-3.895-3.12A6.96 6.96 0 0 1 12 18.949zM23.182 7.646l-4.697 1.621c.347.828.539 1.736.539 2.689 0 .985-.204 1.924-.572 2.776l4.712 1.584A11.95 11.95 0 0 0 24 12c0-1.558-.3-3.047-.818-4.354z"/></svg>
-        Add to Chrome — Free
+        <span data-i18n="cta.button"></span>
       </a>
     </div>
   </section>
@@ -332,32 +399,34 @@
             </div>
             <span>Aegis Personal</span>
           </div>
-          <p>Don't ban AI. Use it safely.</p>
+          <p data-i18n="footer.tagline"></p>
         </div>
         <div class="footer-links">
           <div class="footer-col">
-            <h4>Product</h4>
-            <a href="#features">Features</a>
-            <a href="#pricing">Pricing</a>
-            <a href="#sites">Supported Sites</a>
+            <h4 data-i18n="footer.product"></h4>
+            <a href="#features" data-i18n="footer.features"></a>
+            <a href="#aegis" data-i18n="footer.aegisServer"></a>
+            <a href="#pricing" data-i18n="footer.pricing"></a>
+            <a href="#sites" data-i18n="footer.supportedSites"></a>
           </div>
           <div class="footer-col">
-            <h4>Resources</h4>
+            <h4 data-i18n="footer.resources"></h4>
             <a href="https://github.com/kwangilkimkenny/AEGINEL" target="_blank" rel="noopener">GitHub</a>
-            <a href="https://github.com/kwangilkimkenny/AEGINEL/issues" target="_blank" rel="noopener">Report a Bug</a>
-            <a href="privacy.html">Privacy Policy</a>
+            <a href="https://aiaegis.io" target="_blank" rel="noopener" data-i18n="footer.aegisServer"></a>
+            <a href="https://github.com/kwangilkimkenny/AEGINEL/issues" target="_blank" rel="noopener" data-i18n="footer.reportBug"></a>
+            <a href="privacy.html" data-i18n="footer.privacy"></a>
           </div>
           <div class="footer-col">
-            <h4>Contact</h4>
+            <h4 data-i18n="footer.contact"></h4>
             <a href="mailto:aegis@yatavent.com">aegis@yatavent.com</a>
             <a href="tel:+82-2-2039-0633">+82-2-2039-0633</a>
-            <span>Seongdong-gu, Seoul, Korea</span>
+            <span data-i18n="footer.address"></span>
           </div>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>&copy; 2026 Aegis Personal. All rights reserved.</span>
-        <span>Made with care for AI safety.</span>
+        <span data-i18n="footer.copyright"></span>
+        <span data-i18n="footer.madeWith"></span>
       </div>
     </div>
   </footer>

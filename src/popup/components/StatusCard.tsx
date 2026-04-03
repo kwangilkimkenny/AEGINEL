@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '../../i18n';
 
 interface Props {
   enabled: boolean;
@@ -14,6 +15,14 @@ interface Props {
 export default function StatusCard({
   enabled, siteName, totalScans, threatsBlocked, piiProtected, todayScans, weekScans,
 }: Props) {
+  const { t } = useI18n();
+
+  const subText = todayScans > 0
+    ? `${todayScans} ${t('stats.today')}`
+    : weekScans > 0
+      ? `${weekScans} ${t('stats.thisWeek')}`
+      : undefined;
+
   return (
     <div className="rounded-xl border border-aeginel-border bg-aeginel-surface p-3 animate-slide-up">
       {/* Status row */}
@@ -24,13 +33,13 @@ export default function StatusCard({
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all duration-300"
             style={enabled
               ? { background: 'rgba(63,185,80,0.12)', border: '1px solid rgba(63,185,80,0.3)', color: '#3fb950' }
-              : { background: '#21262d', border: '1px solid #30363d', color: '#8b949e' }
+              : { background: 'var(--aeginel-surface2)', border: '1px solid var(--aeginel-border)', color: 'var(--aeginel-muted)' }
             }
           >
             <span
               className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${enabled ? 'bg-aeginel-green status-dot-active' : 'bg-aeginel-muted'}`}
             />
-            {enabled ? 'Protected' : 'Disabled'}
+            {enabled ? t('status.protected') : t('status.disabled')}
           </div>
 
           {/* Site pill */}
@@ -43,30 +52,20 @@ export default function StatusCard({
       </div>
 
       {/* Stats bento grid */}
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
         <StatBox
-          label="Scans"
+          label={t('stats.scans')}
           value={totalScans}
-          sub={todayScans > 0 ? `${todayScans} today` : weekScans > 0 ? `${weekScans} this week` : undefined}
-          color="#e6edf3"
+          sub={subText}
+          color="var(--aeginel-text)"
           icon={
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8b949e" strokeWidth="2" strokeLinecap="round">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--aeginel-muted)" strokeWidth="2" strokeLinecap="round">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
           }
         />
         <StatBox
-          label="Blocked"
-          value={threatsBlocked}
-          color="#f85149"
-          icon={
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f85149" strokeWidth="2" strokeLinecap="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-          }
-        />
-        <StatBox
-          label="PII Safe"
+          label={t('stats.piiProtected')}
           value={piiProtected}
           color="#58a6ff"
           icon={

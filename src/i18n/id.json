@@ -8,5 +8,5 @@
   "banner": { "detected": "Risiko Terdeteksi", "blocked": "Pengiriman Diblokir", "goBack": "Kembali", "sendAnyway": "Kirim Saja" },
   "categories": { "harmful_content": "Konten Berbahaya", "jailbreak": "Jailbreak", "prompt_injection": "Injeksi Prompt", "data_extraction": "Ekstraksi Data", "social_engineering": "Rekayasa Sosial", "script_evasion": "Penghindaran Script", "encoding_attack": "Serangan Encoding", "multi_turn": "Serangan Multi-giliran", "self_harm": "Menyakiti Diri", "pii_exposure": "Paparan PII" },
   "proxy": { "protected": "{{count}} data pribadi dilindungi", "confirmTitle": "Konfirmasi Perlindungan PII", "confirmDesc": "Data pribadi berikut terdeteksi dan akan disamarkan:", "original": "Asli", "pseudonym": "Nama Samaran", "confirm": "Lindungi & Kirim", "skip": "Kirim Asli", "settingsTitle": "PII Proxy (Penyamaran)", "enabled": "Penyamaran Otomatis", "modeAuto": "Otomatis", "modeConfirm": "Konfirmasi dulu", "notification": "Tampilkan notifikasi" },
-  "piiTypes": { "korean_rrn": "RRN Korea", "credit_card": "Kartu Kredit", "email": "Email", "phone_kr": "Telepon (KR)", "phone_intl": "Telepon (Intl)", "ssn": "SSN", "passport": "Paspor" }
+  "piiTypes": { "korean_rrn": "RRN Korea", "credit_card": "Kartu Kredit", "email": "Email", "phone_kr": "Telepon (KR)", "phone_intl": "Telepon (Intl)", "ssn": "SSN", "passport": "Paspor", "time": "Waktu" }
 }

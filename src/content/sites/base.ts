@@ -27,6 +27,15 @@ export interface SiteAdapter {
   getUserMessageSelector?(): string;
 }
 
+/**
+ * innerText on contenteditable with <p> elements produces extra \n at
+ * block boundaries. Collapse runs of 3+ newlines down to \n\n so a
+ * single visual blank line stays a single blank line in our text.
+ */
+export function normalizeInnerText(raw: string): string {
+  return raw.trim().replace(/\n{3,}/g, '\n\n');
+}
+
 export function getInputText(el: Element): string {
   if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
     return el.value;
@@ -36,8 +45,8 @@ export function getInputText(el: Element): string {
 }
 
 export function setInputText(el: Element, text: string): void {
+  // ── Textarea / Input ──
   if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
-    // Use native setter to trigger React/framework change detection
     const nativeSetter = Object.getOwnPropertyDescriptor(
       el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype,
       'value',
@@ -52,61 +61,85 @@ export function setInputText(el: Element, text: string): void {
     return;
   }
 
-  // ── Contenteditable / ProseMirror editors ──
-  // Direct textContent manipulation bypasses ProseMirror's internal state.
-  // We must go through the browser's editing pipeline so the framework
-  // picks up the change and sends the updated text on submit.
-
+  // ── Contenteditable editors ──
   const htmlEl = el as HTMLElement;
   htmlEl.focus();
-
-  // Step 1: Select all existing content
   const selection = window.getSelection();
+  const isProseMirror = !!htmlEl.closest('.ProseMirror');
+
+  // ── Strategy A: Atomic selectAll + insertText ──
+  // Uses browser-native selectAll (not Range API) so the editor framework
+  // recognises the selection. insertText then replaces it atomically and
+  // fires a trusted input event that updates React/Slate/etc. state.
+  if (!isProseMirror || !text.includes('\n')) {
+    document.execCommand('selectAll', false);
+    if (document.execCommand('insertText', false, text)) {
+      const actual = (htmlEl.innerText || htmlEl.textContent || '').trim();
+      if (actual.length <= text.trim().length * 1.5) {
+        dispatchChangeEvents(htmlEl, text);
+        return;
+      }
+      // Content grew → insertText appended. Undo and fall through.
+      document.execCommand('undo', false);
+    }
+  }
+
+  // ── Strategy B: ProseMirror line-by-line (delete + insertParagraph) ──
+  if (isProseMirror) {
+    selectAllContent(htmlEl, selection);
+    document.execCommand('delete', false);
+
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i]) {
+        document.execCommand('insertText', false, lines[i]);
+      }
+      if (i < lines.length - 1) {
+        document.execCommand('insertParagraph', false);
+      }
+    }
+    dispatchChangeEvents(htmlEl, text);
+    return;
+  }
+
+  // ── Strategy C: Direct DOM replacement + React fiber state sync ──
+  while (htmlEl.firstChild) htmlEl.removeChild(htmlEl.firstChild);
+
+  const frag = document.createDocumentFragment();
+  if (text.includes('\n')) {
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) frag.appendChild(document.createElement('br'));
+      frag.appendChild(document.createTextNode(lines[i]));
+    }
+  } else {
+    frag.appendChild(document.createTextNode(text));
+  }
+  htmlEl.appendChild(frag);
+
   if (selection) {
-    const range = document.createRange();
-    range.selectNodeContents(htmlEl);
+    const r = document.createRange();
+    r.selectNodeContents(htmlEl);
+    r.collapse(false);
     selection.removeAllRanges();
-    selection.addRange(range);
+    selection.addRange(r);
   }
 
-  // Step 2: Try execCommand('insertText') — goes through the editor's input pipeline
-  const inserted = document.execCommand('insertText', false, text);
+  dispatchChangeEvents(htmlEl, text);
+}
 
-  if (!inserted) {
-    // Fallback: use InputEvent which ProseMirror also listens to
-    if (selection) {
-      selection.deleteFromDocument();
-    }
-    // Clear and set via DOM, then fire proper InputEvent
-    htmlEl.textContent = '';
-    const textNode = document.createTextNode(text);
-    htmlEl.appendChild(textNode);
+function selectAllContent(el: HTMLElement, selection: Selection | null): void {
+  if (!selection) return;
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
 
-    // Select the inserted text to update cursor position
-    if (selection) {
-      const newRange = document.createRange();
-      newRange.selectNodeContents(htmlEl);
-      newRange.collapse(false); // collapse to end
-      selection.removeAllRanges();
-      selection.addRange(newRange);
-    }
-
-    // Fire InputEvent with proper inputType so frameworks detect the change
-    htmlEl.dispatchEvent(new InputEvent('input', {
-      bubbles: true,
-      cancelable: false,
-      inputType: 'insertText',
-      data: text,
-    }));
-  }
-
-  // Step 3: Additional events that React/Next.js/ProseMirror may listen to
-  htmlEl.dispatchEvent(new Event('input', { bubbles: true }));
-  htmlEl.dispatchEvent(new Event('change', { bubbles: true }));
-
-  // Step 4: Trigger compositionend for CJK input method editors
-  htmlEl.dispatchEvent(new CompositionEvent('compositionend', {
-    bubbles: true,
-    data: text,
+function dispatchChangeEvents(el: HTMLElement, text: string): void {
+  el.dispatchEvent(new InputEvent('input', {
+    bubbles: true, cancelable: false, inputType: 'insertText', data: text,
   }));
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  el.dispatchEvent(new Event('change', { bubbles: true }));
 }

@@ -1,6 +1,33 @@
-import React, { useState } from 'react';
-import type { AeginelConfig } from '../../engine/types';
-import { LANGUAGE_OPTIONS } from '../../i18n';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import type { AeginelConfig, AegisServerConfig, AegisUsageInfo, AegisVersionMap, PiiType } from '../../engine/types';
+import { DEFAULT_AEGIS_SERVER_CONFIG } from '../../engine/types';
+import { LANGUAGE_OPTIONS, UI_LANGUAGE_OPTIONS, useI18n } from '../../i18n';
+
+const PII_TYPE_GROUPS: { label: string; types: PiiType[] }[] = [
+  {
+    label: 'ID & Documents',
+    types: ['korean_rrn', 'ssn', 'passport', 'idcard', 'driverlicensenum'],
+  },
+  {
+    label: 'Financial',
+    types: ['credit_card', 'accountnum'],
+  },
+  {
+    label: 'Contact & Account',
+    types: ['email', 'phone_kr', 'phone_intl', 'username', 'password', 'ip_address'],
+  },
+  {
+    label: 'Personal Info',
+    types: ['givenname', 'surname', 'dateofbirth', 'company', 'time'],
+  },
+  {
+    label: 'Address',
+    types: ['street', 'city', 'zipcode', 'buildingnum'],
+  },
+];
+
+const ALL_PII_TYPES: PiiType[] = PII_TYPE_GROUPS.flatMap(g => g.types);
 
 interface Props {
   config: AeginelConfig;
@@ -8,40 +35,40 @@ interface Props {
   onClearHistory: () => void;
 }
 
-const LAYER_KEYS: (keyof AeginelConfig['layers'])[] = [
-  'basicKeywords', 'jailbreak', 'injection', 'extraction',
-  'socialEngineering', 'koreanEvasion', 'encodingAttacks',
-  'multiTurn', 'semanticRisk',
-];
-
-const LAYER_LABELS: Record<string, string> = {
-  basicKeywords:    'Keywords',
-  jailbreak:        'Jailbreak',
-  injection:        'Injection',
-  extraction:       'Extraction',
-  socialEngineering:'Social Eng.',
-  koreanEvasion:    'CJK Evasion',
-  encodingAttacks:  'Encoding',
-  multiTurn:        'Multi-turn',
-  semanticRisk:     'Semantic',
-};
-
-type Tab = 'detection' | 'privacy' | 'advanced';
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'detection', label: 'Detection' },
-  { key: 'privacy',   label: 'Privacy' },
-  { key: 'advanced',  label: 'Advanced' },
-];
+type Tab = 'privacy' | 'advanced';
 
 export default function SettingsPanel({ config, onUpdate, onClearHistory }: Props) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>('detection');
+  const { t } = useI18n();
+  const hashIsAegis = window.location.hash === '#aegis';
+  const [isOpen, setIsOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState<Tab>(hashIsAegis ? 'advanced' : 'privacy');
+  const [piiTypesOpen, setPiiTypesOpen] = useState(false);
+  const [hfModelDate, setHfModelDate] = useState<string | null>(null);
+  const [hfModelLoading, setHfModelLoading] = useState(false);
+  const [hfModelError, setHfModelError] = useState(false);
 
-  const toggleLayer = (key: keyof AeginelConfig['layers']) => {
-    onUpdate({ layers: { ...config.layers, [key]: !config.layers[key] } });
-  };
+  useEffect(() => {
+    setHfModelLoading(true);
+    chrome.runtime.sendMessage({ type: 'GET_HF_MODEL_INFO' }).then((res) => {
+      if (res?.payload?.lastModified) {
+        setHfModelDate(res.payload.lastModified);
+      } else {
+        setHfModelError(true);
+      }
+    }).catch(() => {
+      setHfModelError(true);
+    }).finally(() => {
+      setHfModelLoading(false);
+    });
+  }, []);
 
-  const activeLayerCount = Object.values(config.layers).filter(Boolean).length;
+  const piiTypeCount = Object.values(config.pii.types).filter(Boolean).length;
+  const piiTypeTotal = ALL_PII_TYPES.length;
+
+  const TABS: { key: Tab; label: string }[] = [
+    { key: 'privacy',   label: t('settings.tabs.privacy') },
+    { key: 'advanced',  label: t('settings.tabs.advanced') },
+  ];
 
   return (
     <div className="rounded-xl border border-aeginel-border bg-aeginel-surface overflow-hidden">
@@ -51,14 +78,14 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
         className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-aeginel-surface2 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b949e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--aeginel-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
             <circle cx="12" cy="12" r="3"/>
           </svg>
-          <span className="text-[11px] font-semibold text-aeginel-text">Settings</span>
+          <span className="text-[11px] font-semibold text-aeginel-text">{t('settings.title')}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-aeginel-muted">{activeLayerCount}/9 layers</span>
+          <span className="text-[9px] text-aeginel-muted">{t('settings.piiTypesCount', { count: piiTypeCount, total: piiTypeTotal })}</span>
           <svg
             width="9" height="9" viewBox="0 0 10 10"
             className={`text-aeginel-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
@@ -78,8 +105,8 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                 onClick={() => setActiveTab(key)}
                 className="text-[10px] font-medium px-3 py-1.5 transition-all relative"
                 style={activeTab === key
-                  ? { color: '#e6edf3' }
-                  : { color: '#8b949e' }
+                  ? { color: 'var(--aeginel-text)' }
+                  : { color: 'var(--aeginel-muted)' }
                 }
               >
                 {label}
@@ -94,40 +121,111 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
           </div>
 
           <div className="p-3 space-y-3">
-            {/* ── DETECTION TAB ── */}
-            {activeTab === 'detection' && (
+            {/* ── PRIVACY TAB ── */}
+            {activeTab === 'privacy' && (
               <>
-                {/* Layer toggles as chip grid */}
+                {/* Display Language */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-medium text-aeginel-text">Detection Layers</span>
-                    <span className="text-[9px] text-aeginel-muted">{activeLayerCount} active</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1">
-                    {LAYER_KEYS.map((key) => (
-                      <button
-                        key={key}
-                        onClick={() => toggleLayer(key)}
-                        className="text-[9px] px-2 py-1.5 rounded-lg border font-medium transition-all text-left truncate"
-                        style={config.layers[key]
-                          ? { background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.3)', color: '#3fb950' }
-                          : { background: '#21262d', border: '1px solid #30363d', color: '#8b949e' }
-                        }
-                      >
-                        {LAYER_LABELS[key]}
-                      </button>
-                    ))}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-medium text-aeginel-text">{t('settings.displayLanguage')}</p>
+                      <p className="text-[8px] text-aeginel-muted">{t('settings.displayLanguageDesc')}</p>
+                    </div>
+                    <select
+                      value={config.uiLanguage}
+                      onChange={(e) => onUpdate({ uiLanguage: e.target.value as AeginelConfig['uiLanguage'] })}
+                      className="bg-aeginel-surface2 rounded-lg px-2 py-1 text-[10px] text-aeginel-text focus:outline-none"
+                      style={{ border: '1px solid var(--aeginel-border)' }}
+                    >
+                      {UI_LANGUAGE_OPTIONS.map(({ code, label }) => (
+                        <option key={code} value={code}>{label}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
+
+                <div className="h-px bg-aeginel-border" />
+
+                <ToggleRow
+                  label={t('settings.pii')}
+                  desc={t('settings.piiDesc')}
+                  checked={config.pii.enabled}
+                  onChange={() => onUpdate({ pii: { ...config.pii, enabled: !config.pii.enabled } })}
+                />
+
+                {/* NER model card removed — version shown in footer */}
+
+                {config.pii.enabled && (
+                  <PiiTypesPanel
+                    types={config.pii.types}
+                    isOpen={piiTypesOpen}
+                    onToggleOpen={() => setPiiTypesOpen(!piiTypesOpen)}
+                    onToggleType={(type) => {
+                      onUpdate({
+                        pii: {
+                          ...config.pii,
+                          types: { ...config.pii.types, [type]: !config.pii.types[type] },
+                        },
+                      });
+                    }}
+                    onSelectAll={() => {
+                      const allOn = Object.fromEntries(ALL_PII_TYPES.map(t => [t, true])) as Record<PiiType, boolean>;
+                      onUpdate({ pii: { ...config.pii, types: allOn } });
+                    }}
+                    onDeselectAll={() => {
+                      const allOff = Object.fromEntries(ALL_PII_TYPES.map(t => [t, false])) as Record<PiiType, boolean>;
+                      onUpdate({ pii: { ...config.pii, types: allOff } });
+                    }}
+                  />
+                )}
+
+                <div className="h-px bg-aeginel-border" />
+
+                <ToggleRow
+                  label={t('settings.autoPseudonymize')}
+                  desc={t('settings.autoPseudonymizeDesc')}
+                  checked={config.piiProxy.enabled}
+                  onChange={() => onUpdate({ piiProxy: { ...config.piiProxy, enabled: !config.piiProxy.enabled } })}
+                />
+
+                {config.piiProxy.enabled && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-aeginel-muted">{t('settings.proxyMode')}</span>
+                        <InfoTip text={t('settings.proxyModeInfo')} />
+                      </div>
+                      <select
+                        value={config.piiProxy.mode}
+                        onChange={(e) => onUpdate({ piiProxy: { ...config.piiProxy, mode: e.target.value as 'auto' | 'confirm' } })}
+                        className="bg-aeginel-surface2 rounded-lg px-2 py-1 text-[10px] text-aeginel-text focus:outline-none"
+                        style={{ border: '1px solid var(--aeginel-border)' }}
+                      >
+                        <option value="auto">{t('settings.proxyAuto')}</option>
+                        <option value="confirm">{t('settings.proxyConfirm')}</option>
+                      </select>
+                    </div>
+
+                    <ToggleRow
+                      label={t('settings.showNotification')}
+                      desc={t('settings.showNotificationDesc')}
+                      checked={config.piiProxy.showNotification}
+                      onChange={() => onUpdate({ piiProxy: { ...config.piiProxy, showNotification: !config.piiProxy.showNotification } })}
+                    />
+                  </>
+                )}
 
                 <div className="h-px bg-aeginel-border" />
 
                 {/* Block Threshold */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <div>
-                      <p className="text-[10px] font-medium text-aeginel-text">Block Threshold</p>
-                      <p className="text-[8px] text-aeginel-muted">Score ≥ this value gets blocked</p>
+                    <div className="flex items-center gap-1">
+                      <div>
+                        <p className="text-[10px] font-medium text-aeginel-text">{t('settings.blockThreshold')}</p>
+                        <p className="text-[8px] text-aeginel-muted">{t('settings.blockThresholdDesc')}</p>
+                      </div>
+                      <InfoTip text={t('settings.blockThresholdInfo')} />
                     </div>
                     <span
                       className="text-[13px] font-bold number-hero"
@@ -142,99 +240,52 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                     onChange={(e) => onUpdate({ blockThreshold: Number(e.target.value) })}
                   />
                 </div>
-
-                {/* Sensitivity */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div>
-                      <p className="text-[10px] font-medium text-aeginel-text">Sensitivity</p>
-                      <p className="text-[8px] text-aeginel-muted">Score multiplier</p>
-                    </div>
-                    <span
-                      className="text-[13px] font-bold number-hero"
-                      style={{ color: '#3fb950' }}
-                    >
-                      {config.sensitivity.toFixed(1)}×
-                    </span>
-                  </div>
-                  <input
-                    type="range" min="0.5" max="2.0" step="0.1"
-                    value={config.sensitivity}
-                    onChange={(e) => onUpdate({ sensitivity: Number(e.target.value) })}
-                  />
-                </div>
-              </>
-            )}
-
-            {/* ── PRIVACY TAB ── */}
-            {activeTab === 'privacy' && (
-              <>
-                <ToggleRow
-                  label="PII Detection"
-                  desc="Detect personal data in prompts"
-                  checked={config.pii.enabled}
-                  onChange={() => onUpdate({ pii: { ...config.pii, enabled: !config.pii.enabled } })}
-                />
-
-                <div className="h-px bg-aeginel-border" />
-
-                <ToggleRow
-                  label="Auto Pseudonymize"
-                  desc="Replace PII with fake values before sending"
-                  checked={config.piiProxy.enabled}
-                  onChange={() => onUpdate({ piiProxy: { ...config.piiProxy, enabled: !config.piiProxy.enabled } })}
-                />
-
-                {config.piiProxy.enabled && (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-aeginel-muted">Proxy Mode</span>
-                      <select
-                        value={config.piiProxy.mode}
-                        onChange={(e) => onUpdate({ piiProxy: { ...config.piiProxy, mode: e.target.value as 'auto' | 'confirm' } })}
-                        className="bg-aeginel-surface2 rounded-lg px-2 py-1 text-[10px] text-aeginel-text focus:outline-none"
-                        style={{ border: '1px solid #30363d' }}
-                      >
-                        <option value="auto">Auto</option>
-                        <option value="confirm">Confirm</option>
-                      </select>
-                    </div>
-
-                    <ToggleRow
-                      label="Show Notification"
-                      desc="Banner when PII is protected"
-                      checked={config.piiProxy.showNotification}
-                      onChange={() => onUpdate({ piiProxy: { ...config.piiProxy, showNotification: !config.piiProxy.showNotification } })}
-                    />
-                  </>
-                )}
               </>
             )}
 
             {/* ── ADVANCED TAB ── */}
             {activeTab === 'advanced' && (
               <>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-medium text-aeginel-text">Language</span>
-                  <select
-                    value={config.language}
-                    onChange={(e) => onUpdate({ language: e.target.value })}
-                    className="bg-aeginel-surface2 rounded-lg px-2 py-1 text-[10px] text-aeginel-text focus:outline-none"
-                    style={{ border: '1px solid #30363d' }}
-                  >
-                    <option value="auto">Auto</option>
-                    {LANGUAGE_OPTIONS.map(({ code, label }) => (
-                      <option key={code} value={code}>{label}</option>
-                    ))}
-                  </select>
+                {/* AEGIS Server */}
+                <AegisServerPanel
+                  config={config.aegisServer ?? DEFAULT_AEGIS_SERVER_CONFIG}
+                  onUpdate={(partial) => {
+                    const current = config.aegisServer ?? DEFAULT_AEGIS_SERVER_CONFIG;
+                    onUpdate({
+                      aegisServer: { ...current, ...partial },
+                    });
+                  }}
+                />
+
+                <div className="h-px bg-aeginel-border" />
+
+                {/* Input Detection Language */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-medium text-aeginel-text">{t('settings.inputLanguage')}</p>
+                      <p className="text-[8px] text-aeginel-muted">{t('settings.inputLanguageDesc')}</p>
+                    </div>
+                    <select
+                      value={config.language}
+                      onChange={(e) => onUpdate({ language: e.target.value })}
+                      className="bg-aeginel-surface2 rounded-lg px-2 py-1 text-[10px] text-aeginel-text focus:outline-none"
+                      style={{ border: '1px solid var(--aeginel-border)' }}
+                    >
+                      <option value="auto">{t('settings.autoDetect')}</option>
+                      {LANGUAGE_OPTIONS.map(({ code, label }) => (
+                        <option key={code} value={code}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-medium text-aeginel-text">Allowed Sites</span>
-                    <span className="text-[8px] text-aeginel-muted">{(config.allowlist ?? []).length} domains</span>
+                    <span className="text-[10px] font-medium text-aeginel-text">{t('settings.allowedSites')}</span>
+                    <span className="text-[8px] text-aeginel-muted">{t('settings.domainsCount', { count: (config.allowlist ?? []).length })}</span>
                   </div>
-                  <p className="text-[8px] text-aeginel-muted mb-1.5">One domain per line — these sites skip scanning.</p>
+                  <p className="text-[8px] text-aeginel-muted mb-1.5">{t('settings.allowedSitesDesc')}</p>
                   <textarea
                     value={(config.allowlist ?? []).join('\n')}
                     onChange={(e) => {
@@ -244,7 +295,7 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                     placeholder={'example.com\nmysite.org'}
                     rows={3}
                     className="w-full bg-aeginel-surface2 rounded-lg px-2.5 py-2 text-[10px] text-aeginel-text resize-none focus:outline-none"
-                    style={{ border: '1px solid #30363d' }}
+                    style={{ border: '1px solid var(--aeginel-border)' }}
                   />
                 </div>
 
@@ -253,8 +304,41 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
                   className="w-full text-[10px] py-2 rounded-lg font-medium transition-all hover:opacity-90"
                   style={{ background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.25)', color: '#f85149' }}
                 >
-                  Clear All History
+                  {t('settings.clearHistory')}
                 </button>
+
+                {/* Developer Mode */}
+                <div className="pt-2 mt-1" style={{ borderTop: '1px solid var(--aeginel-border)' }}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-medium text-aeginel-text">{t('settings.devMode')}</span>
+                      <p className="text-[8px] text-aeginel-muted mt-0.5">{t('settings.devModeDesc')}</p>
+                    </div>
+                    <button
+                      onClick={() => onUpdate({ devMode: !config.devMode })}
+                      className="relative w-9 h-[20px] rounded-full transition-all duration-300 flex-shrink-0 p-0 border-0"
+                      style={config.devMode
+                        ? { background: '#58a6ff', boxShadow: '0 0 8px rgba(88,166,255,0.4)' }
+                        : { background: 'var(--aeginel-toggle-off-bg)', border: '1px solid var(--aeginel-toggle-off-border)' }
+                      }
+                    >
+                      <span
+                        className="absolute left-0 top-[3px] w-[14px] h-[14px] rounded-full bg-white shadow transition-transform duration-300"
+                        style={{ transform: config.devMode ? 'translateX(19px)' : 'translateX(3px)' }}
+                      />
+                    </button>
+                  </div>
+
+                  {config.devMode && (
+                    <div
+                      className="mt-2 flex items-center gap-1.5 rounded-md px-2.5 py-2"
+                      style={{ background: 'rgba(88,166,255,0.06)', border: '1px solid rgba(88,166,255,0.15)' }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                      <span className="text-[9px] text-[#58a6ff]">{t('settings.devModeHint')}</span>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -266,6 +350,86 @@ export default function SettingsPanel({ config, onUpdate, onClearHistory }: Prop
 
 /* ── Sub-components ── */
 
+function InfoTip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (!open || !btnRef.current) return;
+
+    // Measure after a frame so the popover is in the DOM
+    requestAnimationFrame(() => {
+      const btn = btnRef.current!.getBoundingClientRect();
+      const popH = popRef.current?.offsetHeight ?? 120;
+      const popW = 300;
+      const winH = window.innerHeight;
+      const winW = window.innerWidth;
+      const margin = 8;
+
+      // Horizontal: center on button, clamp to viewport
+      let left = btn.left + btn.width / 2 - popW / 2;
+      left = Math.max(margin, Math.min(left, winW - popW - margin));
+
+      // Vertical: prefer below, flip above if clipped
+      let top = btn.bottom + 6;
+      if (top + popH > winH - margin) {
+        top = btn.top - popH - 6;
+      }
+      // If still clipped at the top, just pin to top
+      if (top < margin) top = margin;
+
+      setPos({ top, left });
+    });
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        className="rounded-full flex items-center justify-center flex-shrink-0 transition-all"
+        style={{
+          width: '13px',
+          height: '13px',
+          fontSize: '8px',
+          fontWeight: 700,
+          fontStyle: 'italic',
+          lineHeight: 1,
+          color: open ? '#58a6ff' : 'var(--aeginel-muted)',
+          background: open ? 'rgba(88,166,255,0.15)' : 'transparent',
+          border: `1px solid ${open ? 'rgba(88,166,255,0.3)' : 'var(--aeginel-border)'}`,
+        }}
+      >
+        i
+      </button>
+      {open && createPortal(
+        <>
+          <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
+          <div
+            ref={popRef}
+            className="fixed z-[9999] rounded-lg p-3 shadow-lg animate-fade-in"
+            style={{
+              top: pos.top,
+              left: pos.left,
+              width: '300px',
+              maxHeight: `${window.innerHeight - 16}px`,
+              overflowY: 'auto',
+              background: 'var(--aeginel-surface)',
+              border: '1px solid var(--aeginel-border)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            }}
+          >
+            <p className="text-[9px] text-aeginel-text/90 whitespace-pre-line" style={{ lineHeight: '1.6' }}>{text}</p>
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
+  );
+}
+
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
     <button
@@ -275,7 +439,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
         width: '32px', height: '18px',
         ...(checked
           ? { background: '#3fb950', boxShadow: '0 0 6px rgba(63,185,80,0.4)' }
-          : { background: '#21262d', border: '1px solid #30363d' }
+          : { background: 'var(--aeginel-toggle-off-bg)', border: '1px solid var(--aeginel-toggle-off-border)' }
         ),
       }}
     >
@@ -297,6 +461,614 @@ function ToggleRow({
         <p className="text-[8px] text-aeginel-muted">{desc}</p>
       </div>
       <Toggle checked={checked} onChange={onChange} />
+    </div>
+  );
+}
+
+function PiiTypesPanel({
+  types,
+  isOpen,
+  onToggleOpen,
+  onToggleType,
+  onSelectAll,
+  onDeselectAll,
+}: {
+  types: Record<PiiType, boolean>;
+  isOpen: boolean;
+  onToggleOpen: () => void;
+  onToggleType: (type: PiiType) => void;
+  onSelectAll: () => void;
+  onDeselectAll: () => void;
+}) {
+  const { t } = useI18n();
+  const enabledCount = Object.values(types).filter(Boolean).length;
+  const allOn = enabledCount === ALL_PII_TYPES.length;
+
+  return (
+    <div className="rounded-lg overflow-hidden bg-aeginel-surface" style={{ border: '1px solid var(--aeginel-border)' }}>
+      <button
+        onClick={onToggleOpen}
+        className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-aeginel-surface2 transition-colors"
+      >
+        <div className="flex items-center gap-1.5">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--aeginel-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          <span className="text-[10px] font-medium text-aeginel-text">{t('settings.piiTypes')}</span>
+          <span className="text-[8px] px-1.5 py-0.5 rounded-full font-medium"
+            style={{
+              background: enabledCount > 0 ? 'rgba(63,185,80,0.1)' : 'rgba(139,148,158,0.1)',
+              color: enabledCount > 0 ? '#3fb950' : 'var(--aeginel-muted)',
+              border: `1px solid ${enabledCount > 0 ? 'rgba(63,185,80,0.2)' : 'rgba(139,148,158,0.2)'}`,
+            }}
+          >
+            {enabledCount}/{ALL_PII_TYPES.length}
+          </span>
+        </div>
+        <svg
+          width="9" height="9" viewBox="0 0 10 10"
+          className={`text-aeginel-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+        >
+          <path d="M2 3.5L5 6.5L8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="px-2.5 pb-2.5 animate-fade-in" style={{ borderTop: '1px solid var(--aeginel-border)' }}>
+          {/* Select All / Deselect All */}
+          <div className="flex items-center gap-1.5 py-2">
+            <button
+              onClick={onSelectAll}
+              disabled={allOn}
+              className="text-[9px] font-medium px-2 py-1 rounded-md transition-all disabled:opacity-40"
+              style={{ background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.2)', color: '#3fb950' }}
+            >
+              {t('settings.piiSelectAll')}
+            </button>
+            <button
+              onClick={onDeselectAll}
+              disabled={enabledCount === 0}
+              className="text-[9px] font-medium px-2 py-1 rounded-md transition-all disabled:opacity-40"
+              style={{ background: 'rgba(139,148,158,0.08)', border: '1px solid rgba(139,148,158,0.15)', color: 'var(--aeginel-muted)' }}
+            >
+              {t('settings.piiDeselectAll')}
+            </button>
+          </div>
+
+          {/* Grouped PII types */}
+          <div className="space-y-2.5">
+            {PII_TYPE_GROUPS.map((group) => (
+              <div key={group.label}>
+                <p className="text-[8px] font-semibold text-aeginel-muted uppercase tracking-wide mb-1">{group.label}</p>
+                <div className="flex flex-wrap gap-1">
+                  {group.types.map((piiType) => {
+                    const on = types[piiType] !== false;
+                    const label = t(`piiTypes.${piiType}`) !== `piiTypes.${piiType}`
+                      ? t(`piiTypes.${piiType}`)
+                      : piiType.replace(/_/g, ' ');
+                    return (
+                      <button
+                        key={piiType}
+                        onClick={() => onToggleType(piiType)}
+                        className="text-[9px] font-medium px-2 py-1 rounded-md transition-all"
+                        style={on
+                          ? { background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.25)', color: '#3fb950' }
+                          : { background: 'rgba(139,148,158,0.06)', border: '1px solid rgba(139,148,158,0.15)', color: '#6e7681' }
+                        }
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EndpointRow({
+  label, desc, info, checked, locked, version, onChange,
+}: { label: string; desc: string; info: string; checked: boolean; locked?: boolean; version?: string; onChange: () => void }) {
+  return (
+    <div className={`flex items-center justify-between gap-2${locked ? ' opacity-50' : ''}`}>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1">
+          {locked && (
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#d29922" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          )}
+          <p className="text-[10px] font-medium text-aeginel-text">{label}</p>
+          {version && (
+            <span className="text-[7px] px-1 py-px rounded font-medium flex-shrink-0"
+              style={{
+                background: locked ? 'rgba(210,153,34,0.1)' : 'rgba(63,185,80,0.1)',
+                color: locked ? '#d29922' : '#3fb950',
+                border: `1px solid ${locked ? 'rgba(210,153,34,0.2)' : 'rgba(63,185,80,0.15)'}`,
+              }}>
+              {version}
+            </span>
+          )}
+          <InfoTip text={info} />
+        </div>
+        <p className="text-[8px] text-aeginel-muted">{desc}</p>
+      </div>
+      {locked ? (
+        <span className="text-[8px] font-medium flex-shrink-0" style={{ color: '#d29922' }}>
+          {/* Lock icon inline */}
+        </span>
+      ) : (
+        <Toggle checked={checked} onChange={onChange} />
+      )}
+    </div>
+  );
+}
+
+/* ── AEGIS Server Panel ── */
+
+type KeyStatus = 'idle' | 'validating' | 'valid' | 'invalid';
+
+function AegisServerPanel({
+  config,
+  onUpdate,
+}: {
+  config: AegisServerConfig;
+  onUpdate: (partial: Partial<AegisServerConfig>) => void;
+}) {
+  const { t } = useI18n();
+  const [keyStatus, setKeyStatus] = useState<KeyStatus>('idle');
+  const [usage, setUsage] = useState<AegisUsageInfo | null>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [urlDraft, setUrlDraft] = useState(config.baseUrl);
+  const [keyDraft, setKeyDraft] = useState(config.apiKey);
+  const [showKey, setShowKey] = useState(false);
+  const [versionAccess, setVersionAccess] = useState<AegisVersionMap>({});
+
+  const isKeyValid = keyStatus === 'valid';
+  const deniedVersions = Object.entries(versionAccess)
+    .filter(([, v]) => v === 'denied')
+    .map(([k]) => k.toUpperCase());
+
+  const fetchUsage = useCallback(async () => {
+    setUsageLoading(true);
+    try {
+      const res = await chrome.runtime.sendMessage({ type: 'AEGIS_GET_USAGE' });
+      setUsage(res?.payload ?? null);
+    } catch {
+      setUsage(null);
+    } finally {
+      setUsageLoading(false);
+    }
+  }, []);
+
+  const validateKey = useCallback(async () => {
+    if (!urlDraft.trim() || !keyDraft.trim()) return;
+
+    setKeyStatus('validating');
+    onUpdate({ baseUrl: urlDraft.trim(), apiKey: keyDraft.trim(), enabled: true });
+
+    await new Promise(r => setTimeout(r, 100));
+
+    try {
+      const res = await chrome.runtime.sendMessage({ type: 'AEGIS_GET_USAGE' });
+      if (res?.payload) {
+        setKeyStatus('valid');
+        setUsage(res.payload);
+        chrome.runtime.sendMessage({ type: 'AEGIS_CHECK_ACCESS' }).then(accessRes => {
+          if (accessRes?.payload) setVersionAccess(accessRes.payload);
+        }).catch(() => {});
+      } else {
+        setKeyStatus('invalid');
+        setUsage(null);
+      }
+    } catch {
+      setKeyStatus('invalid');
+      setUsage(null);
+    }
+  }, [urlDraft, keyDraft, onUpdate]);
+
+  useEffect(() => {
+    if (config.enabled && config.baseUrl && config.apiKey && keyStatus === 'idle') {
+      setUrlDraft(config.baseUrl);
+      setKeyDraft(config.apiKey);
+      setKeyStatus('validating');
+      chrome.runtime.sendMessage({ type: 'AEGIS_GET_USAGE' }).then(res => {
+        if (res?.payload) {
+          setKeyStatus('valid');
+          setUsage(res.payload);
+          chrome.runtime.sendMessage({ type: 'AEGIS_CHECK_ACCESS' }).then(accessRes => {
+            if (accessRes?.payload) setVersionAccess(accessRes.payload);
+          }).catch(() => {});
+        } else {
+          setKeyStatus('invalid');
+        }
+      }).catch(() => setKeyStatus('invalid'));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onUrlChange = (val: string) => {
+    setUrlDraft(val);
+    if (keyStatus !== 'idle') setKeyStatus('idle');
+    setUsage(null);
+  };
+  const onKeyChange = (val: string) => {
+    setKeyDraft(val);
+    if (keyStatus !== 'idle') setKeyStatus('idle');
+    setUsage(null);
+  };
+
+  const canVerify = urlDraft.trim().length > 0 && keyDraft.trim().length > 0 && keyStatus !== 'validating';
+
+  const statusConfig: Record<KeyStatus, { color: string; label: string }> = {
+    idle: { color: 'var(--aeginel-muted)', label: '' },
+    validating: { color: '#d29922', label: t('aegis.verifying') },
+    valid: { color: '#3fb950', label: t('aegis.verified').split(' — ')[0] },
+    invalid: { color: '#f85149', label: t('aegis.invalid').split(' — ')[0] },
+  };
+
+  return (
+    <>
+      <div className="flex items-center gap-2 mb-1">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z" />
+          <path d="M2 17l10 5 10-5" />
+          <path d="M2 12l10 5 10-5" />
+        </svg>
+        <span className="text-[10px] font-semibold text-aeginel-text">{t('aegis.title')}</span>
+        <span className="ml-auto text-[8px] px-1.5 py-0.5 rounded-full font-medium"
+          style={{ background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.2)', color: '#58a6ff' }}>
+          {t('aegis.enterprise')}
+        </span>
+        {keyStatus !== 'idle' && (
+          <span className="text-[8px] font-medium" style={{ color: statusConfig[keyStatus].color }}>
+            {statusConfig[keyStatus].label}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[8px] text-aeginel-muted">
+          {t('aegis.desc')}
+        </p>
+        <a
+          href="https://aiaegis.io"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-[8px] font-medium shrink-0 hover:opacity-80 transition-opacity"
+          style={{ color: '#58a6ff' }}
+        >
+          aiaegis.io
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+          </svg>
+        </a>
+      </div>
+
+      <div>
+        <p className="text-[10px] font-medium text-aeginel-text mb-1">{t('aegis.serverUrl')}</p>
+        <input
+          type="url"
+          value={urlDraft}
+          onChange={(e) => onUrlChange(e.target.value)}
+          placeholder="https://api.aiaegis.io"
+          className="w-full bg-aeginel-surface2 rounded-lg px-2.5 py-2 text-[10px] text-aeginel-text focus:outline-none"
+          style={{
+            border: `1px solid ${keyStatus === 'invalid' ? 'rgba(248,81,73,0.4)' : 'var(--aeginel-border)'}`,
+          }}
+        />
+      </div>
+
+      <div>
+        <p className="text-[10px] font-medium text-aeginel-text mb-1">{t('aegis.apiKey')}</p>
+        <div className="relative">
+          <input
+            type={showKey ? 'text' : 'password'}
+            value={keyDraft}
+            onChange={(e) => onKeyChange(e.target.value)}
+            placeholder="aegis_sk_..."
+            className="w-full bg-aeginel-surface2 rounded-lg px-2.5 py-2 pr-8 text-[10px] text-aeginel-text focus:outline-none"
+            style={{
+              border: `1px solid ${keyStatus === 'invalid' ? 'rgba(248,81,73,0.4)' : keyStatus === 'valid' ? 'rgba(63,185,80,0.4)' : 'var(--aeginel-border)'}`,
+            }}
+          />
+          <button
+            onClick={() => setShowKey(!showKey)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-aeginel-muted hover:text-aeginel-text"
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {showKey ? (
+                <>
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </>
+              ) : (
+                <>
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </>
+              )}
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <button
+        onClick={validateKey}
+        disabled={!canVerify}
+        className="w-full text-[10px] py-2 rounded-lg font-semibold transition-all hover:opacity-90 disabled:opacity-40"
+        style={
+          keyStatus === 'valid'
+            ? { background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.3)', color: '#3fb950' }
+            : keyStatus === 'invalid'
+              ? { background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.3)', color: '#f85149' }
+              : { background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.25)', color: '#58a6ff' }
+        }
+      >
+        {keyStatus === 'validating' ? t('aegis.verifying')
+          : keyStatus === 'valid' ? t('aegis.verified')
+          : keyStatus === 'invalid' ? t('aegis.invalid')
+          : t('aegis.verifyKey')}
+      </button>
+
+      {keyStatus === 'invalid' && (
+        <div className="rounded-lg p-2" style={{ background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.2)' }}>
+          <p className="text-[9px]" style={{ color: '#f85149' }}>
+            {t('aegis.invalidDetail')}
+          </p>
+        </div>
+      )}
+
+      {isKeyValid && (
+        <>
+          <div className="h-px bg-aeginel-border" />
+
+          {usage && <UsageBar usage={usage} loading={usageLoading} onRefresh={fetchUsage} />}
+
+          <div className="h-px bg-aeginel-border" />
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[10px] font-medium text-aeginel-text">{t('aegis.endpoints')}</p>
+              <span className="text-[8px] text-aeginel-muted">
+                {t('aegis.endpointsActive', { count: [config.endpoints.judge, config.endpoints.jailbreakDetect, config.endpoints.safetyCheck, config.endpoints.classify, config.endpoints.koreanAnalyze].filter(Boolean).length })}
+              </span>
+            </div>
+
+            {/* Plan restriction banner */}
+            {deniedVersions.length > 0 && (
+              <div className="rounded-lg p-2 mb-1.5 flex items-start gap-2" style={{ background: 'rgba(210,153,34,0.08)', border: '1px solid rgba(210,153,34,0.25)' }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#d29922" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[9px]" style={{ color: '#d29922' }}>
+                    {t('aegis.planDeniedBanner', { version: deniedVersions.join(', ') })}
+                  </p>
+                  <a
+                    href="https://aiaegis.io/pricing"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 mt-1 text-[8px] font-medium hover:opacity-80 transition-opacity"
+                    style={{ color: '#d29922' }}
+                  >
+                    {t('aegis.planUpgrade')}
+                    <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="15 3 21 3 21 9" />
+                      <line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <EndpointRow
+                label={t('aegis.endpointJudge')}
+                desc={t('aegis.endpointJudgeDesc')}
+                info={t('aegis.endpointJudgeInfo')}
+                checked={config.endpoints.judge}
+                locked={versionAccess.v1 === 'denied'}
+                version="v1"
+                onChange={() => onUpdate({
+                  endpoints: { ...config.endpoints, judge: !config.endpoints.judge },
+                })}
+              />
+              <EndpointRow
+                label={t('aegis.endpointJailbreak')}
+                desc={t('aegis.endpointJailbreakDesc')}
+                info={t('aegis.endpointJailbreakInfo')}
+                checked={config.endpoints.jailbreakDetect}
+                locked={versionAccess.v2 === 'denied'}
+                version="v2"
+                onChange={() => onUpdate({
+                  endpoints: { ...config.endpoints, jailbreakDetect: !config.endpoints.jailbreakDetect },
+                })}
+              />
+              <EndpointRow
+                label={t('aegis.endpointSafety')}
+                desc={t('aegis.endpointSafetyDesc')}
+                info={t('aegis.endpointSafetyInfo')}
+                checked={config.endpoints.safetyCheck}
+                locked={versionAccess.v2 === 'denied'}
+                version="v2"
+                onChange={() => onUpdate({
+                  endpoints: { ...config.endpoints, safetyCheck: !config.endpoints.safetyCheck },
+                })}
+              />
+              <EndpointRow
+                label={t('aegis.endpointClassify')}
+                desc={t('aegis.endpointClassifyDesc')}
+                info={t('aegis.endpointClassifyInfo')}
+                checked={config.endpoints.classify}
+                locked={versionAccess.v2 === 'denied'}
+                version="v2"
+                onChange={() => onUpdate({
+                  endpoints: { ...config.endpoints, classify: !config.endpoints.classify },
+                })}
+              />
+              <EndpointRow
+                label={t('aegis.endpointKorean')}
+                desc={t('aegis.endpointKoreanDesc')}
+                info={t('aegis.endpointKoreanInfo')}
+                checked={config.endpoints.koreanAnalyze}
+                locked={versionAccess.v3 === 'denied'}
+                version="v3"
+                onChange={() => onUpdate({
+                  endpoints: { ...config.endpoints, koreanAnalyze: !config.endpoints.koreanAnalyze },
+                })}
+              />
+            </div>
+          </div>
+
+          <div className="h-px bg-aeginel-border" />
+
+          <div className="rounded-lg p-2" style={{ background: 'rgba(88,166,255,0.08)', border: '1px solid rgba(88,166,255,0.2)' }}>
+            <p className="text-[9px] text-aeginel-muted">
+              {t('aegis.info')}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-aeginel-muted">{t('aegis.timeout')}</span>
+            <select
+              value={config.timeoutMs}
+              onChange={(e) => onUpdate({ timeoutMs: Number(e.target.value) })}
+              className="bg-aeginel-surface2 rounded-lg px-2 py-1 text-[10px] text-aeginel-text focus:outline-none"
+              style={{ border: '1px solid var(--aeginel-border)' }}
+            >
+              <option value={3000}>3s</option>
+              <option value={5000}>5s</option>
+              <option value={10000}>10s</option>
+              <option value={15000}>15s</option>
+            </select>
+          </div>
+
+          <button
+            onClick={() => {
+              onUpdate({ enabled: false, apiKey: '', baseUrl: '' });
+              setKeyDraft('');
+              setUrlDraft('');
+              setKeyStatus('idle');
+              setUsage(null);
+            }}
+            className="w-full text-[10px] py-1.5 rounded-lg font-medium transition-all hover:opacity-90"
+            style={{ background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.2)', color: '#f85149' }}
+          >
+            {t('aegis.disconnect')}
+          </button>
+        </>
+      )}
+    </>
+  );
+}
+
+/* ── Usage Bar ── */
+
+function UsageBar({
+  usage,
+  loading,
+  onRefresh,
+}: {
+  usage: AegisUsageInfo;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  const { t } = useI18n();
+  const pct = usage.percentUsed;
+  const isLow = pct >= 80;
+  const isCritical = pct >= 95;
+
+  const barColor = isCritical ? '#f85149' : isLow ? '#d29922' : '#3fb950';
+  const bgTint = isCritical
+    ? 'rgba(248,81,73,0.08)'
+    : isLow
+      ? 'rgba(210,153,34,0.08)'
+      : 'rgba(63,185,80,0.06)';
+  const borderTint = isCritical
+    ? 'rgba(248,81,73,0.25)'
+    : isLow
+      ? 'rgba(210,153,34,0.25)'
+      : 'rgba(63,185,80,0.15)';
+
+  return (
+    <div
+      className="rounded-lg p-2.5 space-y-1.5"
+      style={{ background: bgTint, border: `1px solid ${borderTint}` }}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-medium text-aeginel-text">{t('aegis.usage')}</span>
+        <button
+          onClick={onRefresh}
+          disabled={loading}
+          className="text-[8px] text-aeginel-muted hover:text-aeginel-text transition-colors disabled:opacity-40"
+        >
+          {loading ? '...' : t('aegis.refresh')}
+        </button>
+      </div>
+
+      <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--aeginel-surface2)' }}>
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${Math.min(pct, 100)}%`, background: barColor }}
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <span className="text-[9px] text-aeginel-muted">
+          {usage.used.toLocaleString()} / {usage.allocated.toLocaleString()} {t('aegis.usageCalls')}
+        </span>
+        <span className="text-[9px] font-semibold" style={{ color: barColor }}>
+          {t('aegis.remaining', { count: usage.remaining.toLocaleString() })}
+        </span>
+      </div>
+
+      {usage.byEndpoint.length > 0 && (
+        <div className="pt-1 space-y-0.5">
+          {usage.byEndpoint.map(({ endpoint, calls }) => (
+            <div key={endpoint} className="flex items-center justify-between">
+              <span className="text-[8px] text-aeginel-muted truncate">{endpoint}</span>
+              <span className="text-[8px] text-aeginel-muted">{calls.toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="text-[8px] text-aeginel-muted text-right">
+        {usage.period.start.slice(0, 10)} ~ {usage.period.end.slice(0, 10)}
+      </div>
+
+      {isCritical && (
+        <div className="flex items-center gap-1.5 pt-0.5">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#f85149" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          <span className="text-[9px] font-medium" style={{ color: '#f85149' }}>
+            {t('aegis.quotaCritical')} {usage.overageAllowed ? t('aegis.quotaOverage') : t('aegis.quotaRejected')}
+          </span>
+        </div>
+      )}
+      {isLow && !isCritical && (
+        <div className="flex items-center gap-1.5 pt-0.5">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#d29922" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span className="text-[9px] font-medium" style={{ color: '#d29922' }}>
+            {t('aegis.quotaLow', { pct: 100 - pct })}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

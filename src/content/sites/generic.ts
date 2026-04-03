@@ -7,7 +7,7 @@
 // fallback selectors are tried automatically.
 
 import type { SiteAdapter } from './base';
-import { getInputText as extractText, setInputText as setText } from './base';
+import { getInputText as extractText, setInputText as setText, normalizeInnerText } from './base';
 import type { SiteConfig } from './registry';
 import {
   FALLBACK_INPUT_SELECTORS,
@@ -53,7 +53,7 @@ export function createGenericAdapter(config: SiteConfig): SiteAdapter {
 
     getInputText(el: Element) {
       if (el instanceof HTMLElement && el.getAttribute('contenteditable') === 'true') {
-        return el.innerText?.trim() ?? '';
+        return normalizeInnerText(el.innerText ?? '');
       }
       return extractText(el);
     },

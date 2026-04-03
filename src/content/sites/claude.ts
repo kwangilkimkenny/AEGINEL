@@ -1,5 +1,5 @@
 import type { SiteAdapter } from './base';
-import { getInputText as extractText, setInputText as setText } from './base';
+import { getInputText as extractText, setInputText as setText, normalizeInnerText } from './base';
 import { FALLBACK_INPUT_SELECTORS, FALLBACK_SUBMIT_SELECTORS } from './registry';
 
 /** Try selectors in order, return first that matches an element in the DOM. */
@@ -24,7 +24,14 @@ const SUBMIT_SELECTORS = [
   'button[aria-label="Send Message"]',
   'button[aria-label="Send message"]',
   'button[aria-label="Send"]',
+  'button[aria-label="메시지 보내기"]',
+  'button[aria-label="보내기"]',
+  'button[aria-label*="send" i]',
+  'button[data-testid="send-button"]',
+  'button[data-testid*="send" i]',
   'fieldset button[type="button"]:last-of-type',
+  'fieldset button:last-of-type',
+  '[class*="composer"] button[type="button"]:last-of-type',
 ];
 
 export const claudeAdapter: SiteAdapter = {
@@ -42,7 +49,7 @@ export const claudeAdapter: SiteAdapter = {
   getInputText(el: Element) {
     // ProseMirror may have <p> children; get innerText for proper newlines
     if (el instanceof HTMLElement && el.getAttribute('contenteditable') === 'true') {
-      return el.innerText?.trim() ?? '';
+      return normalizeInnerText(el.innerText ?? '');
     }
     return extractText(el);
   },

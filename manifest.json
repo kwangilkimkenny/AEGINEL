@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extName__",
   "description": "__MSG_extDescription__",
-  "version": "1.1.3",
+  "version": "1.1.5",
   "default_locale": "en",
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
@@ -78,12 +78,23 @@
       "run_at": "document_idle"
     }
   ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "block_autocompletions",
+        "enabled": true,
+        "path": "rules/block-autocompletions.json"
+      }
+    ]
+  },
   "permissions": [
     "storage",
     "activeTab",
-    "offscreen"
+    "offscreen",
+    "declarativeNetRequest"
   ],
   "host_permissions": [
+    "https://api.aiaegis.io/*",
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
     "https://claude.ai/*",
@@ -95,6 +106,7 @@
     "https://chat.mistral.ai/*",
     "https://coral.cohere.com/*",
     "https://huggingface.co/*",
+    "https://*.hf.co/*",
     "https://poe.com/*",
     "https://chat.deepseek.com/*",
     "https://you.com/*",
@@ -130,7 +142,11 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["wasm/*.wasm", "wasm/*.mjs", "models/guard_encoder_v2_onnx/*"],
+      "resources": [
+        "ort/*.wasm",
+        "ort/*.mjs",
+        "fetch-interceptor.js"
+      ],
       "matches": ["<all_urls>"]
     }
   ]

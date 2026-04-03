@@ -1,5 +1,5 @@
 import type { SiteAdapter } from './base';
-import { getInputText as extractText, setInputText as setText } from './base';
+import { getInputText as extractText, setInputText as setText, normalizeInnerText } from './base';
 import { FALLBACK_INPUT_SELECTORS, FALLBACK_SUBMIT_SELECTORS } from './registry';
 
 /** Try selectors in order, return first that matches an element in the DOM. */
@@ -41,7 +41,7 @@ export const geminiAdapter: SiteAdapter = {
 
   getInputText(el: Element) {
     if (el instanceof HTMLElement && el.getAttribute('contenteditable') === 'true') {
-      return el.innerText?.trim() ?? '';
+      return normalizeInnerText(el.innerText ?? '');
     }
     return extractText(el);
   },

@@ -40,10 +40,6 @@ export interface EnterprisePolicy {
   forceDisabled: boolean;
   /** Override block threshold for the entire org */
   blockThreshold: number;
-  /** Override sensitivity multiplier */
-  sensitivity: number;
-  /** Enforced detection layers (users cannot disable these) */
-  enforcedLayers: string[];
   /** Sites blocked entirely (extension won't activate) */
   blockedSites: string[];
   /** Sites where PII proxy is mandatory */
@@ -66,9 +62,6 @@ export interface ScanTelemetry {
   categories: string[];
   blocked: boolean;
   piiCount: number;
-  /** Rule-only score vs hybrid score */
-  ruleScore: number;
-  mlScore: number;
   latencyMs: number;
 }
 
@@ -207,14 +200,6 @@ export function applyEnterprisePolicy(
 
   // Override thresholds (use stricter value)
   merged.blockThreshold = Math.min(localConfig.blockThreshold, policy.blockThreshold);
-  merged.sensitivity = Math.max(localConfig.sensitivity, policy.sensitivity);
-
-  // Enforce layers — user cannot disable these
-  for (const layer of policy.enforcedLayers) {
-    if (layer in merged.layers) {
-      (merged.layers as Record<string, boolean>)[layer] = true;
-    }
-  }
 
   // Enforce PII proxy mode
   if (policy.minPiiProxyMode === 'confirm') {

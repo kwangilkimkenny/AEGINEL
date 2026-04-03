@@ -82,6 +82,7 @@
     "phone_kr": "Telefono (KR)",
     "phone_intl": "Telefono (Intl)",
     "ssn": "SSN",
-    "passport": "Passaporto"
+    "passport": "Passaporto",
+    "time": "Ora"
   }
 }

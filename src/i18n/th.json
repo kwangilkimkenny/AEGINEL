@@ -8,5 +8,5 @@
   "banner": { "detected": "ตรวจพบความเสี่ยง", "blocked": "การส่งถูกบล็อก", "goBack": "กลับ", "sendAnyway": "ส่งต่อไป" },
   "categories": { "harmful_content": "เนื้อหาอันตราย", "jailbreak": "Jailbreak", "prompt_injection": "ฉีด Prompt", "data_extraction": "ดึงข้อมูล", "social_engineering": "วิศวกรรมสังคม", "script_evasion": "หลบเลี่ยงสคริปต์", "encoding_attack": "โจมตีเข้ารหัส", "multi_turn": "โจมตีหลายรอบ", "self_harm": "ทำร้ายตนเอง", "pii_exposure": "เปิดเผย PII" },
   "proxy": { "protected": "ข้อมูลส่วนบุคคล {{count}} รายการได้รับการปกป้อง", "confirmTitle": "ยืนยันการปกป้อง PII", "confirmDesc": "ตรวจพบข้อมูลส่วนบุคคลต่อไปนี้และจะถูกแทนที่ด้วยนามแฝง:", "original": "ต้นฉบับ", "pseudonym": "นามแฝง", "confirm": "ปกป้องและส่ง", "skip": "ส่งต้นฉบับ", "settingsTitle": "PII Proxy (การใช้นามแฝง)", "enabled": "ใช้นามแฝงอัตโนมัติ", "modeAuto": "อัตโนมัติ", "modeConfirm": "ยืนยันก่อน", "notification": "แสดงการแจ้งเตือน" },
-  "piiTypes": { "korean_rrn": "RRN เกาหลี", "credit_card": "บัตรเครดิต", "email": "อีเมล", "phone_kr": "โทรศัพท์ (KR)", "phone_intl": "โทรศัพท์ (สากล)", "ssn": "SSN", "passport": "หนังสือเดินทาง" }
+  "piiTypes": { "korean_rrn": "RRN เกาหลี", "credit_card": "บัตรเครดิต", "email": "อีเมล", "phone_kr": "โทรศัพท์ (KR)", "phone_intl": "โทรศัพท์ (สากล)", "ssn": "SSN", "passport": "หนังสือเดินทาง", "time": "เวลา" }
 }

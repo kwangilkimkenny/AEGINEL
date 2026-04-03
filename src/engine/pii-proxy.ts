@@ -2,7 +2,7 @@
 // Pseudonymizes PII before sending to LLM, restores originals in responses.
 
 import { scanPii } from './pii-scanner';
-import type { AeginelConfig, PiiMapping, PiiType, ProxyResult } from './types';
+import type { AeginelConfig, PiiMapping, PiiMatch, PiiModifications, PiiType, ProxyResult } from './types';
 
 // ── Fake Value Generators ───────────────────────────────────────────────
 
@@ -43,7 +43,7 @@ function generateLuhnNumber(prefix: string, totalLen: number): string {
   return body + String(checkDigit);
 }
 
-function generateFakeValue(type: PiiType, original: string): string {
+export function generateFakeValue(type: PiiType, original: string): string {
   switch (type) {
     case 'korean_rrn': {
       // Format: YYMMDD-GNNNNNN — preserve format, randomize
@@ -131,9 +131,85 @@ function generateFakeValue(type: PiiType, original: string): string {
       return `${letters}${randomDigits(digitLen)}`;
     }
 
+    case 'givenname':
+    case 'surname':
+      return `User_${randomHex(3)}`;
+
+    case 'username':
+      return `user_${randomHex(4)}`;
+
+    case 'dateofbirth': {
+      const yy = 1970 + (parseInt(randomDigits(2), 10) % 40);
+      const mm = String(1 + (parseInt(randomDigits(1), 10) % 12)).padStart(2, '0');
+      const dd = String(1 + (parseInt(randomDigits(1), 10) % 28)).padStart(2, '0');
+      return `${yy}-${mm}-${dd}`;
+    }
+
+    case 'idcard':
+      return `ID${randomDigits(8)}`;
+
+    case 'street':
+      return `${randomDigits(3)} Example St`;
+
+    case 'city':
+      return 'Sampleville';
+
+    case 'zipcode':
+      return randomDigits(5);
+
+    case 'buildingnum':
+      return randomDigits(3);
+
+    case 'ip_address':
+      return `10.${parseInt(randomDigits(3), 10) % 256}.${parseInt(randomDigits(3), 10) % 256}.${parseInt(randomDigits(3), 10) % 256}`;
+
+    case 'password':
+      return `P@ss${randomHex(4)}!`;
+
+    case 'accountnum':
+      return randomDigits(original.replace(/\D/g, '').length || 10);
+
+    case 'driverlicensenum':
+      return `${randomLetter()}${randomLetter()}${randomDigits(6)}`;
+
+    case 'company':
+      return `Corp_${randomHex(3)}`;
+
+    case 'time': {
+      const hh = String(parseInt(randomDigits(2), 10) % 24).padStart(2, '0');
+      const mi = String(parseInt(randomDigits(2), 10) % 60).padStart(2, '0');
+      return `${hh}:${mi}`;
+    }
+
     default:
       return `[REDACTED_${type}]`;
   }
+}
+
+// ── Overlapping Entity Resolution ───────────────────────────────────────
+// NER models may produce overlapping spans of different types
+// (e.g. "test" as USERNAME overlapping with "test@gmail.com" as EMAIL).
+// Replacing overlapping spans corrupts indices, so we keep only
+// non-overlapping entities, preferring longer (more specific) spans.
+
+function removeOverlappingMatches(matches: PiiMatch[]): PiiMatch[] {
+  if (matches.length <= 1) return matches;
+
+  // Sort by start ascending, break ties by span length descending (longer wins)
+  const sorted = [...matches].sort((a, b) => {
+    if (a.startIndex !== b.startIndex) return a.startIndex - b.startIndex;
+    return (b.endIndex - b.startIndex) - (a.endIndex - a.startIndex);
+  });
+
+  const result: PiiMatch[] = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    const last = result[result.length - 1];
+    const curr = sorted[i];
+    // Skip entities whose range overlaps with the last accepted entity
+    if (curr.startIndex < last.endIndex) continue;
+    result.push(curr);
+  }
+  return result;
 }
 
 // ── PiiProxyEngine ──────────────────────────────────────────────────────
@@ -185,26 +261,54 @@ export class PiiProxyEngine {
   /**
    * Detect PII in text and replace with format-preserving pseudonyms.
    */
-  pseudonymize(text: string, config: AeginelConfig, sessionId: string): ProxyResult {
-    const piiMatches = scanPii(text, config);
+  async pseudonymize(text: string, config: AeginelConfig, sessionId: string, modifications?: PiiModifications): Promise<ProxyResult> {
+    let piiMatches = await scanPii(text, config);
 
-    if (piiMatches.length === 0) {
+    // Apply user modifications: filter out excluded (cancelled) detections
+    if (modifications?.excluded?.length) {
+      piiMatches = piiMatches.filter(m =>
+        !modifications.excluded.some(ex =>
+          m.startIndex >= ex.start && m.endIndex <= ex.end
+        )
+      );
+    }
+
+    // Add manual anonymization items
+    const manualMatches: PiiMatch[] = (modifications?.manual || []).map(m => ({
+      type: 'manual' as PiiType,
+      value: text.slice(m.start, m.end),
+      startIndex: m.start,
+      endIndex: m.end,
+    }));
+
+    const allMatches = [...piiMatches, ...manualMatches];
+
+    if (allMatches.length === 0) {
       return { originalText: text, proxiedText: text, mappings: [], piiCount: 0 };
     }
 
-    // Sort by position descending so we can replace from the end
-    const sorted = [...piiMatches].sort((a, b) => b.startIndex - a.startIndex);
+    const deduped = removeOverlappingMatches(allMatches);
+    const sorted = [...deduped].sort((a, b) => b.startIndex - a.startIndex);
 
     const mappings: PiiMapping[] = [];
     let proxied = text;
 
     for (const pii of sorted) {
       const original = text.slice(pii.startIndex, pii.endIndex);
-      // Check if we already have a mapping for this exact original value in this session
-      const existing = this.sessionMappings.get(sessionId)
-        ?.find((m) => m.original === original && m.type === pii.type);
 
-      const pseudonym = existing?.pseudonym ?? generateFakeValue(pii.type, original);
+      // For manual items with user-provided-, use that directly
+      const manualItem = modifications?.manual?.find(
+        m => m.start === pii.startIndex && m.end === pii.endIndex
+      );
+
+      let pseudonym: string;
+      if (manualItem) {
+        pseudonym = manualItem.pseudonym;
+      } else {
+        const existing = this.sessionMappings.get(sessionId)
+          ?.find((m) => m.original === original && m.type === pii.type);
+        pseudonym = existing?.pseudonym ?? generateFakeValue(pii.type, original);
+      }
 
       proxied = proxied.slice(0, pii.startIndex) + pseudonym + proxied.slice(pii.endIndex);
 
