@@ -61,7 +61,7 @@ Generate compliance reports (GDPR, CCPA, 개인정보보호법).
 
 | Tier | Seats | Price | Features |
 |------|-------|-------|----------|
-| Free | 1 | $0 | All detection + PII proxy |
-| Team | 5-50 | $5/seat/mo | + Admin dashboard, audit log |
-| Business | 50-500 | $10/seat/mo | + SSO, custom policies, API |
+| Free | 1 | ₩0 | All detection + PII proxy |
+| Team | 5-50 | ₩7,000/seat/mo | + Admin dashboard, audit log |
+| Business | 50-500 | ₩14,000/seat/mo | + SSO, custom policies, API |
 | Enterprise | 500+ | Custom | + On-premise, SLA, dedicated support |
